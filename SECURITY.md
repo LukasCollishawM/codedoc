@@ -20,7 +20,11 @@ Properties that must hold across all three:
 - **No execution.** No record content reaches a shell, an interpreter, a SQL statement other than as a bound parameter, or a rendered context that executes it. Records are data in every projection, including the editor ones.
 - **No unsafe code.** `#![forbid(unsafe_code)]` in every crate, so memory-safety findings are confined to dependencies and auditable through `cargo deny`.
 
-Fuzz targets cover the canonical decoder and the ledger reader, and they are part of the test suite rather than an aspiration.
+Fuzz targets for the canonical decoder, the ledger reader and anchor capture live in [`fuzz/`](fuzz/). They require a nightly toolchain, so they are run deliberately rather than on every CI run:
+
+```bash
+cargo fuzz run canonical_decoder
+```
 
 ## What is not a vulnerability
 

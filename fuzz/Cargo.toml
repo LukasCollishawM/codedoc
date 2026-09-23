@@ -1,0 +1,38 @@
+[package]
+name = "codedoc-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+codedoc-core = { path = "../crates/codedoc-core" }
+codedoc-ledger = { path = "../crates/codedoc-ledger" }
+codedoc-lang = { path = "../crates/codedoc-lang" }
+codedoc-anchor = { path = "../crates/codedoc-anchor" }
+
+[[bin]]
+name = "canonical_decoder"
+path = "fuzz_targets/canonical_decoder.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ledger_reader"
+path = "fuzz_targets/ledger_reader.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "anchor_capture"
+path = "fuzz_targets/anchor_capture.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]
