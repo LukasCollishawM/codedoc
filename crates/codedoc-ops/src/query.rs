@@ -79,14 +79,55 @@ pub fn context(
 }
 
 pub fn verify(root: &Path) -> Result<(Value, i32), OpsError> {
+    verify_scoped(root, &[], None)
+}
+
+pub fn verify_scoped(
+    root: &Path,
+    files: &[String],
+    since: Option<&str>,
+) -> Result<(Value, i32), OpsError> {
     let found = workspace(root)?;
-    let report = Verifier::new(found.root())
-        .run_across(&found)
-        .map_err(|source| OpsError::Ledger { detail: source.to_string() })?;
+    let mut targets: Vec<String> = files.to_vec();
+    if let Some(revision) = since {
+        let changed =
+            codedoc_verify::history::changed_since(found.root(), revision).ok_or_else(|| {
+                OpsError::Ledger { detail: format!("could not read what changed since {revision}") }
+            })?;
+        targets.extend(changed);
+    }
+    targets.sort();
+    targets.dedup();
+
+    let report = if targets.is_empty() {
+        Verifier::new(found.root())
+            .run_across(&found)
+            .map_err(|source| OpsError::Ledger { detail: source.to_string() })?
+    } else {
+        let mut records = Vec::new();
+        for ledger in found.ledgers() {
+            let index = Index::current(ledger)
+                .map_err(|source| OpsError::Index { detail: source.to_string() })?;
+            for file in &targets {
+                records.extend(
+                    index
+                        .active_in_file(file)
+                        .map_err(|source| OpsError::Index { detail: source.to_string() })?,
+                );
+            }
+        }
+        records.sort_by_key(|record| record.id().to_string());
+        records.dedup_by_key(|record| record.id().to_string());
+        Verifier::new(found.root())
+            .run_records(records, &targets)
+            .map_err(|source| OpsError::Ledger { detail: source.to_string() })?
+    };
     let code = report.exit_code();
     let payload = json!({
         "command": "verify",
+        "scoped_to": targets,
         "records": report.records,
+        "integrity_checked": report.integrity_checked,
         "integrity_intact": report.integrity_intact,
         "orphaned_records": report
             .orphaned_records

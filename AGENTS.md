@@ -49,7 +49,7 @@ codedoc_context  →  agent reads, then changes code  →  codedoc_attach / code
 | `codedoc_context` | before touching unfamiliar code |
 | `codedoc_attach` | after working something out that the source doesn't say |
 | `codedoc_relate` | when the fact is about a link between two places |
-| `codedoc_verify` | after making changes |
+| `codedoc_verify` | after making changes — pass `files` or `since` to check only what you touched |
 | `codedoc_detached` | when verify reports detachments |
 | `codedoc_resolve` | to place a detached record explicitly |
 | `codedoc_supersede` | when an existing record turns out to be wrong |

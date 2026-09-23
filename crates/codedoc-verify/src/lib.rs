@@ -63,6 +63,7 @@ pub struct Finding {
 pub struct Report {
     pub findings: Vec<Finding>,
     pub records: usize,
+    pub integrity_checked: bool,
     pub integrity_intact: bool,
     pub orphaned_records: Vec<RecordId>,
 }
@@ -113,21 +114,52 @@ impl Verifier {
     pub fn run(&self, ledger: &Ledger) -> Result<Report, VerifyError> {
         let graph = Graph::load(ledger)?;
         let integrity: Verification = ledger.verify()?;
-        self.report(graph, integrity)
+        self.report(graph, integrity, &[], true)
     }
 
     pub fn run_across(&self, workspace: &Workspace) -> Result<Report, VerifyError> {
         let graph = Graph::across(workspace)?;
         let integrity: Verification = workspace.verify()?;
-        self.report(graph, integrity)
+        self.report(graph, integrity, &[], true)
     }
 
-    fn report(&self, graph: Graph, integrity: Verification) -> Result<Report, VerifyError> {
+    pub fn run_over(&self, workspace: &Workspace, files: &[String]) -> Result<Report, VerifyError> {
+        let graph = Graph::across(workspace)?;
+        let integrity: Verification = workspace.verify()?;
+        self.report(graph, integrity, files, true)
+    }
+
+    pub fn run_records(
+        &self,
+        records: Vec<codedoc_ledger::Record>,
+        files: &[String],
+    ) -> Result<Report, VerifyError> {
+        let graph = Graph::from_records(records);
+        let empty = Verification {
+            records: 0,
+            tips: Vec::new(),
+            orphans: Vec::new(),
+            duplicates: Vec::new(),
+        };
+        self.report(graph, empty, files, false)
+    }
+
+    fn report(
+        &self,
+        graph: Graph,
+        integrity: Verification,
+        only: &[String],
+        checked: bool,
+    ) -> Result<Report, VerifyError> {
         let mut pending: BTreeMap<String, Vec<Pending>> = BTreeMap::new();
         for record in graph.active() {
             let content = record.content();
             for entry in &content.anchors {
-                pending.entry(entry.anchor.file.as_str().to_owned()).or_default().push(Pending {
+                let file = entry.anchor.file.as_str();
+                if !only.is_empty() && !only.iter().any(|wanted| wanted == file) {
+                    continue;
+                }
+                pending.entry(file.to_owned()).or_default().push(Pending {
                     record: record.id(),
                     kind: content.kind.as_str(),
                     claim: content.body.claim.clone(),
@@ -166,6 +198,7 @@ impl Verifier {
         Ok(Report {
             findings,
             records: graph.active().len(),
+            integrity_checked: checked,
             integrity_intact: integrity.is_intact(),
             orphaned_records: integrity.orphans,
         })

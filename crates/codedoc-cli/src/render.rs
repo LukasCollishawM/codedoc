@@ -89,7 +89,16 @@ fn render_verify(payload: &Value, out: &mut String) {
     let stale = counts.get("stale").and_then(Value::as_u64).unwrap_or(0);
     let detached = counts.get("detached").and_then(Value::as_u64).unwrap_or(0);
 
-    if !payload["integrity_intact"].as_bool().unwrap_or(true) {
+    let empty_scope = Vec::new();
+    let scoped = payload["scoped_to"].as_array().unwrap_or(&empty_scope);
+    if !scoped.is_empty() {
+        let _ = writeln!(out, "scoped to {} file(s); ledger integrity not checked", scoped.len());
+        let _ = writeln!(out);
+    }
+
+    if payload["integrity_checked"].as_bool().unwrap_or(true)
+        && !payload["integrity_intact"].as_bool().unwrap_or(true)
+    {
         let _ = writeln!(out, "ledger integrity FAILED");
         for orphan in payload["orphaned_records"].as_array().unwrap_or(&Vec::new()) {
             let _ = writeln!(out, "  orphaned {}", orphan.as_str().unwrap_or_default());

@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use codedoc_ledger::{Assurance, Scope};
 use codedoc_ops::{
     AttachRequest, Attribution, Provenance, RelateRequest, Target, attach, conflicts, context,
-    detached, history, list, relate, resolve, retract, stats, supersede, verify,
+    detached, history, list, relate, resolve, retract, stats, supersede, verify_scoped,
 };
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
@@ -98,6 +98,12 @@ pub struct FilterArgs {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct NoArgs {}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct VerifyArgs {
+    pub files: Option<Vec<String>>,
+    pub since: Option<String>,
+}
 
 #[derive(Clone)]
 pub struct Codedoc {
@@ -221,13 +227,17 @@ impl Codedoc {
     }
 
     #[tool(
-        description = "Re-resolve every recorded anchor against the current working tree and report which claims are fresh, migrated, stale or detached. Run after making changes."
+        description = "Re-resolve recorded anchors against the working tree and report which claims are fresh, migrated, stale or detached. Run after making changes. Pass 'files' or 'since' (a git revision) to check only what you touched rather than the whole repository."
     )]
     async fn codedoc_verify(
         &self,
-        Parameters(_args): Parameters<NoArgs>,
+        Parameters(args): Parameters<VerifyArgs>,
     ) -> Result<CallToolResult, McpError> {
-        respond_coded(verify(&self.root))
+        respond_coded(verify_scoped(
+            &self.root,
+            &args.files.unwrap_or_default(),
+            args.since.as_deref(),
+        ))
     }
 
     #[tool(

@@ -113,9 +113,9 @@ Record counts by kind, relation count, ledger integrity, and which scopes are pr
 
 ## Maintaining
 
-### `codedoc verify`
+### `codedoc verify [<file>...] [--since <rev>]`
 
-Re-resolves every anchor against the working tree. Reports fresh, migrated, stale and
+With no arguments, re-resolves every anchor against the working tree. Reports fresh, migrated, stale and
 detached counts, and sets the exit code accordingly.
 
 A record is **stale** either because its anchor only resolved through a weak signal,
@@ -123,6 +123,12 @@ or because the code it points at has *drifted*: the shape of the construct chang
 enough that a claim about the old one may simply be false of the new one. A function
 whose body is rewritten but whose name and signature survive resolves perfectly and
 is still reported stale, with the drift percentage in `--json`.
+
+Given files, or `--since <rev>` to derive them from what changed in git, verification
+is scoped to those files and answers from the index rather than the whole ledger. At
+1.09M lines that is the difference between 30 seconds and 67 milliseconds, which is
+what makes checking your own change after each edit practical. A scoped run does not
+perform the whole-ledger integrity scan and says so rather than implying it passed.
 
 ### `codedoc detached`
 

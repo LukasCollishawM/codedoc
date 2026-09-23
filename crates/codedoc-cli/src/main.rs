@@ -115,7 +115,12 @@ enum Command {
 
     Attach(AttachArgs),
 
-    Verify,
+    Verify {
+        files: Vec<String>,
+
+        #[arg(long)]
+        since: Option<String>,
+    },
 
     Context {
         target: String,
@@ -265,7 +270,9 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
     match &cli.command {
         Command::Init { scope } => command_init(&cli.root, scope),
         Command::Attach(args) => command_attach(&cli.root, args),
-        Command::Verify => command_verify(&cli.root),
+        Command::Verify { files, since } => {
+            Ok(ops::verify_scoped(&cli.root, files, since.as_deref())?)
+        }
         Command::Context { target, symbol, depth, budget } => {
             command_context(&cli.root, target, symbol.as_deref(), *depth, *budget)
         }
@@ -415,10 +422,6 @@ fn parse_evidence(raw: &str) -> Evidence {
         Some(("http" | "https", _)) => Evidence::Url(raw.to_owned()),
         _ => Evidence::Document(raw.to_owned()),
     }
-}
-
-fn command_verify(root: &Path) -> Result<(Value, i32)> {
-    Ok(ops::verify(root)?)
 }
 
 fn command_context(
