@@ -59,6 +59,8 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Security
 
+- `RepoPath` rejects `CONIN$` and `CONOUT$`. The Windows device-name guard was missing the two console handles, and a path naming one is exactly what it exists to refuse.
+
 - **Fuzz targets** for the canonical decoder, the ledger reader and anchor capture, covering the three places untrusted input crosses into the system. A reachable panic there is a denial-of-service bug, since a malformed source file is an ordinary input to a parser.
 
 - **RUSTSEC-2026-0009** closed by removing the `time` dependency rather than raising the MSRV. It was used only to render an `i64` as RFC 3339. See [ADR-0008](docs/decisions/0008-drop-the-time-dependency.md).
