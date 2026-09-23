@@ -17,6 +17,7 @@ codedoc-lang.workspace = true
 codedoc-ledger.workspace = true
 codedoc-graph.workspace = true
 codedoc-render.workspace = true
+codedoc-verify.workspace = true
 lsp-server.workspace = true
 lsp-types.workspace = true
 serde.workspace = true

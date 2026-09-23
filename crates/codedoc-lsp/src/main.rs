@@ -6,11 +6,15 @@ use std::error::Error;
 use std::path::{Path, PathBuf};
 
 use lsp_server::{Connection, ExtractError, Message, Request, RequestId, Response};
-use lsp_types::request::{CodeLensRequest, HoverRequest, Request as RequestTrait};
+use lsp_types::request::{
+    CodeLensRequest, DocumentDiagnosticRequest, HoverRequest, Request as RequestTrait,
+};
 use lsp_types::{
-    CodeLens, CodeLensOptions, CodeLensParams, Hover, HoverContents, HoverParams,
-    HoverProviderCapability, InitializeParams, MarkupContent, MarkupKind, Position, Range,
-    ServerCapabilities,
+    CodeLens, CodeLensOptions, CodeLensParams, Diagnostic, DiagnosticOptions,
+    DiagnosticServerCapabilities, DiagnosticSeverity, DocumentDiagnosticParams,
+    DocumentDiagnosticReport, DocumentDiagnosticReportResult, FullDocumentDiagnosticReport, Hover,
+    HoverContents, HoverParams, HoverProviderCapability, InitializeParams, MarkupContent,
+    MarkupKind, Position, Range, RelatedFullDocumentDiagnosticReport, ServerCapabilities,
 };
 use serde_json::Value;
 
@@ -20,6 +24,12 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
     let capabilities = serde_json::to_value(ServerCapabilities {
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         code_lens_provider: Some(CodeLensOptions { resolve_provider: Some(false) }),
+        diagnostic_provider: Some(DiagnosticServerCapabilities::Options(DiagnosticOptions {
+            identifier: Some("codedoc".to_owned()),
+            inter_file_dependencies: false,
+            workspace_diagnostics: false,
+            ..DiagnosticOptions::default()
+        })),
         ..ServerCapabilities::default()
     })?;
 
@@ -100,6 +110,10 @@ fn dispatch(root: &Path, request: Request) -> Response {
             Ok((id, params)) => reply(id, code_lenses(root, &params)),
             Err(failure) => failed(id, failure),
         },
+        DocumentDiagnosticRequest::METHOD => match cast::<DocumentDiagnosticRequest>(request) {
+            Ok((id, params)) => reply(id, diagnostics(root, &params)),
+            Err(failure) => failed(id, failure),
+        },
         _ => Response::new_ok(id, Value::Null),
     }
 }
@@ -143,6 +157,38 @@ fn hover(root: &Path, params: &HoverParams) -> Option<Hover> {
             end: Position { line: located.end_line.saturating_sub(1), character: 0 },
         }),
     })
+}
+
+fn diagnostics(root: &Path, params: &DocumentDiagnosticParams) -> DocumentDiagnosticReportResult {
+    let items = match uri_to_path(&params.text_document.uri) {
+        Some(path) => locate::concerns_for(root, &path)
+            .into_iter()
+            .map(|concern| Diagnostic {
+                range: Range {
+                    start: Position { line: concern.start_line.saturating_sub(1), character: 0 },
+                    end: Position { line: concern.end_line.saturating_sub(1), character: 0 },
+                },
+                severity: Some(match concern.severity {
+                    locate::Severity::Stale => DiagnosticSeverity::WARNING,
+                    locate::Severity::Detached => DiagnosticSeverity::INFORMATION,
+                }),
+                source: Some("codedoc".to_owned()),
+                message: concern.message,
+                ..Diagnostic::default()
+            })
+            .collect(),
+        None => Vec::new(),
+    };
+
+    DocumentDiagnosticReportResult::Report(DocumentDiagnosticReport::Full(
+        RelatedFullDocumentDiagnosticReport {
+            related_documents: None,
+            full_document_diagnostic_report: FullDocumentDiagnosticReport {
+                result_id: None,
+                items,
+            },
+        },
+    ))
 }
 
 fn code_lenses(root: &Path, params: &CodeLensParams) -> Vec<CodeLens> {

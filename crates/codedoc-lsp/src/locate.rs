@@ -13,6 +13,19 @@ pub struct Located {
     pub end_line: u32,
 }
 
+pub struct Concern {
+    pub start_line: u32,
+    pub end_line: u32,
+    pub severity: Severity,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Severity {
+    Stale,
+    Detached,
+}
+
 pub struct Lens {
     pub line: u32,
     pub title: String,
@@ -58,6 +71,56 @@ pub fn lenses_for(root: &Path, file: &Path) -> Vec<Lens> {
             line: placement.start_line,
             title: codedoc_render::lens_title(&placement.record),
             record: placement.record.id().to_string(),
+        })
+        .collect()
+}
+
+pub fn concerns_for(root: &Path, file: &Path) -> Vec<Concern> {
+    let relative = file.strip_prefix(root).unwrap_or(file);
+    let Ok(repo_path) = RepoPath::parse(&relative.to_string_lossy()) else {
+        return Vec::new();
+    };
+    let Ok(workspace) = codedoc_ledger::Workspace::discover(root) else {
+        return Vec::new();
+    };
+    let Ok(report) = codedoc_verify::Verifier::new(workspace.root())
+        .run_over(&workspace, &[repo_path.as_str().to_owned()])
+    else {
+        return Vec::new();
+    };
+
+    report
+        .findings
+        .iter()
+        .filter_map(|finding| {
+            let severity = match finding.status {
+                codedoc_verify::Status::Stale => Severity::Stale,
+                codedoc_verify::Status::Detached => Severity::Detached,
+                _ => return None,
+            };
+            let (start, end) = match finding.resolution.located() {
+                Some(located) => (located.range().start_line, located.range().end_line),
+                None => (finding.recorded_range.start_line, finding.recorded_range.end_line),
+            };
+            let headline = match severity {
+                Severity::Stale => match finding.drift {
+                    Some(amount) => format!(
+                        "codedoc: this {} may no longer describe the code ({amount}% changed)",
+                        finding.kind
+                    ),
+                    None => format!(
+                        "codedoc: this {} resolved only through a weak signal",
+                        finding.kind
+                    ),
+                },
+                Severity::Detached => format!(
+                    "codedoc: the code this {} described could not be found, and codedoc will \
+                     not guess. Place it with `codedoc resolve`.",
+                    finding.kind
+                ),
+            };
+            let message = format!("{headline}\n\n{}", finding.claim);
+            Some(Concern { start_line: start, end_line: end, severity, message })
         })
         .collect()
 }
