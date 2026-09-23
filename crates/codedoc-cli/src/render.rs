@@ -40,7 +40,16 @@ fn count(payload: &Value, key: &str) -> u64 {
 }
 
 fn render_init(payload: &Value, out: &mut String) {
-    let _ = writeln!(out, "initialised codedoc in {}", text(payload, "root"));
+    let _ = writeln!(out, "initialised a {} ledger", text(payload, "scope"));
+    let _ = writeln!(out, "  {}", text(payload, "location"));
+    let _ = writeln!(out, "  {}", text(payload, "describes"));
+    let _ = writeln!(out);
+    if payload["leaves_repository_evidence"].as_bool().unwrap_or(true) {
+        let _ = writeln!(out, "This ledger is committed. Everyone cloning the repository gets it.");
+    } else {
+        let _ = writeln!(out, "Nothing was written to the working tree; git will not see this.");
+    }
+    let _ = writeln!(out);
     let _ = writeln!(out, "run `codedoc attach` to record the first claim");
 }
 

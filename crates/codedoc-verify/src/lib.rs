@@ -10,7 +10,7 @@ use codedoc_anchor::{Anchor, DetachReason, FileIndex, Resolution, Rung, SourceRa
 use codedoc_core::{GitRev, RecordId, RepoPath};
 use codedoc_graph::Graph;
 use codedoc_lang::Registry;
-use codedoc_ledger::{Kind, Ledger, LedgerError, Verification};
+use codedoc_ledger::{Kind, Ledger, LedgerError, Verification, Workspace};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -111,7 +111,16 @@ impl Verifier {
     pub fn run(&self, ledger: &Ledger) -> Result<Report, VerifyError> {
         let graph = Graph::load(ledger)?;
         let integrity: Verification = ledger.verify()?;
+        self.report(graph, integrity)
+    }
 
+    pub fn run_across(&self, workspace: &Workspace) -> Result<Report, VerifyError> {
+        let graph = Graph::across(workspace)?;
+        let integrity: Verification = workspace.verify()?;
+        self.report(graph, integrity)
+    }
+
+    fn report(&self, graph: Graph, integrity: Verification) -> Result<Report, VerifyError> {
         let mut pending: BTreeMap<String, Vec<Pending>> = BTreeMap::new();
         for record in graph.active() {
             let content = record.content();

@@ -3,7 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use codedoc_core::RecordId;
-use codedoc_ledger::{Kind, Ledger, LedgerError, Record, Timestamp};
+use codedoc_ledger::{Kind, Ledger, LedgerError, Record, Timestamp, Workspace};
 
 pub struct Graph {
     records: Vec<Record>,
@@ -14,6 +14,10 @@ pub struct Graph {
 impl Graph {
     pub fn load(ledger: &Ledger) -> Result<Self, LedgerError> {
         Ok(Graph::from_records(ledger.records()?))
+    }
+
+    pub fn across(workspace: &Workspace) -> Result<Self, LedgerError> {
+        Ok(Graph::from_records(workspace.records()?))
     }
 
     pub fn from_records(records: Vec<Record>) -> Self {

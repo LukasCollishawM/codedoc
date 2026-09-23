@@ -7,6 +7,7 @@ use codedoc_core::{CanonicalError, LedgerHead, RecordId};
 use thiserror::Error;
 
 use crate::record::{Record, RecordContent};
+use crate::scope::Scope;
 
 pub const LEDGER_DIRECTORY: &str = ".codedoc";
 pub const RECORDS_DIRECTORY: &str = "ledger";
@@ -29,6 +30,9 @@ pub enum LedgerError {
 
     #[error("record {record} could not be encoded: {source}")]
     Encoding { record: String, source: CanonicalError },
+
+    #[error("the {scope} scope is not available at {root}")]
+    ScopeUnavailable { scope: &'static str, root: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,11 +51,22 @@ impl Verification {
 
 pub struct Ledger {
     root: PathBuf,
+    base: PathBuf,
+    scope: Scope,
 }
 
 impl Ledger {
     pub fn initialise(root: &Path) -> Result<Self, LedgerError> {
-        let base = root.join(LEDGER_DIRECTORY);
+        Ledger::initialise_scope(root, Scope::Shared)
+    }
+
+    pub fn initialise_scope(root: &Path, scope: Scope) -> Result<Self, LedgerError> {
+        let Some(base) = scope.directory(root) else {
+            return Err(LedgerError::ScopeUnavailable {
+                scope: scope.as_str(),
+                root: root.display().to_string(),
+            });
+        };
         if base.exists() {
             return Err(LedgerError::AlreadyPresent { root: root.display().to_string() });
         }
@@ -60,15 +75,24 @@ impl Ledger {
             path: records.display().to_string(),
             detail: source.to_string(),
         })?;
-        write_file(&base.join(".gitignore"), b"index.sqlite\nindex.sqlite-*\n")?;
-        write_file(&base.join("config.toml"), b"schema = 1\n\n[index]\nrebuildable = true\n")?;
-        Ok(Ledger { root: root.to_path_buf() })
+        if scope.leaves_repository_evidence() {
+            write_file(&base.join(".gitignore"), b"index.sqlite\nindex.sqlite-*\n")?;
+        }
+        write_file(
+            &base.join("config.toml"),
+            format!("schema = 1\nscope = \"{}\"\n", scope.as_str()).as_bytes(),
+        )?;
+        Ok(Ledger { root: root.to_path_buf(), base, scope })
     }
 
     pub fn discover(start: &Path) -> Result<Self, LedgerError> {
         let mut current = start.to_path_buf();
         loop {
-            if current.join(LEDGER_DIRECTORY).is_dir() {
+            let present = Scope::ALL
+                .into_iter()
+                .filter_map(|scope| scope.directory(&current))
+                .any(|directory| directory.is_dir());
+            if present {
                 return Ledger::open(&current);
             }
             if !current.pop() {
@@ -78,11 +102,33 @@ impl Ledger {
     }
 
     pub fn open(root: &Path) -> Result<Self, LedgerError> {
-        let base = root.join(LEDGER_DIRECTORY);
+        for scope in Scope::ALL {
+            if let Ok(ledger) = Ledger::open_scope(root, scope) {
+                return Ok(ledger);
+            }
+        }
+        Err(LedgerError::Absent { root: root.display().to_string() })
+    }
+
+    pub fn open_scope(root: &Path, scope: Scope) -> Result<Self, LedgerError> {
+        let Some(base) = scope.directory(root) else {
+            return Err(LedgerError::ScopeUnavailable {
+                scope: scope.as_str(),
+                root: root.display().to_string(),
+            });
+        };
         if !base.is_dir() {
             return Err(LedgerError::Absent { root: root.display().to_string() });
         }
-        Ok(Ledger { root: root.to_path_buf() })
+        Ok(Ledger { root: root.to_path_buf(), base, scope })
+    }
+
+    pub fn scope(&self) -> Scope {
+        self.scope
+    }
+
+    pub fn base(&self) -> &Path {
+        &self.base
     }
 
     pub fn open_or_initialise(root: &Path) -> Result<Self, LedgerError> {
@@ -98,7 +144,7 @@ impl Ledger {
     }
 
     fn records_directory(&self) -> PathBuf {
-        self.root.join(LEDGER_DIRECTORY).join(RECORDS_DIRECTORY)
+        self.base.join(RECORDS_DIRECTORY)
     }
 
     fn shard_for(&self, id: RecordId) -> PathBuf {

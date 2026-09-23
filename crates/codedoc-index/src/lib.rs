@@ -81,12 +81,12 @@ pub struct Index {
 }
 
 impl Index {
-    pub fn path_for(root: &Path) -> PathBuf {
-        root.join(codedoc_ledger::ledger::LEDGER_DIRECTORY).join(INDEX_FILE)
+    pub fn path_for(base: &Path) -> PathBuf {
+        base.join(INDEX_FILE)
     }
 
     pub fn rebuild(ledger: &Ledger) -> Result<Self, IndexError> {
-        let path = Index::path_for(ledger.root());
+        let path = Index::path_for(ledger.base());
         if path.exists() {
             std::fs::remove_file(&path)
                 .map_err(|source| IndexError::Storage { detail: source.to_string() })?;
@@ -106,14 +106,14 @@ impl Index {
         Ok(Index { connection, path })
     }
 
-    pub fn open(root: &Path) -> Result<Self, IndexError> {
-        let path = Index::path_for(root);
+    pub fn open(base: &Path) -> Result<Self, IndexError> {
+        let path = Index::path_for(base);
         let connection = Connection::open(&path)?;
         Ok(Index { connection, path })
     }
 
     pub fn append(ledger: &Ledger, record: &Record) -> Result<(), IndexError> {
-        let path = Index::path_for(ledger.root());
+        let path = Index::path_for(ledger.base());
         if !path.exists() {
             Index::rebuild(ledger)?;
             return Ok(());
@@ -123,7 +123,7 @@ impl Index {
     }
 
     pub fn append_many(ledger: &Ledger, records: &[Record]) -> Result<(), IndexError> {
-        let path = Index::path_for(ledger.root());
+        let path = Index::path_for(ledger.base());
         if !path.exists() {
             Index::rebuild(ledger)?;
             return Ok(());

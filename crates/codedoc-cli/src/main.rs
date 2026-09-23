@@ -22,7 +22,7 @@ use codedoc_index::Index;
 use codedoc_lang::Registry;
 use codedoc_ledger::{
     AnchorRole, Assurance, Author, Body, Evidence, Kind, Ledger, Lifecycle, RecordContent, Role,
-    SCHEMA_VERSION, Timestamp,
+    SCHEMA_VERSION, Scope, Timestamp, Workspace,
 };
 use codedoc_verify::Verifier;
 use serde_json::{Value, json};
@@ -35,6 +35,9 @@ struct Cli {
 
     #[arg(long, global = true)]
     json: bool,
+
+    #[arg(long, global = true, value_name = "SHARED|LOCAL|GLOBAL")]
+    scope: Option<String>,
 
     #[command(subcommand)]
     command: Command,
@@ -95,7 +98,10 @@ struct AttachArgs {
 
 #[derive(Subcommand)]
 enum Command {
-    Init,
+    Init {
+        #[arg(long, default_value = "shared")]
+        scope: String,
+    },
 
     Attach(AttachArgs),
 
@@ -232,7 +238,7 @@ fn emit(rendered: &str) -> Emission {
 
 fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
     match &cli.command {
-        Command::Init => command_init(&cli.root),
+        Command::Init { scope } => command_init(&cli.root, scope),
         Command::Attach(args) => command_attach(&cli.root, args),
         Command::Verify => command_verify(&cli.root),
         Command::Context { target, symbol, depth, budget } => {
@@ -274,14 +280,20 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
     }
 }
 
-fn command_init(root: &Path) -> Result<(Value, i32)> {
-    let ledger = Ledger::initialise(root).context("initialising the ledger")?;
+fn command_init(root: &Path, scope: &str) -> Result<(Value, i32)> {
+    let scope =
+        Scope::parse(scope).ok_or_else(|| anyhow!("scope must be shared, local or global"))?;
+    let ledger = Ledger::initialise_scope(root, scope)
+        .with_context(|| format!("initialising the {} ledger", scope.as_str()))?;
     Index::rebuild(&ledger).context("building the index")?;
     Ok((
         json!({
             "command": "init",
             "root": root.display().to_string(),
-            "created": [".codedoc/ledger", ".codedoc/config.toml", ".codedoc/.gitignore"],
+            "scope": scope.as_str(),
+            "location": ledger.base().display().to_string(),
+            "describes": scope.describe(),
+            "leaves_repository_evidence": scope.leaves_repository_evidence(),
         }),
         0,
     ))
@@ -420,7 +432,7 @@ fn command_context(
     budget: Option<usize>,
 ) -> Result<(Value, i32)> {
     let ledger = Ledger::discover(root).context("opening the ledger")?;
-    let index = match Index::open(ledger.root()) {
+    let index = match Index::open(ledger.base()) {
         Ok(index) => index,
         Err(_) => Index::rebuild(&ledger).context("building the index")?,
     };
@@ -482,8 +494,8 @@ fn command_reindex(root: &Path) -> Result<(Value, i32)> {
 }
 
 fn command_list(root: &Path, file: Option<&str>, symbol: Option<&str>) -> Result<(Value, i32)> {
-    let ledger = Ledger::open(root).context("opening the ledger")?;
-    let graph = Graph::load(&ledger).context("loading the knowledge graph")?;
+    let workspace = Workspace::discover(root).context("opening the ledger")?;
+    let graph = Graph::across(&workspace).context("loading the knowledge graph")?;
     let records = match (file, symbol) {
         (_, Some(wanted)) => graph.for_symbol(wanted),
         (Some(wanted), None) => graph.in_file(wanted),
@@ -531,8 +543,9 @@ fn command_history(root: &Path, record: &str) -> Result<(Value, i32)> {
 }
 
 fn command_detached(root: &Path) -> Result<(Value, i32)> {
-    let ledger = Ledger::discover(root).context("opening the ledger")?;
-    let report = Verifier::new(ledger.root()).run(&ledger).context("verifying anchors")?;
+    let workspace = Workspace::discover(root).context("opening the ledger")?;
+    let report =
+        Verifier::new(workspace.root()).run_across(&workspace).context("verifying anchors")?;
     let rows: Vec<Value> = report
         .findings
         .iter()
@@ -554,9 +567,9 @@ fn command_detached(root: &Path) -> Result<(Value, i32)> {
 }
 
 fn command_stats(root: &Path) -> Result<(Value, i32)> {
-    let ledger = Ledger::open(root).context("opening the ledger")?;
-    let graph = Graph::load(&ledger).context("loading the knowledge graph")?;
-    let verification = ledger.verify().context("verifying ledger integrity")?;
+    let workspace = Workspace::discover(root).context("opening the ledger")?;
+    let graph = Graph::across(&workspace).context("loading the knowledge graph")?;
+    let verification = workspace.verify().context("verifying ledger integrity")?;
     Ok((
         json!({
             "command": "stats",
@@ -565,6 +578,7 @@ fn command_stats(root: &Path) -> Result<(Value, i32)> {
             "by_kind": graph.counts_by_kind(),
             "tips": verification.tips.iter().map(ToString::to_string).collect::<Vec<_>>(),
             "integrity_intact": verification.is_intact(),
+            "scopes": workspace.scopes().iter().map(|scope| scope.as_str()).collect::<Vec<_>>(),
         }),
         0,
     ))
