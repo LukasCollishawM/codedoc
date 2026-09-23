@@ -1,6 +1,6 @@
 # codedoc
 
-**Agents won't stop documenting. So let them — somewhere the next refactor can't destroy.**
+**Agents won't stop documenting. So let them.**
 
 Every coding agent that touches your repository works out how it fits together, discovers the non-obvious constraint, notices the trap in the retry path — and then writes that understanding into a comment, or a chat message, and loses it. The next session starts from zero and derives it again.
 
