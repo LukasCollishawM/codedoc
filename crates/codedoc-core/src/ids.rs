@@ -147,9 +147,10 @@ impl From<SymbolPath> for String {
     }
 }
 
-const RESERVED_DEVICE_NAMES: [&str; 22] = [
-    "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8",
-    "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+const RESERVED_DEVICE_NAMES: [&str; 24] = [
+    "con", "prn", "aux", "nul", "conin$", "conout$", "com1", "com2", "com3", "com4", "com5",
+    "com6", "com7", "com8", "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8",
+    "lpt9",
 ];
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -286,6 +287,8 @@ mod tests {
 
     #[test]
     fn repo_path_rejects_windows_device_names_and_streams() {
+        assert!(RepoPath::parse("src/CONIN$").is_err());
+        assert!(RepoPath::parse("src/conout$.txt").is_err());
         assert!(RepoPath::parse("src/NUL").is_err());
         assert!(RepoPath::parse("src/con.txt").is_err());
         assert!(RepoPath::parse("src/file.txt:stream").is_err());
