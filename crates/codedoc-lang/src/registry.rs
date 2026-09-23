@@ -442,13 +442,22 @@ mod tests {
     #[test]
     fn cpp_reaches_the_name_through_nested_declarators() {
         assert_eq!(first_name("void run() {}", "function_definition").as_deref(), Some("run"));
-        assert_eq!(first_name("int* make() { return nullptr; }", "function_definition").as_deref(), Some("make"));
-        assert_eq!(first_name("const char& at(int i) { return *\"\"; }", "function_definition").as_deref(), Some("at"));
+        assert_eq!(
+            first_name("int* make() { return nullptr; }", "function_definition").as_deref(),
+            Some("make")
+        );
+        assert_eq!(
+            first_name("const char& at(int i) { return *\"\"; }", "function_definition").as_deref(),
+            Some("at")
+        );
     }
 
     #[test]
     fn cpp_out_of_line_definitions_keep_their_qualification() {
-        assert_eq!(first_name("void Session::open() {}", "function_definition").as_deref(), Some("Session/open"));
+        assert_eq!(
+            first_name("void Session::open() {}", "function_definition").as_deref(),
+            Some("Session/open")
+        );
         assert_eq!(
             first_name("int Outer::Inner::depth() { return 0; }", "function_definition").as_deref(),
             Some("Outer/Inner/depth")
@@ -473,7 +482,10 @@ mod tests {
 
     #[test]
     fn cpp_declares_classes_namespaces_and_enums() {
-        assert_eq!(first_name("namespace helix { }", "namespace_definition").as_deref(), Some("helix"));
+        assert_eq!(
+            first_name("namespace helix { }", "namespace_definition").as_deref(),
+            Some("helix")
+        );
         assert_eq!(first_name("class Target { };", "class_specifier").as_deref(), Some("Target"));
         assert_eq!(first_name("struct Pair { };", "struct_specifier").as_deref(), Some("Pair"));
         assert_eq!(first_name("enum class Kind { A };", "enum_specifier").as_deref(), Some("Kind"));
@@ -488,5 +500,4 @@ mod tests {
         let block = tree.root_node().children(&mut cursor).next().unwrap();
         assert_eq!(adapter.declaration_name(block, source).as_deref(), Some("Thing"));
     }
-
 }
