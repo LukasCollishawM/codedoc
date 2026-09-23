@@ -227,10 +227,10 @@ pub fn review_markdown(input: &ReviewInput<'_>) -> String {
 
     if input.stale.is_empty() && input.detached.is_empty() {
         out.push_str(&format!(
-            "{} recorded claim{} still hold against these changes.
+            "{} recorded claim{} against these changes.
 ",
             input.unchanged,
-            if input.unchanged == 1 { "" } else { "s" }
+            if input.unchanged == 1 { " still holds" } else { "s still hold" }
         ));
         return out;
     }
