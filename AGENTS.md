@@ -57,11 +57,18 @@ codedoc_context  →  agent reads, then changes code  →  codedoc_attach / code
 | `codedoc_list` | to survey what is recorded |
 | `codedoc_history` | to see what was believed before |
 | `codedoc_conflicts` | to find records that disagree, or duplicates that should have been supersedes |
+| `codedoc_review` | after finishing a change, to report what you may have invalidated |
+| `codedoc_coverage` | to find where knowledge is missing, not as a number to maximise |
 | `codedoc_render` | when asked for onboarding notes or architecture docs |
 | `codedoc_import` | once, when adopting codedoc on a repository that already has comments |
 | `codedoc_stats` | to check ledger health and coverage |
 
-Five CLI commands have no tool: `init`, `reindex`, `kinds`, `migrate` and `git
+**Report what you put in doubt.** `codedoc_review` renders the claims a change has
+made stale or detached. An agent that finishes a change and says nothing about the
+three invariants it invalidated has done half the job, and the reviewer will not know
+to look.
+
+Four CLI commands have no tool: `init`, `reindex`, `migrate` and `git
 install-merge-driver`. Those are administrative — setting a repository up, repairing
 derived state, changing the on-disk format — and are deliberately a human's decision
 rather than something an agent does mid-task.

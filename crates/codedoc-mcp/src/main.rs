@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use codedoc_ledger::{Assurance, Scope};
 use codedoc_ops::{
     AttachRequest, Attribution, Provenance, RelateRequest, Target, attach, conflicts, context,
-    detached, history, import, list, relate, render, resolve, retract, stats, supersede,
-    verify_scoped,
+    coverage, detached, history, import, list, relate, render, resolve, retract, review, stats,
+    supersede, verify_scoped,
 };
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
@@ -99,6 +99,17 @@ pub struct FilterArgs {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct NoArgs {}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct ReviewArgs {
+    pub base: Option<String>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct CoverageArgs {
+    pub paths: Option<Vec<String>>,
+    pub limit: Option<usize>,
+}
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct RenderArgs {
@@ -363,6 +374,26 @@ impl Codedoc {
             args.write.unwrap_or(false),
             args.limit,
         ))
+    }
+
+    #[tool(
+        description = "Summarise which recorded claims a change has put in doubt, rendered as review prose. Call this after finishing a change to report what you may have invalidated, rather than leaving a reviewer to discover it. 'base' is a git revision, defaulting to HEAD."
+    )]
+    async fn codedoc_review(
+        &self,
+        Parameters(args): Parameters<ReviewArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        respond_coded(review(&self.root, args.base.as_deref().unwrap_or("HEAD")))
+    }
+
+    #[tool(
+        description = "Report what fraction of declarations carry a record, thinnest files first. Use it to decide WHERE knowledge is missing. Do not treat it as a target to maximise: a codebase where every declaration carries a record has mostly restated its own code."
+    )]
+    async fn codedoc_coverage(
+        &self,
+        Parameters(args): Parameters<CoverageArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        respond(coverage(&self.root, &args.paths.unwrap_or_default(), args.limit.unwrap_or(10)))
     }
 
     #[tool(
