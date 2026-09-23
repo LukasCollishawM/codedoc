@@ -21,6 +21,9 @@ pub fn human(payload: &Value) -> String {
         Some("retract") => render_retract(payload, &mut out),
         Some("detached") => render_detached(payload, &mut out),
         Some("conflicts") => render_conflicts(payload, &mut out),
+        Some("render") => {
+            let _ = writeln!(out, "{}", text(payload, "output"));
+        }
         Some("migrate") => render_migrate(payload, &mut out),
         Some("git-install-merge-driver") => render_merge_driver(payload, &mut out),
         Some("git-merge-driver") => {

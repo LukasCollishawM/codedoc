@@ -7,7 +7,7 @@ mod record;
 
 pub use author::Attribution;
 pub use lifecycle::{Relocation, resolve, retract, supersede};
-pub use query::{conflicts, context, detached, history, list, stats, verify};
+pub use query::{conflicts, context, detached, history, list, render, stats, verify};
 pub use record::{AttachRequest, Provenance, RelateRequest, Target, attach, relate};
 
 use std::path::Path;

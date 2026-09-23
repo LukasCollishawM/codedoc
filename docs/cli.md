@@ -93,6 +93,18 @@ Active records.
 The supersession chain for a record: what was believed before, and when it changed.
 Record identifiers may be abbreviated to any unambiguous prefix.
 
+### `codedoc render [markdown|mermaid] [--title "..."] [--out <path>]`
+
+Projects the ledger into something other than a terminal.
+
+- **markdown** — every active record grouped by file, in source order. An onboarding
+  document that cannot go stale independently of the code, because it is generated
+  from anchors that are verified against it.
+- **mermaid** — the relation graph as a diagram. Only relations appear, since they
+  are the part of the ledger that is genuinely a graph.
+
+Writes to stdout, or to `--out`.
+
 ### `codedoc stats`
 
 Record counts by kind, relation count, ledger integrity, and which scopes are present.

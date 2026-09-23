@@ -10,6 +10,7 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 - **Relations are writable.** `codedoc relate` and `codedoc_relate` create records about the link between two pieces of code — `must_execute_after`, `guarded_by`, `constrained_by` and the rest. The vocabulary, the graph traversal and the context rendering all existed; nothing could create one, because `attach` took a single anchor.
 - **Agent parity, and then some.** The MCP server exposes eleven tools, including the full record lifecycle. Both the CLI and MCP now sit on a shared `codedoc-ops` layer so the two surfaces cannot drift apart.
+- **`codedoc render`** projects the ledger to markdown (an onboarding document grouped by file) or mermaid (the relation graph as a diagram). "Documentation is one projection" was the thesis; until now there was one projection and it was a terminal.
 - **`codedoc conflicts`** reports declared contradictions, near-duplicate claims on the same code, and same-kind claims that disagree about certainty. Ledger hygiene for a corpus that agents write to continuously.
 - **Ledger scopes.** `--scope local` keeps the ledger in `.git/codedoc/`, which git cannot track, so codedoc can be used on a repository you do not own without leaving evidence in it. `--scope global` keeps it outside the repository entirely.
 - `AGENTS.md` and `docs/cli.md`, so the README can explain what codedoc is rather than double as a command reference.

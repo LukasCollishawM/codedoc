@@ -169,6 +169,33 @@ pub fn history(root: &Path, reference: &str) -> Outcome {
     Ok(json!({"command": "history", "revisions": rows.len(), "chain": rows}))
 }
 
+pub fn render(root: &Path, format: &str, title: &str) -> Outcome {
+    let found = workspace(root)?;
+    let graph = Graph::across(&found)?;
+    let active = graph.active();
+
+    let rendered = match format.trim().to_ascii_lowercase().as_str() {
+        "markdown" | "md" => codedoc_render::overview_markdown(&active, title),
+        "mermaid" | "graph" => {
+            let relations = graph.relations();
+            codedoc_render::mermaid_relations(&relations)
+        }
+        other => {
+            return Err(OpsError::UnknownKind {
+                found: other.to_owned(),
+                vocabulary: "markdown, mermaid".to_owned(),
+            });
+        }
+    };
+
+    Ok(json!({
+        "command": "render",
+        "format": format,
+        "records": active.len(),
+        "output": rendered,
+    }))
+}
+
 pub fn conflicts(root: &Path) -> Result<(Value, i32), OpsError> {
     let found = workspace(root)?;
     let graph = Graph::across(&found)?;

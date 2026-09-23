@@ -15,6 +15,7 @@ codedoc-index.workspace = true
 codedoc-graph.workspace = true
 codedoc-context.workspace = true
 codedoc-verify.workspace = true
+codedoc-render.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

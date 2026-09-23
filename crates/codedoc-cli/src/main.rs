@@ -185,6 +185,17 @@ enum Command {
 
     Conflicts,
 
+    Render {
+        #[arg(default_value = "markdown")]
+        format: String,
+
+        #[arg(long, default_value = "Repository knowledge")]
+        title: String,
+
+        #[arg(long)]
+        out: Option<String>,
+    },
+
     Relate(RelateArgs),
 
     Migrate {
@@ -295,6 +306,14 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
         Command::Relate(args) => command_relate(&cli.root, args),
         Command::Detached => command_detached(&cli.root),
         Command::Conflicts => Ok(ops::conflicts(&cli.root)?),
+        Command::Render { format, title, out } => {
+            let payload = ops::render(&cli.root, format, title)?;
+            if let Some(path) = out {
+                let body = payload["output"].as_str().unwrap_or_default();
+                std::fs::write(path, body).with_context(|| format!("writing {path}"))?;
+            }
+            Ok((payload, 0))
+        }
         Command::Migrate { write } => migrate::run(&cli.root, *write),
         Command::Git(GitCommand::InstallMergeDriver) => gitops::install_merge_driver(&cli.root),
         Command::Git(GitCommand::MergeDriver { base, ours, theirs }) => {
