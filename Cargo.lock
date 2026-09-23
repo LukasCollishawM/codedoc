@@ -222,6 +222,7 @@ dependencies = [
  "codedoc-lang",
  "proptest",
  "serde",
+ "serde_json",
  "thiserror",
  "tree-sitter",
 ]
@@ -1608,6 +1609,7 @@ dependencies = [
  "codedoc-anchor",
  "codedoc-core",
  "codedoc-lang",
+ "serde_json",
  "tree-sitter",
  "walkdir",
 ]

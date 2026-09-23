@@ -169,6 +169,22 @@ One level of abstraction per function. Early return over nesting; depth 3 is the
 
 Do not add a trait with one implementation. Do not add indirection for a second case that does not yet exist. The crate boundaries above already encode the extension points that were worth predicting.
 
+### Documentation is part of the change, not a follow-up
+
+A change that alters behaviour and leaves the documentation describing the old behaviour is incomplete, and it is incomplete in the worst way: the repository now asserts something false, with authority. Update the docs in the same commit as the code.
+
+What has to stay true, and who it is for:
+
+- **`README.md`** is the only thing most people will read. If you add, rename or remove a command, change a flag, change install steps, or change what is or is not implemented, it changes here in the same commit. The **Status** section is a standing promise about what works — when you implement something it listed as missing, remove it from that list.
+- **`docs/spec/format.md`** is normative and binds other implementations. Any change to on-disk bytes, digest domains, the resolver ladder, or the kind vocabulary changes the spec *and* `conformance/` first, then the code.
+- **`CLAUDE.md`** (this file) carries architecture, invariants and standards. Correct it when reality diverges — including recording measurements that disprove an earlier claim, rather than quietly restating the claim.
+- **`CONTRIBUTING.md`**, **`SECURITY.md`** track the contributor workflow and the threat model; a new trust boundary belongs in the latter.
+- **`CHANGELOG.md`** gets an entry for anything user-visible.
+
+Two habits that keep this honest. **Never document an intention as though it were a fact** — if a command is planned, it belongs in Status as missing, not in the command table as though it runs. And **run what you document**: the install instructions, the quickstart and the examples are claims, so execute them before committing them. The README once described a tool nobody could install because no install step had ever been run.
+
+`cargo run -p xtask -- lint-docs` mechanically checks the part that can be checked: every CLI subcommand appears in the README command table, and every command the README advertises actually exists. Prose accuracy is still yours to maintain.
+
 ### CLI and agent surface
 
 Every command emits stable JSON under `--json`, and the human renderer is written **over** that JSON, never the reverse. Divergence between the two output paths is a bug, and snapshot tests cover both from the one source. Exit codes are semantic: `0` clean, `1` stale documentation present, `2` detached anchors requiring adjudication, `3` ledger integrity failure. Agents branch on these.

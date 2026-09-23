@@ -121,6 +121,8 @@ Agent-authored records default to `assurance: inferred` and carry the model and 
 
 `codedoc-lsp` speaks stdio LSP and provides hovers and code lenses, resolved live against the buffer — so the editor shows where a claim is *now*, not where it was recorded. Point any LSP client at the binary.
 
+A VS Code client lives in `editors/vscode/`. It is unpackaged; run it from source with `code --extensionDevelopmentPath=editors/vscode`.
+
 ## Commands
 
 | | |
@@ -135,7 +137,12 @@ Agent-authored records default to `assurance: inferred` and carry the model and 
 | `codedoc supersede <record> --claim "…"` | revise a claim |
 | `codedoc retract <record>` | retire a claim |
 | `codedoc history <record>` | the full supersession chain |
-| `codedoc list` · `stats` · `kinds` · `reindex` | inspection |
+| `codedoc list [--file \| --symbol]` | active records |
+| `codedoc stats` | record counts by kind, ledger integrity |
+| `codedoc kinds` | the record kind vocabulary |
+| `codedoc reindex` | rebuild the SQLite projection from the ledger |
+| `codedoc migrate [--write]` | report and apply ledger schema migrations |
+| `codedoc git install-merge-driver` | make ledger shards merge by union |
 
 Every command accepts `--json` with a stable schema; the human output is rendered from that JSON, never in parallel to it. Exit codes are meaningful: `0` clean, `1` stale, `2` detached, `3` ledger integrity failure.
 
@@ -147,7 +154,7 @@ Rust, C#, TypeScript, Python, Go, Java — via tree-sitter. Adding one is an ada
 
 Working today: the ledger and its integrity checking, anchoring and resolution across six languages, comment import, the full record lifecycle, and the CLI, MCP and LSP surfaces. Canonical encoding is verified byte-identical on Linux, macOS and Windows in CI.
 
-Not done yet: rung 5 of the resolver (migration through git history) is specified but unimplemented, so the ladder is six rungs deep, not seven; there is no `codedoc migrate` yet; and there is no packaged VS Code extension, only the LSP server it would wrap.
+Not done yet: the VS Code client is unpackaged and has no marketplace listing; the resolver's similarity rung is deliberately never auto-accepted, so low-confidence matches always require adjudication; and performance is measured at 50k LOC rather than at the million-line scale the budgets target.
 
 The format is **not yet stable**. Before 1.0 it may change, but never without a mechanical migration path; after 1.0 it will not change incompatibly. A ledger is accumulated institutional memory and cannot be regenerated, so it gets treated that way.
 

@@ -231,6 +231,49 @@ impl Ledger {
         Ok(sealed)
     }
 
+    pub fn replace_all(&self, records: &[Record]) -> Result<(), LedgerError> {
+        let directory = self.records_directory();
+        if directory.is_dir() {
+            let entries = fs::read_dir(&directory).map_err(|source| LedgerError::Io {
+                path: directory.display().to_string(),
+                detail: source.to_string(),
+            })?;
+            for entry in entries.filter_map(Result::ok) {
+                let path = entry.path();
+                let is_shard =
+                    path.extension().is_some_and(|extension| extension == SHARD_EXTENSION);
+                if is_shard {
+                    fs::remove_file(&path).map_err(|source| LedgerError::Io {
+                        path: path.display().to_string(),
+                        detail: source.to_string(),
+                    })?;
+                }
+            }
+        }
+        fs::create_dir_all(&directory).map_err(|source| LedgerError::Io {
+            path: directory.display().to_string(),
+            detail: source.to_string(),
+        })?;
+
+        let mut shards: BTreeMap<PathBuf, Vec<u8>> = BTreeMap::new();
+        for record in records {
+            let line = record.encode_line().map_err(|source| LedgerError::Encoding {
+                record: record.id().to_string(),
+                source,
+            })?;
+            let buffer = shards.entry(self.shard_for(record.id())).or_default();
+            buffer.extend_from_slice(&line);
+            buffer.push(b'\n');
+        }
+        for (shard, buffer) in shards {
+            fs::write(&shard, &buffer).map_err(|source| LedgerError::Io {
+                path: shard.display().to_string(),
+                detail: source.to_string(),
+            })?;
+        }
+        Ok(())
+    }
+
     pub fn verify(&self) -> Result<Verification, LedgerError> {
         let records = self.records()?;
         let mut seen: BTreeMap<String, usize> = BTreeMap::new();

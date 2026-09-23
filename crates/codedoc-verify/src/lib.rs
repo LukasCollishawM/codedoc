@@ -199,16 +199,10 @@ impl Verifier {
         migrated: bool,
     ) -> Vec<Resolution> {
         let Ok(adapter) = Registry::for_path(path) else {
-            return vec![
-                Resolution::Detached(DetachReason::LanguageUnsupported);
-                entries.len()
-            ];
+            return vec![Resolution::Detached(DetachReason::LanguageUnsupported); entries.len()];
         };
         let Ok(tree) = adapter.parse(source) else {
-            return vec![
-                Resolution::Detached(DetachReason::LanguageUnsupported);
-                entries.len()
-            ];
+            return vec![Resolution::Detached(DetachReason::LanguageUnsupported); entries.len()];
         };
 
         let index = FileIndex::build(adapter, source, &tree);

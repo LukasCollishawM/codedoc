@@ -10,6 +10,7 @@ lint:
     cargo fmt --all --check
     cargo clippy --workspace --all-targets -- -D warnings
     cargo run --quiet -p xtask -- lint-comments
+    cargo run --quiet -p xtask -- lint-docs
 
 replay commits="200":
     cargo run --quiet --release -p xtask -- replay --commits {{commits}}

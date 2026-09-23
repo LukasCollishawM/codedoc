@@ -1,8 +1,10 @@
 #![forbid(unsafe_code)]
 
 mod git;
+mod gitops;
 mod import;
 mod lifecycle;
+mod migrate;
 mod render;
 
 use std::collections::BTreeMap;
@@ -44,6 +46,13 @@ enum AuthorKind {
     Agent,
     Analyzer,
     Runtime,
+}
+
+#[derive(Subcommand)]
+enum GitCommand {
+    InstallMergeDriver,
+
+    MergeDriver { base: String, ours: String, theirs: String },
 }
 
 #[derive(clap::Args)]
@@ -158,6 +167,14 @@ enum Command {
 
     Detached,
 
+    Migrate {
+        #[arg(long)]
+        write: bool,
+    },
+
+    #[command(subcommand)]
+    Git(GitCommand),
+
     Import {
         paths: Vec<String>,
 
@@ -248,6 +265,11 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
             lifecycle::retract(&cli.root, record, reason.as_deref())
         }
         Command::Detached => command_detached(&cli.root),
+        Command::Migrate { write } => migrate::run(&cli.root, *write),
+        Command::Git(GitCommand::InstallMergeDriver) => gitops::install_merge_driver(&cli.root),
+        Command::Git(GitCommand::MergeDriver { base, ours, theirs }) => {
+            gitops::merge_driver(base, ours, theirs)
+        }
         Command::Import { paths, write, limit } => import::run(&cli.root, paths, *write, *limit),
     }
 }

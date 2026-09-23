@@ -19,6 +19,11 @@ pub fn human(payload: &Value) -> String {
         Some("resolve") => render_resolve(payload, &mut out),
         Some("retract") => render_retract(payload, &mut out),
         Some("detached") => render_detached(payload, &mut out),
+        Some("migrate") => render_migrate(payload, &mut out),
+        Some("git-install-merge-driver") => render_merge_driver(payload, &mut out),
+        Some("git-merge-driver") => {
+            let _ = writeln!(out, "merged {} records", count(payload, "records"));
+        }
         _ => {
             let _ = writeln!(out, "{payload}");
         }
@@ -284,6 +289,41 @@ fn render_detached(payload: &Value, out: &mut String) {
     let _ = writeln!(out, "  codedoc resolve <record> --to-line <line> --in-file <path>");
     let _ = writeln!(out, "or drop it:");
     let _ = writeln!(out, "  codedoc retract <record> --reason \"...\"");
+}
+
+fn render_migrate(payload: &Value, out: &mut String) {
+    let _ = writeln!(
+        out,
+        "{} records at schema {}",
+        count(payload, "records"),
+        count(payload, "schema")
+    );
+    let empty = Vec::new();
+    let pending = payload["pending"].as_array().unwrap_or(&empty);
+    if pending.is_empty() {
+        let _ = writeln!(out, "nothing to migrate");
+        return;
+    }
+    for step in pending {
+        let _ = writeln!(out, "  {}", step.as_str().unwrap_or(""));
+    }
+    if payload["dry_run"].as_bool().unwrap_or(true) {
+        let _ = writeln!(out, "dry run; re-run with --write to apply");
+    } else {
+        let _ = writeln!(out, "migrated {} records", count(payload, "migrated"));
+    }
+}
+
+fn render_merge_driver(payload: &Value, out: &mut String) {
+    if payload["already_present"].as_bool().unwrap_or(false) {
+        let _ = writeln!(out, "merge driver already installed");
+    } else {
+        let _ = writeln!(out, "installed the codedoc ledger merge driver");
+    }
+    let _ = writeln!(out, "  {}", text(payload, "attribute_line"));
+    let _ = writeln!(out, "  recorded in {}", text(payload, "attributes"));
+    let _ = writeln!(out);
+    let _ = writeln!(out, "Ledger shards now merge by union rather than by conflict.");
 }
 
 fn render_import(payload: &Value, out: &mut String) {

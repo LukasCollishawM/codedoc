@@ -38,6 +38,8 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - name: no comments in source
         run: cargo run --quiet -p xtask -- lint-comments
+      - name: documentation matches the CLI
+        run: cargo run --quiet -p xtask -- lint-docs
 
   anchors:
     name: anchor survival

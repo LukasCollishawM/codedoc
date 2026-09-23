@@ -7,14 +7,7 @@ pub fn renamed_to(root: &Path, from: &GitRev, path: &str) -> Option<String> {
     let output = Command::new("git")
         .arg("-C")
         .arg(root)
-        .args([
-            "diff",
-            "--name-status",
-            "--find-renames",
-            "--diff-filter=R",
-            from.as_str(),
-            "HEAD",
-        ])
+        .args(["diff", "--name-status", "--find-renames", "--diff-filter=R", from.as_str(), "HEAD"])
         .output()
         .ok()?;
     if !output.status.success() {

@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "description": "Resolver vectors. An implementation must capture the anchor for `symbol` in `before`, resolve it against `after`, and reach the stated outcome. Ambiguity must never be resolved by selection.",
+  "vectors": [
+    {
+      "name": "reformatting_holds_by_content_identity",
+      "language": "rust",
+      "path": "src/lib.rs",
+      "symbol": "rust://authorize",
+      "before": "fn authorize()->u32{let verdict=7;verdict}\n",
+      "after": "fn authorize() -> u32 {\n    let verdict = 7;\n    verdict\n}\n",
+      "expect": { "outcome": "located", "detail": "content_identity" }
+    },
+    {
+      "name": "local_rename_holds_by_structural_identity",
+      "language": "rust",
+      "path": "src/lib.rs",
+      "symbol": "rust://authorize",
+      "before": "fn authorize() -> u32 {\n    let verdict = 7;\n    verdict\n}\n",
+      "after": "fn authorize() -> u32 {\n    let decision = 7;\n    decision\n}\n",
+      "expect": { "outcome": "located", "detail": "structural_identity" }
+    },
+    {
+      "name": "insertion_above_does_not_shift_the_anchor",
+      "language": "rust",
+      "path": "src/lib.rs",
+      "symbol": "rust://authorize",
+      "before": "fn authorize() -> u32 {\n    let verdict = 7;\n    verdict\n}\n",
+      "after": "fn preamble() -> u32 {\n    let seed = 1;\n    seed\n}\n\nfn authorize() -> u32 {\n    let verdict = 7;\n    verdict\n}\n",
+      "expect": { "outcome": "located", "detail": "content_identity" }
+    },
+    {
+      "name": "deleting_the_target_detaches",
+      "language": "rust",
+      "path": "src/lib.rs",
+      "symbol": "rust://distinctive_target",
+      "before": "fn distinctive_target() -> u32 {\n    let unique_binding = 4242;\n    unique_binding\n}\n\nfn neighbour() -> u32 {\n    let other = 1;\n    other\n}\n",
+      "after": "fn neighbour() -> u32 {\n    let other = 1;\n    other\n}\n",
+      "expect": { "outcome": "detached", "detail": "no_candidate" }
+    },
+    {
+      "name": "literal_change_holds_by_structural_identity",
+      "language": "rust",
+      "path": "src/lib.rs",
+      "symbol": "rust://compute",
+      "before": "fn compute() -> u32 {\n    let a = 1;\n    let b = 2;\n    a + b\n}\n",
+      "after": "fn compute() -> u32 {\n    let a = 10;\n    let b = 20;\n    a * b\n}\n",
+      "expect": { "outcome": "located", "detail": "structural_identity" }
+    },
+    {
+      "name": "body_reshape_holds_by_symbol_and_node_path",
+      "language": "rust",
+      "path": "src/lib.rs",
+      "symbol": "rust://compute",
+      "before": "fn compute(flag: bool) -> u32 {\n    let a = 1;\n    a\n}\n",
+      "after": "fn compute(flag: bool) -> u32 {\n    if flag {\n        1\n    } else {\n        2\n    }\n}\n",
+      "expect": { "outcome": "located", "detail": "symbol_and_node_path" }
+    },
+    {
+      "name": "python_reindentation_holds",
+      "language": "python",
+      "path": "src/ledger.py",
+      "symbol": "python://Ledger/append",
+      "before": "class Ledger:\n    def append(self, record):\n        return record\n",
+      "after": "class Ledger:\n\n    def append(self, record):\n\n        return record\n",
+      "expect": { "outcome": "located", "detail": "content_identity" }
+    },
+    {
+      "name": "python_method_survives_enclosing_class_rename",
+      "language": "python",
+      "path": "src/ledger.py",
+      "symbol": "python://Ledger/flush",
+      "before": "class Ledger:\n    def flush(self):\n        return 1\n",
+      "after": "class Journal:\n    def flush(self):\n        return 1\n",
+      "expect": { "outcome": "located", "detail": "content_identity" }
+    },
+    {
+      "name": "identical_twins_after_deletion_detach",
+      "language": "rust",
+      "path": "src/lib.rs",
+      "symbol": "rust://alpha",
+      "before": "fn alpha() {\n    prepare();\n    commit();\n}\n\nfn beta() {\n    prepare();\n    commit();\n}\n\nfn gamma() {\n    prepare();\n    commit();\n}\n",
+      "after": "fn beta() {\n    prepare();\n    commit();\n}\n\nfn gamma() {\n    prepare();\n    commit();\n}\n",
+      "expect": { "outcome": "detached", "detail": "no_candidate" }
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "name": "codedoc",
+  "displayName": "codedoc",
+  "description": "Durable, AST-anchored documentation shown as hovers and code lenses.",
+  "version": "0.1.0",
+  "publisher": "codedoc",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LukasCollishawM/codedoc"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:rust",
+    "onLanguage:csharp",
+    "onLanguage:typescript",
+    "onLanguage:python",
+    "onLanguage:go",
+    "onLanguage:java"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "codedoc",
+      "properties": {
+        "codedoc.serverPath": {
+          "type": "string",
+          "default": "codedoc-lsp",
+          "description": "Path to the codedoc-lsp executable. Must be on PATH or absolute."
+        },
+        "codedoc.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Trace the communication between VS Code and the codedoc language server."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "codedoc.showRecord",
+        "title": "codedoc: Show record"
+      },
+      {
+        "command": "codedoc.restart",
+        "title": "codedoc: Restart server"
+      }
+    ]
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0"
+  }
+}

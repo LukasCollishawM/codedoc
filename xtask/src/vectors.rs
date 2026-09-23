@@ -48,6 +48,14 @@ pub fn run() -> ExitCode {
         return ExitCode::from(1);
     }
     println!("wrote {} canonical encoding vectors", CASES.len());
+
+    match crate::resolver_vectors::generate() {
+        Ok(count) => println!("wrote {count} resolver vectors"),
+        Err(failure) => {
+            eprintln!("resolver vectors: {failure}");
+            return ExitCode::from(1);
+        }
+    }
     ExitCode::SUCCESS
 }
 
