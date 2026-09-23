@@ -10,6 +10,7 @@ publish = false
 codedoc-core.workspace = true
 codedoc-anchor.workspace = true
 codedoc-lang.workspace = true
+codedoc-verify.workspace = true
 walkdir.workspace = true
 serde_json.workspace = true
 tree-sitter.workspace = true

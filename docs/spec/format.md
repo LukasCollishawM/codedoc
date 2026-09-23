@@ -109,7 +109,7 @@ Resolution answers where a claim's code went. It does not answer whether the cla
 
 Conforming implementations SHOULD compute **drift**: the distance between the shape histogram recorded with the anchor and the shape of the node it resolved to, as a percentage. A construct that resolved perfectly but whose drift exceeds an implementation-defined threshold SHOULD be reported as stale rather than current, because a claim about a body that has since been rewritten may simply be false.
 
-Drift MUST be insensitive to identifier and literal text, so that renaming does not register as change.
+Drift MUST be insensitive to identifier and literal text, so that renaming does not register as change. `conformance/resolver/` states an expected drift for every vector that resolves: reformatting and renaming measure zero in all seven covered languages, while a rewritten control flow measures well past any sensible threshold. An implementation whose drift is non-zero for a rename is reporting noise, and noise in a staleness report is worse than no report, because people learn to ignore it.
 
 ## 6. Records
 

@@ -220,6 +220,7 @@ version = "0.1.0"
 dependencies = [
  "codedoc-core",
  "codedoc-lang",
+ "codedoc-verify",
  "proptest",
  "serde",
  "serde_json",
@@ -1690,6 +1691,7 @@ dependencies = [
  "codedoc-anchor",
  "codedoc-core",
  "codedoc-lang",
+ "codedoc-verify",
  "serde_json",
  "tree-sitter",
  "walkdir",

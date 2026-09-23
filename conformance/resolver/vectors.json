@@ -8,6 +8,7 @@
       "path": "src/lib.rs",
       "symbol": "rust://authorize",
       "symbol_cardinality": 1,
+      "drift": 0,
       "before": "fn authorize()->u32{let verdict=7;verdict}\n",
       "after": "fn authorize() -> u32 {\n    let verdict = 7;\n    verdict\n}\n",
       "expect": { "outcome": "located", "detail": "content_identity" }
@@ -18,6 +19,7 @@
       "path": "src/lib.rs",
       "symbol": "rust://authorize",
       "symbol_cardinality": 1,
+      "drift": 0,
       "before": "fn authorize() -> u32 {\n    let verdict = 7;\n    verdict\n}\n",
       "after": "fn authorize() -> u32 {\n    let decision = 7;\n    decision\n}\n",
       "expect": { "outcome": "located", "detail": "structural_identity" }
@@ -28,6 +30,7 @@
       "path": "src/lib.rs",
       "symbol": "rust://authorize",
       "symbol_cardinality": 1,
+      "drift": 0,
       "before": "fn authorize() -> u32 {\n    let verdict = 7;\n    verdict\n}\n",
       "after": "fn preamble() -> u32 {\n    let seed = 1;\n    seed\n}\n\nfn authorize() -> u32 {\n    let verdict = 7;\n    verdict\n}\n",
       "expect": { "outcome": "located", "detail": "content_identity" }
@@ -38,6 +41,7 @@
       "path": "src/lib.rs",
       "symbol": "rust://distinctive_target",
       "symbol_cardinality": 1,
+      "drift": null,
       "before": "fn distinctive_target() -> u32 {\n    let unique_binding = 4242;\n    unique_binding\n}\n\nfn neighbour() -> u32 {\n    let other = 1;\n    other\n}\n",
       "after": "fn neighbour() -> u32 {\n    let other = 1;\n    other\n}\n",
       "expect": { "outcome": "detached", "detail": "no_candidate" }
@@ -48,6 +52,7 @@
       "path": "src/lib.rs",
       "symbol": "rust://compute",
       "symbol_cardinality": 1,
+      "drift": 0,
       "before": "fn compute() -> u32 {\n    let a = 1;\n    let b = 2;\n    a + b\n}\n",
       "after": "fn compute() -> u32 {\n    let a = 10;\n    let b = 20;\n    a * b\n}\n",
       "expect": { "outcome": "located", "detail": "structural_identity" }
@@ -58,6 +63,7 @@
       "path": "src/lib.rs",
       "symbol": "rust://compute",
       "symbol_cardinality": 1,
+      "drift": 44,
       "before": "fn compute(flag: bool) -> u32 {\n    let a = 1;\n    a\n}\n",
       "after": "fn compute(flag: bool) -> u32 {\n    if flag {\n        1\n    } else {\n        2\n    }\n}\n",
       "expect": { "outcome": "located", "detail": "symbol_and_node_path" }
@@ -68,6 +74,7 @@
       "path": "src/ledger.py",
       "symbol": "python://Ledger/append",
       "symbol_cardinality": 1,
+      "drift": 0,
       "before": "class Ledger:\n    def append(self, record):\n        return record\n",
       "after": "class Ledger:\n\n    def append(self, record):\n\n        return record\n",
       "expect": { "outcome": "located", "detail": "content_identity" }
@@ -78,6 +85,7 @@
       "path": "src/ledger.py",
       "symbol": "python://Ledger/flush",
       "symbol_cardinality": 1,
+      "drift": 0,
       "before": "class Ledger:\n    def flush(self):\n        return 1\n",
       "after": "class Journal:\n    def flush(self):\n        return 1\n",
       "expect": { "outcome": "located", "detail": "content_identity" }
@@ -88,6 +96,7 @@
       "path": "src/lib.rs",
       "symbol": "rust://alpha",
       "symbol_cardinality": 1,
+      "drift": null,
       "before": "fn alpha() {\n    prepare();\n    commit();\n}\n\nfn beta() {\n    prepare();\n    commit();\n}\n\nfn gamma() {\n    prepare();\n    commit();\n}\n",
       "after": "fn beta() {\n    prepare();\n    commit();\n}\n\nfn gamma() {\n    prepare();\n    commit();\n}\n",
       "expect": { "outcome": "detached", "detail": "no_candidate" }
@@ -98,6 +107,7 @@
       "path": "src/session.cpp",
       "symbol": "cpp://Session/open",
       "symbol_cardinality": 1,
+      "drift": 0,
       "before": "int Session::open(){int handle=7;return handle;}\n",
       "after": "int Session::open() {\n    int handle = 7;\n    return handle;\n}\n",
       "expect": { "outcome": "located", "detail": "content_identity" }
@@ -108,6 +118,7 @@
       "path": "src/session.cpp",
       "symbol": "cpp://Session/open",
       "symbol_cardinality": 1,
+      "drift": 0,
       "before": "int Session::open() {\n    int handle = 7;\n    return handle;\n}\n",
       "after": "int Session::open() {\n    int descriptor = 7;\n    return descriptor;\n}\n",
       "expect": { "outcome": "located", "detail": "structural_identity" }
@@ -118,6 +129,7 @@
       "path": "src/session.cpp",
       "symbol": "cpp://Session/open",
       "symbol_cardinality": 1,
+      "drift": 0,
       "before": "int Session::open() {\n    int handle = 7;\n    return handle;\n}\n",
       "after": "void Session::warm() {\n    int primer = 1;\n    (void)primer;\n}\n\nint Session::open() {\n    int handle = 7;\n    return handle;\n}\n",
       "expect": { "outcome": "located", "detail": "content_identity" }
@@ -128,6 +140,7 @@
       "path": "src/gate.cpp",
       "symbol": "cpp://Gate/admit",
       "symbol_cardinality": 2,
+      "drift": null,
       "before": "int Gate::admit(int value) {\n    int scaled = value;\n    return scaled;\n}\n\nint Gate::admit(long value) {\n    int scaled = value;\n    return scaled;\n}\n",
       "after": "int Gate::admit(long value) {\n    int scaled = value;\n    return scaled;\n}\n",
       "expect": { "outcome": "detached", "detail": "no_candidate" }
@@ -138,6 +151,7 @@
       "path": "src/session.cpp",
       "symbol": "cpp://Session/open",
       "symbol_cardinality": 2,
+      "drift": 0,
       "before": "class Session {\n    int open();\n};\n\nint Session::open() {\n    int handle = 7;\n    return handle;\n}\n",
       "after": "class Session {\n    int open();\n};\n\nint Session::open() {\n    int descriptor = 7;\n    return descriptor;\n}\n",
       "expect": { "outcome": "located", "detail": "content_identity" }
@@ -148,6 +162,7 @@
       "path": "src/Gate.java",
       "symbol": "java://Gate/admit",
       "symbol_cardinality": 1,
+      "drift": 0,
       "before": "class Gate {\n    int admit(int id) { return id; }\n}\n",
       "after": "class Gate {\n\n    int admit(int id) {\n        return id;\n    }\n}\n",
       "expect": { "outcome": "located", "detail": "content_identity" }
@@ -158,6 +173,7 @@
       "path": "src/Gate.java",
       "symbol": "java://Gate/admit",
       "symbol_cardinality": 1,
+      "drift": 0,
       "before": "class Gate {\n    int admit(int id) {\n        int checked = id;\n        return checked;\n    }\n}\n",
       "after": "class Gate {\n    int admit(int id) {\n        int verified = id;\n        return verified;\n    }\n}\n",
       "expect": { "outcome": "located", "detail": "structural_identity" }
@@ -168,6 +184,7 @@
       "path": "cmd/gate.go",
       "symbol": "go://Admit",
       "symbol_cardinality": 1,
+      "drift": 0,
       "before": "package main\n\nfunc Admit(id int) int {\n\tchecked := id\n\treturn checked\n}\n",
       "after": "package main\n\nfunc Admit(id int) int {\n\n\tchecked := id\n\n\treturn checked\n}\n",
       "expect": { "outcome": "located", "detail": "content_identity" }
@@ -178,6 +195,7 @@
       "path": "cmd/gate.go",
       "symbol": "go://Admit",
       "symbol_cardinality": 1,
+      "drift": 0,
       "before": "package main\n\nfunc Admit(id int) int {\n\tchecked := id\n\treturn checked\n}\n",
       "after": "package main\n\nfunc Admit(id int) int {\n\tverified := id\n\treturn verified\n}\n",
       "expect": { "outcome": "located", "detail": "structural_identity" }
@@ -188,6 +206,7 @@
       "path": "Gate.cs",
       "symbol": "csharp://Gate/Admit",
       "symbol_cardinality": 1,
+      "drift": 0,
       "before": "class Gate {\n    int Admit(int id) { return id; }\n}\n",
       "after": "class Gate {\n\n    int Admit(int id) {\n        return id;\n    }\n}\n",
       "expect": { "outcome": "located", "detail": "content_identity" }
@@ -198,6 +217,7 @@
       "path": "Gate.cs",
       "symbol": "csharp://Gate/Admit",
       "symbol_cardinality": 1,
+      "drift": 0,
       "before": "class Gate {\n    int Admit(int id) {\n        int checked_id = id;\n        return checked_id;\n    }\n}\n",
       "after": "class Gate {\n    int Admit(int id) {\n        int verified = id;\n        return verified;\n    }\n}\n",
       "expect": { "outcome": "located", "detail": "structural_identity" }
@@ -208,6 +228,7 @@
       "path": "src/gate.ts",
       "symbol": "typescript://admit",
       "symbol_cardinality": 1,
+      "drift": 0,
       "before": "export function admit(id: number): number { return id; }\n",
       "after": "export function admit(id: number): number {\n    return id;\n}\n",
       "expect": { "outcome": "located", "detail": "content_identity" }
@@ -218,6 +239,7 @@
       "path": "src/gate.ts",
       "symbol": "typescript://admit",
       "symbol_cardinality": 1,
+      "drift": 0,
       "before": "export function admit(id: number): number {\n    const checked = id;\n    return checked;\n}\n",
       "after": "export function admit(id: number): number {\n    const verified = id;\n    return verified;\n}\n",
       "expect": { "outcome": "located", "detail": "structural_identity" }

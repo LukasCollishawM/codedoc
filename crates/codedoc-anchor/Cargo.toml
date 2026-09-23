@@ -17,3 +17,4 @@ tree-sitter.workspace = true
 proptest.workspace = true
 serde_json.workspace = true
 codedoc-lang.workspace = true
+codedoc-verify.workspace = true

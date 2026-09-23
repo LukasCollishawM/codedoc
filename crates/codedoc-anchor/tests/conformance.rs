@@ -68,8 +68,26 @@ fn every_resolver_vector_reaches_its_stated_outcome() {
                     expected_detail,
                     "{name}: reached a different rung"
                 );
+
+                if let Some(Canonical::Integer(expected_drift)) = case.field("drift") {
+                    let target = located
+                        .node_path()
+                        .descend(after_tree.root_node())
+                        .unwrap_or_else(|| panic!("{name}: located node could not be re-read"));
+                    let current = codedoc_anchor::fingerprint::shape_histogram(target, adapter);
+                    let measured = codedoc_verify::drift_between(&anchor.shape, &current);
+                    assert_eq!(
+                        i64::from(measured),
+                        *expected_drift,
+                        "{name}: drift diverged. Reformatting and renaming must measure                          zero in every language, or staleness reporting becomes noise                          that people learn to ignore."
+                    );
+                }
             }
             Resolution::Detached(reason) => {
+                assert!(
+                    matches!(case.field("drift"), Some(Canonical::Null) | None),
+                    "{name}: a detached anchor has nothing to measure drift against"
+                );
                 assert_eq!(expected_outcome, "detached", "{name}: expected a location");
                 let encoded = serde_json::to_value(reason).unwrap();
                 assert_eq!(

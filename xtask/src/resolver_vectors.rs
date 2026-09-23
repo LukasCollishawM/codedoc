@@ -192,6 +192,24 @@ pub const CASES: &[Case] = &[
     },
 ];
 
+pub fn drift_for(case: &Case) -> Option<u32> {
+    let adapter = Registry::by_name(case.language)?;
+    let path = RepoPath::parse(case.path).ok()?;
+    let before_tree = adapter.parse(case.before).ok()?;
+    let node = codedoc_anchor::locate::by_symbol(&before_tree, case.before, adapter, case.symbol)?;
+    let anchor = Anchor::capture(path, adapter, case.before, node);
+
+    let after_tree = adapter.parse(case.after).ok()?;
+    let index = FileIndex::build(adapter, case.after, &after_tree);
+    let located = match index.resolve(&anchor) {
+        Resolution::Located(found) => found,
+        _ => return None,
+    };
+    let target = located.node_path().descend(after_tree.root_node())?;
+    let current = codedoc_anchor::fingerprint::shape_histogram(target, adapter);
+    Some(codedoc_verify::drift_between(&anchor.shape, &current))
+}
+
 pub fn cardinality_for(case: &Case) -> Option<u32> {
     let adapter = Registry::by_name(case.language)?;
     let path = RepoPath::parse(case.path).ok()?;
@@ -229,12 +247,13 @@ pub fn generate() -> Result<usize, String> {
         let (outcome, detail) = outcome_for(case)
             .ok_or_else(|| format!("case {} could not be evaluated", case.name))?;
         entries.push(format!(
-            "    {{\n      \"name\": {},\n      \"language\": {},\n      \"path\": {},\n      \"symbol\": {},\n      \"symbol_cardinality\": {},\n      \"before\": {},\n      \"after\": {},\n      \"expect\": {{ \"outcome\": {}, \"detail\": {} }}\n    }}",
+            "    {{\n      \"name\": {},\n      \"language\": {},\n      \"path\": {},\n      \"symbol\": {},\n      \"symbol_cardinality\": {},\n      \"drift\": {},\n      \"before\": {},\n      \"after\": {},\n      \"expect\": {{ \"outcome\": {}, \"detail\": {} }}\n    }}",
             quote(case.name),
             quote(case.language),
             quote(case.path),
             quote(case.symbol),
             cardinality_for(case).unwrap_or(1),
+            drift_for(case).map(|value| value.to_string()).unwrap_or_else(|| "null".to_owned()),
             quote(case.before),
             quote(case.after),
             quote(&outcome),
