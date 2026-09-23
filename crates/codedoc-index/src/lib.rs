@@ -8,6 +8,7 @@ use rusqlite::{Connection, params};
 use thiserror::Error;
 
 pub const INDEX_FILE: &str = "index.sqlite";
+pub const INDEX_SCHEMA_VERSION: i64 = 2;
 
 const SCHEMA: &str = "
 CREATE TABLE records (
@@ -95,6 +96,7 @@ impl Index {
         connection.pragma_update(None, "journal_mode", "DELETE")?;
         connection.pragma_update(None, "synchronous", "FULL")?;
         connection.execute_batch(SCHEMA)?;
+        connection.pragma_update(None, "user_version", INDEX_SCHEMA_VERSION)?;
 
         let mut records = ledger.records()?;
         records.sort_by_key(|record| record.id().to_string());
@@ -112,23 +114,42 @@ impl Index {
         Ok(Index { connection, path })
     }
 
-    pub fn append(ledger: &Ledger, record: &Record) -> Result<(), IndexError> {
-        let path = Index::path_for(ledger.base());
+    pub fn is_current(base: &Path) -> bool {
+        let path = Index::path_for(base);
         if !path.exists() {
+            return false;
+        }
+        Connection::open(&path)
+            .and_then(|connection| {
+                connection.query_row("PRAGMA user_version", [], |row| row.get::<_, i64>(0))
+            })
+            .map(|version| version == INDEX_SCHEMA_VERSION)
+            .unwrap_or(false)
+    }
+
+    pub fn current(ledger: &Ledger) -> Result<Self, IndexError> {
+        if Index::is_current(ledger.base()) {
+            Index::open(ledger.base())
+        } else {
+            Index::rebuild(ledger)
+        }
+    }
+
+    pub fn append(ledger: &Ledger, record: &Record) -> Result<(), IndexError> {
+        if !Index::is_current(ledger.base()) {
             Index::rebuild(ledger)?;
             return Ok(());
         }
-        let connection = Connection::open(&path)?;
+        let connection = Connection::open(Index::path_for(ledger.base()))?;
         project(&connection, record)
     }
 
     pub fn append_many(ledger: &Ledger, records: &[Record]) -> Result<(), IndexError> {
-        let path = Index::path_for(ledger.base());
-        if !path.exists() {
+        if !Index::is_current(ledger.base()) {
             Index::rebuild(ledger)?;
             return Ok(());
         }
-        let connection = Connection::open(&path)?;
+        let connection = Connection::open(Index::path_for(ledger.base()))?;
         let transaction = connection.unchecked_transaction()?;
         for record in records {
             project(&connection, record)?;

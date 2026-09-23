@@ -19,6 +19,7 @@ codedoc-index = { path = "crates/codedoc-index", version = "0.1.0" }
 codedoc-graph = { path = "crates/codedoc-graph", version = "0.1.0" }
 codedoc-context = { path = "crates/codedoc-context", version = "0.1.0" }
 codedoc-verify = { path = "crates/codedoc-verify", version = "0.1.0" }
+codedoc-ops = { path = "crates/codedoc-ops", version = "0.1.0" }
 codedoc-render = { path = "crates/codedoc-render", version = "0.1.0" }
 
 blake3 = "1"

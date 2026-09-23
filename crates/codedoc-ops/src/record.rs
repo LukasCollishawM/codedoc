@@ -1,0 +1,222 @@
+use std::collections::BTreeMap;
+use std::fs;
+use std::path::Path;
+
+use codedoc_anchor::{Anchor, locate};
+use codedoc_core::RepoPath;
+use codedoc_index::Index;
+use codedoc_ledger::{
+    AnchorRole, Assurance, Body, Evidence, Kind, Ledger, Lifecycle, RecordContent, RelationVerb,
+    Role, SCHEMA_VERSION, Scope, Timestamp,
+};
+use serde_json::json;
+
+use crate::author::Attribution;
+use crate::{OpsError, Outcome, writable};
+
+#[derive(Debug, Clone)]
+pub struct Target {
+    pub file: String,
+    pub symbol: Option<String>,
+    pub line: Option<u32>,
+}
+
+impl Target {
+    pub fn symbol(file: &str, symbol: &str) -> Self {
+        Target { file: file.to_owned(), symbol: Some(symbol.to_owned()), line: None }
+    }
+
+    pub fn line(file: &str, line: u32) -> Self {
+        Target { file: file.to_owned(), symbol: None, line: Some(line) }
+    }
+}
+
+pub(crate) fn capture(root: &Path, target: &Target) -> Result<Anchor, OpsError> {
+    let path = RepoPath::parse(&target.file)
+        .map_err(|source| OpsError::Language { detail: source.to_string() })?;
+    let adapter = codedoc_lang::Registry::for_path(&path)
+        .map_err(|source| OpsError::Language { detail: source.to_string() })?;
+    let source = fs::read_to_string(root.join(path.as_str())).map_err(|source| {
+        OpsError::Unreadable { path: target.file.clone(), detail: source.to_string() }
+    })?;
+    let tree = adapter
+        .parse(&source)
+        .map_err(|source| OpsError::Language { detail: source.to_string() })?;
+
+    let node = match (&target.symbol, target.line) {
+        (Some(symbol), _) => {
+            locate::by_symbol(&tree, &source, adapter, symbol).ok_or_else(|| {
+                OpsError::SymbolMissing { symbol: symbol.clone(), path: target.file.clone() }
+            })?
+        }
+        (None, Some(line)) => locate::by_line(&tree, adapter, line)
+            .ok_or_else(|| OpsError::LineMissing { line, path: target.file.clone() })?,
+        (None, None) => return Err(OpsError::TargetUnspecified),
+    };
+    Ok(Anchor::capture(path, adapter, &source, node))
+}
+
+pub(crate) fn append(
+    ledger: &Ledger,
+    content: RecordContent,
+) -> Result<codedoc_ledger::Record, OpsError> {
+    let record = ledger.append(content)?;
+    Index::append(ledger, &record)
+        .map_err(|source| OpsError::Index { detail: source.to_string() })?;
+    Ok(record)
+}
+
+pub(crate) fn draft(
+    kind: Kind,
+    anchors: Vec<AnchorRole>,
+    claim: &str,
+    detail: Option<&str>,
+    attribution: &Attribution,
+    evidence: Vec<Evidence>,
+    revision: Option<codedoc_core::GitRev>,
+) -> RecordContent {
+    RecordContent {
+        schema: SCHEMA_VERSION,
+        kind,
+        anchors,
+        body: Body { claim: claim.to_owned(), detail: detail.map(str::to_owned) },
+        evidence,
+        assurance: attribution.assurance,
+        author: attribution.author.clone(),
+        code_revision: revision,
+        created: Timestamp::now(),
+        lifecycle: Lifecycle::Active,
+        parent: None,
+        chain: None,
+        unrecognised: BTreeMap::new(),
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Provenance {
+    pub assurance: Option<Assurance>,
+    pub evidence: Vec<Evidence>,
+    pub revision: Option<codedoc_core::GitRev>,
+}
+
+#[derive(Debug, Clone)]
+pub struct AttachRequest {
+    pub target: Target,
+    pub kind: String,
+    pub claim: String,
+    pub detail: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RelateRequest {
+    pub subject: Target,
+    pub verb: String,
+    pub object: Target,
+    pub claim: Option<String>,
+    pub detail: Option<String>,
+}
+
+pub fn attach(
+    root: &Path,
+    scope: Option<Scope>,
+    request: &AttachRequest,
+    attribution: &Attribution,
+    provenance: Provenance,
+) -> Outcome {
+    let Provenance { assurance, evidence, revision } = provenance;
+    let target = &request.target;
+    let claim = request.claim.as_str();
+    let detail = request.detail.as_deref();
+    let kind = Kind::parse(&request.kind).ok_or_else(|| OpsError::UnknownKind {
+        found: request.kind.clone(),
+        vocabulary: Kind::vocabulary().join(", "),
+    })?;
+    let ledger = writable(root, scope)?;
+    let anchor = capture(ledger.root(), target)?;
+    let attribution = attribution.clone().with_assurance(assurance);
+
+    let content = draft(
+        kind,
+        vec![AnchorRole { role: Role::Subject, anchor: anchor.clone() }],
+        claim,
+        detail,
+        &attribution,
+        evidence,
+        revision,
+    );
+    let record = append(&ledger, content)?;
+
+    Ok(json!({
+        "command": "attach",
+        "record": record.id().to_string(),
+        "scope": ledger.scope().as_str(),
+        "kind": record.kind().as_str(),
+        "file": anchor.file.as_str(),
+        "symbol": anchor.symbol.as_ref().map(ToString::to_string),
+        "range": anchor.range.to_string(),
+        "assurance": attribution.assurance.as_str(),
+        "claim": claim,
+    }))
+}
+
+pub fn relate(
+    root: &Path,
+    scope: Option<Scope>,
+    request: &RelateRequest,
+    attribution: &Attribution,
+    provenance: Provenance,
+) -> Outcome {
+    let Provenance { assurance, revision, .. } = provenance;
+    let (subject, object) = (&request.subject, &request.object);
+    let claim = request.claim.as_deref();
+    let detail = request.detail.as_deref();
+    let verb = RelationVerb::parse(&request.verb).ok_or_else(|| OpsError::UnknownVerb {
+        found: request.verb.clone(),
+        vocabulary: RelationVerb::vocabulary().join(", "),
+    })?;
+    let ledger = writable(root, scope)?;
+    let subject_anchor = capture(ledger.root(), subject)?;
+    let object_anchor = capture(ledger.root(), object)?;
+    let attribution = attribution.clone().with_assurance(assurance);
+
+    let rendered = claim.map(str::to_owned).unwrap_or_else(|| {
+        format!(
+            "{} {} {}",
+            describe(&subject_anchor),
+            verb.as_str().replace('_', " "),
+            describe(&object_anchor)
+        )
+    });
+
+    let content = draft(
+        Kind::Relation(verb),
+        vec![
+            AnchorRole { role: Role::Subject, anchor: subject_anchor.clone() },
+            AnchorRole { role: Role::Object, anchor: object_anchor.clone() },
+        ],
+        &rendered,
+        detail,
+        &attribution,
+        Vec::new(),
+        revision,
+    );
+    let record = append(&ledger, content)?;
+
+    Ok(json!({
+        "command": "relate",
+        "record": record.id().to_string(),
+        "scope": ledger.scope().as_str(),
+        "verb": verb.as_str(),
+        "subject": describe(&subject_anchor),
+        "object": describe(&object_anchor),
+        "claim": rendered,
+    }))
+}
+
+fn describe(anchor: &Anchor) -> String {
+    anchor
+        .symbol
+        .as_ref()
+        .map(ToString::to_string)
+        .unwrap_or_else(|| format!("{}:{}", anchor.file.as_str(), anchor.range.start_line))
+}

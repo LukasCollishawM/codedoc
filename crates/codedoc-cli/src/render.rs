@@ -7,6 +7,7 @@ pub fn human(payload: &Value) -> String {
     match payload.get("command").and_then(Value::as_str) {
         Some("init") => render_init(payload, &mut out),
         Some("attach") => render_attach(payload, &mut out),
+        Some("relate") => render_relate(payload, &mut out),
         Some("verify") => render_verify(payload, &mut out),
         Some("context") => render_context(payload, &mut out),
         Some("reindex") => render_reindex(payload, &mut out),
@@ -60,6 +61,21 @@ fn render_attach(payload: &Value, out: &mut String) {
     if let Some(symbol) = payload.get("symbol").and_then(Value::as_str) {
         let _ = writeln!(out, "  symbol  {symbol}");
     }
+}
+
+fn render_relate(payload: &Value, out: &mut String) {
+    let _ = writeln!(out, "recorded {}", &text(payload, "record")[..16]);
+    let _ = writeln!(
+        out,
+        "  {} {} {}",
+        text(payload, "subject"),
+        text(payload, "verb").replace('_', " "),
+        text(payload, "object")
+    );
+    let _ = writeln!(out, "  scope {}", text(payload, "scope"));
+    let _ = writeln!(out);
+    let _ = writeln!(out, "This fact belongs to neither endpoint, so it has nowhere to live");
+    let _ = writeln!(out, "in a comment. It surfaces in the context of both.");
 }
 
 fn render_verify(payload: &Value, out: &mut String) {

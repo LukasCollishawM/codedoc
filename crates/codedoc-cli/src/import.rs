@@ -125,6 +125,7 @@ fn harvest_file(repo_path: &RepoPath, adapter: &Adapter, disk: &Path) -> Vec<Har
     };
 
     let digests = codedoc_anchor::fingerprint::compute_all(tree.root_node(), adapter, &source);
+    let symbols = codedoc_anchor::SymbolTable::build(tree.root_node(), adapter, &source);
     let mut blocks: Vec<Vec<Node<'_>>> = Vec::new();
     collect_comment_blocks(tree.root_node(), adapter, &mut blocks);
 
@@ -145,7 +146,8 @@ fn harvest_file(repo_path: &RepoPath, adapter: &Adapter, disk: &Path) -> Vec<Har
         }
 
         let Some(target) = documented_node(*last, adapter) else { continue };
-        let anchor = Anchor::capture_with(repo_path.clone(), adapter, &source, target, &digests);
+        let anchor =
+            Anchor::capture_with(repo_path.clone(), adapter, &source, target, &digests, &symbols);
         let kind = infer_kind(&claim);
 
         harvested.push(Harvested {

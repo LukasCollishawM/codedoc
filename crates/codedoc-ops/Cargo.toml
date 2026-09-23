@@ -1,14 +1,10 @@
 [package]
-name = "codedoc-cli"
+name = "codedoc-ops"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-
-[[bin]]
-name = "codedoc"
-path = "src/main.rs"
 
 [dependencies]
 codedoc-core.workspace = true
@@ -19,12 +15,9 @@ codedoc-index.workspace = true
 codedoc-graph.workspace = true
 codedoc-context.workspace = true
 codedoc-verify.workspace = true
-codedoc-ops.workspace = true
-anyhow.workspace = true
-clap.workspace = true
+serde.workspace = true
 serde_json.workspace = true
-walkdir.workspace = true
-tree-sitter.workspace = true
+thiserror.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

@@ -7,32 +7,32 @@ pub fn run() -> ExitCode {
         eprintln!("lint-docs: could not enumerate CLI subcommands");
         return ExitCode::from(1);
     };
-    let Ok(readme) = fs::read_to_string("README.md") else {
-        eprintln!("lint-docs: README.md is missing");
+    let Ok(reference) = fs::read_to_string("docs/cli.md") else {
+        eprintln!("lint-docs: docs/cli.md is missing");
         return ExitCode::from(1);
     };
 
     let documented: BTreeSet<String> = declared
         .iter()
-        .filter(|name| readme.contains(&format!("codedoc {name}")))
+        .filter(|name| reference.contains(&format!("codedoc {name}")))
         .cloned()
         .collect();
     let undocumented: Vec<&String> =
         declared.iter().filter(|name| !documented.contains(*name)).collect();
 
     if undocumented.is_empty() {
-        println!("lint-docs: {} subcommands, all documented in README", declared.len());
+        println!("lint-docs: {} subcommands, all documented in docs/cli.md", declared.len());
         return ExitCode::SUCCESS;
     }
 
-    eprintln!("lint-docs: {} subcommand(s) missing from README.md", undocumented.len());
+    eprintln!("lint-docs: {} subcommand(s) missing from docs/cli.md", undocumented.len());
     eprintln!();
     for name in &undocumented {
         eprintln!("  codedoc {name}");
     }
     eprintln!();
     eprintln!("A command that exists but is undocumented may as well not exist.");
-    eprintln!("Add it to the command table in README.md, in this commit.");
+    eprintln!("Add it to docs/cli.md, in this commit.");
     ExitCode::from(1)
 }
 

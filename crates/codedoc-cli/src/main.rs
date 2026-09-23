@@ -3,28 +3,17 @@
 mod git;
 mod gitops;
 mod import;
-mod lifecycle;
 mod migrate;
 mod render;
 
-use std::collections::BTreeMap;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use anyhow::{Context, Result, anyhow, bail};
+use anyhow::{Context, Result, anyhow};
 use clap::{Parser, Subcommand, ValueEnum};
-use codedoc_anchor::{Anchor, locate};
-use codedoc_context::{Target, assemble};
-use codedoc_core::RepoPath;
-use codedoc_graph::Graph;
 use codedoc_index::Index;
-use codedoc_lang::Registry;
-use codedoc_ledger::{
-    AnchorRole, Assurance, Author, Body, Evidence, Kind, Ledger, Lifecycle, RecordContent, Role,
-    SCHEMA_VERSION, Scope, Timestamp, Workspace,
-};
-use codedoc_verify::Verifier;
+use codedoc_ledger::{Assurance, Evidence, Kind, Ledger, Scope};
+use codedoc_ops as ops;
 use serde_json::{Value, json};
 
 #[derive(Parser)]
@@ -49,6 +38,27 @@ enum AuthorKind {
     Agent,
     Analyzer,
     Runtime,
+}
+
+#[derive(clap::Args)]
+struct RelateArgs {
+    subject: String,
+
+    verb: String,
+
+    object: String,
+
+    #[arg(long)]
+    claim: Option<String>,
+
+    #[arg(long)]
+    detail: Option<String>,
+
+    #[arg(long, value_enum, default_value_t = AuthorKind::Human)]
+    author: AuthorKind,
+
+    #[arg(long, default_value = "unattributed")]
+    identity: String,
 }
 
 #[derive(Subcommand)]
@@ -173,6 +183,8 @@ enum Command {
 
     Detached,
 
+    Relate(RelateArgs),
+
     Migrate {
         #[arg(long)]
         write: bool,
@@ -251,25 +263,34 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
         Command::History { record } => command_history(&cli.root, record),
         Command::Stats => command_stats(&cli.root),
         Command::Kinds => Ok((json!({"command": "kinds", "kinds": Kind::vocabulary()}), 0)),
-        Command::Supersede { record, claim, detail, kind } => lifecycle::supersede(
-            &cli.root,
-            record,
-            claim.as_deref(),
-            detail.as_deref(),
-            kind.as_deref(),
-        ),
-        Command::Resolve { record, to_symbol, to_line, in_file } => lifecycle::resolve(
-            &cli.root,
-            record,
-            &lifecycle::Relocation {
-                symbol: to_symbol.as_deref(),
-                line: *to_line,
-                file: in_file.as_deref(),
-            },
-        ),
+        Command::Supersede { record, claim, detail, kind } => Ok((
+            ops::supersede(
+                &cli.root,
+                None,
+                record,
+                claim.as_deref(),
+                detail.as_deref(),
+                kind.as_deref(),
+            )?,
+            0,
+        )),
+        Command::Resolve { record, to_symbol, to_line, in_file } => Ok((
+            ops::resolve(
+                &cli.root,
+                None,
+                record,
+                &ops::Target {
+                    file: in_file.clone().unwrap_or_default(),
+                    symbol: to_symbol.clone(),
+                    line: *to_line,
+                },
+            )?,
+            0,
+        )),
         Command::Retract { record, reason } => {
-            lifecycle::retract(&cli.root, record, reason.as_deref())
+            Ok((ops::retract(&cli.root, None, record, reason.as_deref())?, 0))
         }
+        Command::Relate(args) => command_relate(&cli.root, args),
         Command::Detached => command_detached(&cli.root),
         Command::Migrate { write } => migrate::run(&cli.root, *write),
         Command::Git(GitCommand::InstallMergeDriver) => gitops::install_merge_driver(&cli.root),
@@ -300,92 +321,61 @@ fn command_init(root: &Path, scope: &str) -> Result<(Value, i32)> {
 }
 
 fn command_attach(root: &Path, args: &AttachArgs) -> Result<(Value, i32)> {
-    let AttachArgs {
-        file,
-        symbol,
-        line,
-        kind,
-        claim,
-        detail,
-        assurance,
-        author,
-        identity,
-        session,
-        evidence,
-        supersedes,
-    } = args;
-    let (symbol, line) = (symbol.as_deref(), *line);
-    let (detail, session) = (detail.as_deref(), session.as_deref());
-    let supersedes = supersedes.as_deref();
-    let author_kind = *author;
-
-    let ledger = Ledger::open(root).context("opening the ledger")?;
-    let kind = Kind::parse(kind)
-        .ok_or_else(|| anyhow!("unknown kind {kind:?}; run `codedoc kinds` for the vocabulary"))?;
-    let assurance = Assurance::parse(assurance)
-        .ok_or_else(|| anyhow!("assurance must be asserted, inferred, or speculative"))?;
-
-    let repo_path =
-        RepoPath::parse(file).context("the target path must sit inside the repository")?;
-    let adapter = Registry::for_path(&repo_path)
-        .with_context(|| format!("no language adapter handles {file}"))?;
-    let source = fs::read_to_string(root.join(repo_path.as_str()))
-        .with_context(|| format!("reading {file}"))?;
-    let tree = adapter.parse(&source).context("parsing the target file")?;
-
-    let node = match (symbol, line) {
-        (Some(wanted), _) => locate::by_symbol(&tree, &source, adapter, wanted)
-            .ok_or_else(|| anyhow!("no symbol {wanted:?} found in {file}"))?,
-        (None, Some(wanted)) => locate::by_line(&tree, adapter, wanted)
-            .ok_or_else(|| anyhow!("line {wanted} does not cover any node in {file}"))?,
-        (None, None) => bail!("attach requires either --symbol or --line"),
+    let attribution = match args.author {
+        AuthorKind::Human => ops::Attribution::human(&args.identity),
+        AuthorKind::Agent => {
+            ops::Attribution::agent(&args.identity, args.session.as_deref().unwrap_or("unrecorded"))
+        }
+        AuthorKind::Analyzer => ops::Attribution::analyzer(&args.identity),
+        AuthorKind::Runtime => ops::Attribution::analyzer(&args.identity),
     };
-
-    let anchor = Anchor::capture(repo_path, adapter, &source, node);
-    let author = match author_kind {
-        AuthorKind::Human => Author::Human { identity: identity.to_owned() },
-        AuthorKind::Agent => Author::Agent {
-            model: identity.to_owned(),
-            session: session.unwrap_or("unrecorded").to_owned(),
+    let request = ops::AttachRequest {
+        target: ops::Target {
+            file: args.file.clone(),
+            symbol: args.symbol.clone(),
+            line: args.line,
         },
-        AuthorKind::Analyzer => Author::Analyzer { name: identity.to_owned() },
-        AuthorKind::Runtime => Author::Runtime { name: identity.to_owned() },
+        kind: args.kind.clone(),
+        claim: args.claim.clone(),
+        detail: args.detail.clone(),
     };
-
-    let content = RecordContent {
-        schema: SCHEMA_VERSION,
-        kind,
-        anchors: vec![AnchorRole { role: Role::Subject, anchor: anchor.clone() }],
-        body: Body { claim: claim.to_owned(), detail: detail.map(str::to_owned) },
-        evidence: evidence.iter().map(|item| parse_evidence(item)).collect(),
-        assurance,
-        author,
-        code_revision: git::head_revision(root),
-        created: Timestamp::now(),
-        lifecycle: Lifecycle::Active,
-        parent: supersedes
-            .map(str::parse)
-            .transpose()
-            .map_err(|_| anyhow!("--supersedes expects a record identifier"))?,
-        chain: None,
-        unrecognised: BTreeMap::new(),
+    let provenance = ops::Provenance {
+        assurance: Assurance::parse(&args.assurance),
+        evidence: args.evidence.iter().map(|item| parse_evidence(item)).collect(),
+        revision: git::head_revision(root),
     };
+    Ok((ops::attach(root, None, &request, &attribution, provenance)?, 0))
+}
 
-    let record = ledger.append(content).context("appending to the ledger")?;
-    Index::append(&ledger, &record).context("refreshing the index")?;
+fn parse_target(raw: &str) -> ops::Target {
+    match raw.rsplit_once(':') {
+        Some((file, number)) if number.parse::<u32>().is_ok() => {
+            ops::Target { file: file.to_owned(), symbol: None, line: number.parse().ok() }
+        }
+        _ => match raw.split_once('@') {
+            Some((file, symbol)) => {
+                ops::Target { file: file.to_owned(), symbol: Some(symbol.to_owned()), line: None }
+            }
+            None => ops::Target { file: raw.to_owned(), symbol: None, line: None },
+        },
+    }
+}
 
-    Ok((
-        json!({
-            "command": "attach",
-            "record": record.id().to_string(),
-            "kind": record.kind().as_str(),
-            "file": anchor.file.as_str(),
-            "symbol": anchor.symbol.as_ref().map(ToString::to_string),
-            "range": anchor.range.to_string(),
-            "claim": claim,
-        }),
-        0,
-    ))
+fn command_relate(root: &Path, args: &RelateArgs) -> Result<(Value, i32)> {
+    let attribution = match args.author {
+        AuthorKind::Agent => ops::Attribution::agent(&args.identity, "unrecorded"),
+        AuthorKind::Analyzer | AuthorKind::Runtime => ops::Attribution::analyzer(&args.identity),
+        AuthorKind::Human => ops::Attribution::human(&args.identity),
+    };
+    let request = ops::RelateRequest {
+        subject: parse_target(&args.subject),
+        verb: args.verb.clone(),
+        object: parse_target(&args.object),
+        claim: args.claim.clone(),
+        detail: args.detail.clone(),
+    };
+    let provenance = ops::Provenance { revision: git::head_revision(root), ..Default::default() };
+    Ok((ops::relate(root, None, &request, &attribution, provenance)?, 0))
 }
 
 fn parse_evidence(raw: &str) -> Evidence {
@@ -406,22 +396,7 @@ fn parse_evidence(raw: &str) -> Evidence {
 }
 
 fn command_verify(root: &Path) -> Result<(Value, i32)> {
-    let ledger = Ledger::open(root).context("opening the ledger")?;
-    let report = Verifier::new(root).run(&ledger).context("verifying anchors")?;
-    let code = report.exit_code();
-    let payload = json!({
-        "command": "verify",
-        "records": report.records,
-        "integrity_intact": report.integrity_intact,
-        "orphaned_records": report
-            .orphaned_records
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<_>>(),
-        "counts": report.counts(),
-        "findings": serde_json::to_value(&report.findings)?,
-    });
-    Ok((payload, code))
+    Ok(ops::verify(root)?)
 }
 
 fn command_context(
@@ -431,52 +406,13 @@ fn command_context(
     depth: u8,
     budget: Option<usize>,
 ) -> Result<(Value, i32)> {
-    let ledger = Ledger::discover(root).context("opening the ledger")?;
-    let index = match Index::open(ledger.base()) {
-        Ok(index) => index,
-        Err(_) => Index::rebuild(&ledger).context("building the index")?,
-    };
-
     let (file, line) = match target.rsplit_once(':') {
         Some((path, number)) if number.parse::<u32>().is_ok() => {
             (path.to_owned(), number.parse::<u32>().ok())
         }
         _ => (target.to_owned(), None),
     };
-    let normalised = RepoPath::parse(&file).map(|path| path.as_str().to_owned()).unwrap_or(file);
-
-    let mut records = match (symbol, line) {
-        (Some(wanted), _) => index.active_for_symbol(wanted),
-        (None, Some(wanted)) => index.active_covering_line(&normalised, wanted),
-        (None, None) => index.active_in_file(&normalised),
-    }
-    .context("querying the index")?;
-
-    if depth > 0 {
-        let symbols: Vec<String> = records
-            .iter()
-            .flat_map(|record| record.content().anchors.iter())
-            .filter_map(|entry| entry.anchor.symbol.as_ref().map(ToString::to_string))
-            .collect();
-        records.extend(index.active_relations_touching(&symbols).context("querying relations")?);
-    }
-
-    let graph = Graph::from_records(records);
-    let mut pack = assemble(
-        &graph,
-        Target { file: normalised, line, symbol: symbol.map(str::to_owned) },
-        depth,
-    );
-    if let Some(limit) = budget {
-        pack.fit_within(limit);
-    }
-    let payload = json!({
-        "command": "context",
-        "pack": serde_json::to_value(&pack)?,
-        "claims": pack.claim_count(),
-        "empty": pack.is_empty(),
-    });
-    Ok((payload, 0))
+    Ok((ops::context(root, &file, line, symbol, depth, budget)?, 0))
 }
 
 fn command_reindex(root: &Path) -> Result<(Value, i32)> {
@@ -494,92 +430,17 @@ fn command_reindex(root: &Path) -> Result<(Value, i32)> {
 }
 
 fn command_list(root: &Path, file: Option<&str>, symbol: Option<&str>) -> Result<(Value, i32)> {
-    let workspace = Workspace::discover(root).context("opening the ledger")?;
-    let graph = Graph::across(&workspace).context("loading the knowledge graph")?;
-    let records = match (file, symbol) {
-        (_, Some(wanted)) => graph.for_symbol(wanted),
-        (Some(wanted), None) => graph.in_file(wanted),
-        (None, None) => graph.active(),
-    };
-    let rows: Vec<Value> = records
-        .iter()
-        .map(|record| {
-            json!({
-                "record": record.id().to_string(),
-                "kind": record.kind().as_str(),
-                "claim": record.content().body.claim,
-                "file": record.subject().map(|anchor| anchor.file.as_str().to_owned()),
-                "symbol": record
-                    .subject()
-                    .and_then(|anchor| anchor.symbol.as_ref().map(ToString::to_string)),
-                "created": record.content().created.to_rfc3339(),
-            })
-        })
-        .collect();
-    Ok((json!({"command": "list", "count": rows.len(), "records": rows}), 0))
+    Ok((ops::list(root, file, symbol)?, 0))
 }
 
 fn command_history(root: &Path, record: &str) -> Result<(Value, i32)> {
-    let ledger = Ledger::open(root).context("opening the ledger")?;
-    let graph = Graph::load(&ledger).context("loading the knowledge graph")?;
-    let id = record.parse().map_err(|_| anyhow!("{record:?} is not a record identifier"))?;
-    let chain = graph.supersession_chain(id);
-    if chain.is_empty() {
-        bail!("no record {record} in this ledger");
-    }
-    let rows: Vec<Value> = chain
-        .iter()
-        .map(|entry| {
-            json!({
-                "record": entry.id().to_string(),
-                "kind": entry.kind().as_str(),
-                "claim": entry.content().body.claim,
-                "created": entry.content().created.to_rfc3339(),
-                "code_revision": entry.content().code_revision.as_ref().map(ToString::to_string),
-            })
-        })
-        .collect();
-    Ok((json!({"command": "history", "revisions": rows.len(), "chain": rows}), 0))
+    Ok((ops::history(root, record)?, 0))
 }
 
 fn command_detached(root: &Path) -> Result<(Value, i32)> {
-    let workspace = Workspace::discover(root).context("opening the ledger")?;
-    let report =
-        Verifier::new(workspace.root()).run_across(&workspace).context("verifying anchors")?;
-    let rows: Vec<Value> = report
-        .findings
-        .iter()
-        .filter(|finding| finding.status == codedoc_verify::Status::Detached)
-        .map(|finding| {
-            json!({
-                "record": finding.record.to_string(),
-                "kind": finding.kind,
-                "claim": finding.claim,
-                "file": finding.file,
-                "symbol": finding.symbol,
-                "recorded_range": finding.recorded_range.to_string(),
-                "resolution": serde_json::to_value(&finding.resolution).unwrap_or(Value::Null),
-            })
-        })
-        .collect();
-    let code = i32::from(!rows.is_empty()) * 2;
-    Ok((json!({"command": "detached", "count": rows.len(), "records": rows}), code))
+    Ok(ops::detached(root)?)
 }
 
 fn command_stats(root: &Path) -> Result<(Value, i32)> {
-    let workspace = Workspace::discover(root).context("opening the ledger")?;
-    let graph = Graph::across(&workspace).context("loading the knowledge graph")?;
-    let verification = workspace.verify().context("verifying ledger integrity")?;
-    Ok((
-        json!({
-            "command": "stats",
-            "total_records": graph.all().len(),
-            "active_records": graph.active().len(),
-            "by_kind": graph.counts_by_kind(),
-            "tips": verification.tips.iter().map(ToString::to_string).collect::<Vec<_>>(),
-            "integrity_intact": verification.is_intact(),
-            "scopes": workspace.scopes().iter().map(|scope| scope.as_str()).collect::<Vec<_>>(),
-        }),
-        0,
-    ))
+    Ok((ops::stats(root)?, 0))
 }

@@ -171,6 +171,78 @@ fn genuinely_indistinguishable_candidates_detach_rather_than_guess() {
     );
 }
 
+#[test]
+fn deleting_one_overload_does_not_reattach_to_its_sibling() {
+    let adapter = Registry::by_name("java").unwrap();
+    let before = concat!(
+        "class Gate {
+",
+        "    void admit(int id) { check(id); }
+",
+        "    void admit(String name) { check(name); }
+",
+        "}
+"
+    );
+    let after = "class Gate {
+    void admit(String name) { check(name); }
+}
+";
+
+    let tree = adapter.parse(before).unwrap();
+    let node =
+        codedoc_anchor::locate::by_symbol(&tree, before, adapter, "java://Gate/admit").unwrap();
+    let anchor = Anchor::capture(RepoPath::parse("Gate.java").unwrap(), adapter, before, node);
+    assert_eq!(anchor.symbol_cardinality, 2, "both overloads share one symbol path");
+
+    let after_tree = adapter.parse(after).unwrap();
+    let outcome = codedoc_anchor::FileIndex::build(adapter, after, &after_tree).resolve(&anchor);
+    assert!(
+        outcome.is_detached(),
+        "the documented overload was deleted; resolving onto the surviving overload is a false          reattachment, and a symbol path shared by two declarations does not identify either.          got {outcome:?}"
+    );
+}
+
+#[test]
+fn overloads_still_resolve_while_all_of_them_remain() {
+    let adapter = Registry::by_name("java").unwrap();
+    let source = concat!(
+        "class Gate {
+",
+        "    void admit(int id) { check(id); }
+",
+        "    void admit(String name) { check(name); }
+",
+        "}
+"
+    );
+    let reformatted = concat!(
+        "class Gate {
+",
+        "    void admit(int id) {
+        check(id);
+    }
+",
+        "    void admit(String name) {
+        check(name);
+    }
+",
+        "}
+"
+    );
+
+    let tree = adapter.parse(source).unwrap();
+    let node =
+        codedoc_anchor::locate::by_symbol(&tree, source, adapter, "java://Gate/admit").unwrap();
+    let anchor = Anchor::capture(RepoPath::parse("Gate.java").unwrap(), adapter, source, node);
+
+    let after_tree = adapter.parse(reformatted).unwrap();
+    let outcome =
+        codedoc_anchor::FileIndex::build(adapter, reformatted, &after_tree).resolve(&anchor);
+    let located = outcome.located().expect("reformatting overloads must not detach");
+    assert_eq!(located.range().start_line, 2, "must stay on the int overload");
+}
+
 fn function_strategy() -> impl Strategy<Value = Function> {
     ("[a-j]{3,6}", "[k-t]{3,6}", 0u32..1000).prop_map(|(name, binding, value)| Function {
         name,

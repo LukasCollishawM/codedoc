@@ -19,6 +19,7 @@ codedoc-index.workspace = true
 codedoc-graph.workspace = true
 codedoc-context.workspace = true
 codedoc-verify.workspace = true
+codedoc-ops.workspace = true
 serde_json.workspace = true
 serde.workspace = true
 rmcp.workspace = true

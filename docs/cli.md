@@ -1,0 +1,135 @@
+# The codedoc CLI
+
+For humans and CI. Agents normally use the MCP server instead — see
+[AGENTS.md](../AGENTS.md).
+
+Every command accepts `--json`, which emits a stable schema. The human output is
+rendered *from* that JSON, never in parallel to it, so the two cannot disagree.
+
+Global flags: `--root <path>` (defaults to the working directory, searching upward
+for a ledger), `--json`, `--scope shared|local|global`.
+
+## Exit codes
+
+| code | meaning |
+| --- | --- |
+| `0` | clean |
+| `1` | stale documentation present |
+| `2` | detached anchors requiring adjudication |
+| `3` | ledger integrity failure |
+| `4` | the command itself failed |
+
+## Setting up
+
+### `codedoc init [--scope shared\|local\|global]`
+
+Creates a ledger. `shared` (the default) lives at `.codedoc/` and is committed.
+`local` lives in `.git/codedoc/` and leaves no evidence in the repository. `global`
+lives outside the repository, keyed by canonical path, and survives a reclone.
+
+Reads merge across every scope present; writes go to one.
+
+### `codedoc import <path>... [--write] [--limit N]`
+
+Harvests existing comments, anchors each to the construct it documents, and infers a
+kind from markers (`TODO` → warning, `SAFETY:` → security, "because…" → rationale).
+Dry run unless `--write`. **Never modifies source.**
+
+### `codedoc git install-merge-driver`
+
+Registers a union merge driver for `.codedoc/ledger/*.jsonl`, so concurrent branches
+merge their records instead of conflicting. The driver refuses to write if any input
+line is not a valid record.
+
+## Recording
+
+### `codedoc attach <file> --kind <kind> --claim "..."`
+
+Anchors a claim. Locate with `--symbol <path>` or `--line <n>`.
+
+```bash
+codedoc attach src/auth.rs --symbol rust://validate_token \
+  --kind invariant \
+  --claim "Signature validation must precede tenant resolution." \
+  --detail "Resolving a tenant from an unvalidated token allows tenant confusion."
+```
+
+Options: `--detail`, `--assurance asserted|inferred|speculative`, `--author
+human|agent|analyzer|runtime`, `--identity`, `--session`, `--evidence` (repeatable,
+as `git:<rev>`, `test:<name>`, `doc:<path>`, `record:<id>` or a URL), `--supersedes`.
+
+### `codedoc relate <subject> <verb> <object>`
+
+Records a fact about the link between two places. Targets are `path@symbol` or
+`path:line`.
+
+```bash
+codedoc relate src/auth.rs@rust://validate_signature must_execute_after \
+               src/auth.rs@rust://resolve_tenant \
+  --claim "Tenant resolution must not precede signature validation."
+```
+
+Verbs: `must_execute_after`, `guarded_by`, `constrained_by`, `invalidates`,
+`tested_by`, `derived_from`, `contradicts`, `supersedes`, `owns`.
+
+### `codedoc kinds`
+
+Prints the record kind vocabulary.
+
+## Reading
+
+### `codedoc context <file>[:line] [--symbol <path>] [--depth N] [--budget N]`
+
+Retrieves what is known about a location: invariants, security, known failure modes,
+rationale, and relations at `--depth` (default 2). `--budget` caps the assembled size
+for a context window.
+
+### `codedoc list [--file <path>] [--symbol <path>]`
+
+Active records.
+
+### `codedoc history <record>`
+
+The supersession chain for a record: what was believed before, and when it changed.
+Record identifiers may be abbreviated to any unambiguous prefix.
+
+### `codedoc stats`
+
+Record counts by kind, relation count, ledger integrity, and which scopes are present.
+
+## Maintaining
+
+### `codedoc verify`
+
+Re-resolves every anchor against the working tree. Reports fresh, migrated, stale and
+detached counts, and sets the exit code accordingly.
+
+### `codedoc detached`
+
+Lists anchors that could not be located. These are awaiting a decision, not errors —
+an anchor detaches rather than attaching to the wrong code.
+
+### `codedoc resolve <record> --to-symbol <path> | --to-line <n> [--in-file <path>]`
+
+Places a detached record explicitly.
+
+### `codedoc supersede <record> [--claim "..."] [--detail "..."] [--kind <kind>]`
+
+Revises a record. Writes a superseding record and re-anchors it to the code's current
+position; the original stays in history.
+
+### `codedoc retract <record> [--reason "..."]`
+
+Retires a record. Writes a tombstone; the claim stays queryable in history but leaves
+the active set.
+
+### `codedoc reindex`
+
+Rebuilds the SQLite projection from the ledger. The index is derived state and is
+never committed; this is only needed if it is deleted or corrupted.
+
+### `codedoc migrate [--write]`
+
+Reports the schema distribution of a ledger and applies any pending migrations.
+Refuses to operate on records written by a newer build, rather than discarding
+members it cannot represent.

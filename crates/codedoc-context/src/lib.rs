@@ -104,6 +104,40 @@ impl ContextPack {
             + self.other.len()
     }
 
+    pub fn deduplicate(&mut self) {
+        for section in [
+            &mut self.invariants,
+            &mut self.security,
+            &mut self.failure_modes,
+            &mut self.rationale,
+            &mut self.other,
+        ] {
+            let mut seen: Vec<(String, Option<String>)> = Vec::new();
+            section.retain(|claim| {
+                let identity = (claim.claim.clone(), claim.detail.clone());
+                if seen.contains(&identity) {
+                    return false;
+                }
+                seen.push(identity);
+                true
+            });
+        }
+        let mut seen_relations: Vec<String> = Vec::new();
+        self.relations.retain(|relation| {
+            let identity = format!(
+                "{}|{}|{}",
+                relation.subject.as_deref().unwrap_or(""),
+                relation.verb,
+                relation.object.as_deref().unwrap_or("")
+            );
+            if seen_relations.contains(&identity) {
+                return false;
+            }
+            seen_relations.push(identity);
+            true
+        });
+    }
+
     pub fn fit_within(&mut self, budget: usize) {
         let mut remaining = budget;
         let mut dropped = false;
@@ -168,11 +202,14 @@ pub fn assemble(graph: &Graph, target: Target, depth: u8) -> ContextPack {
     }
 
     if depth > 0 {
-        let symbols: Vec<String> = records
+        let mut symbols: Vec<String> = records
             .iter()
             .flat_map(|record| record.content().anchors.iter())
             .filter_map(|entry| entry.anchor.symbol.as_ref().map(ToString::to_string))
             .collect();
+        if let Some(requested) = pack.target.symbol.clone() {
+            symbols.push(requested);
+        }
         for symbol in symbols {
             for relation in graph.related_to(&symbol) {
                 let Kind::Relation(verb) = relation.kind() else {

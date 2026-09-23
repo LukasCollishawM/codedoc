@@ -121,6 +121,59 @@ impl fmt::Display for NodePath {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct SymbolTable {
+    declarations: BTreeMap<String, Vec<usize>>,
+}
+
+impl SymbolTable {
+    pub fn build(root: Node<'_>, adapter: &Adapter, source: &str) -> Self {
+        let mut declarations: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+        let mut cursor = root.walk();
+        let mut descending = true;
+        loop {
+            if descending {
+                let node = cursor.node();
+                if adapter.declares_symbol(node.kind())
+                    && let Some(path) = symbol_path_of(node, adapter, source)
+                {
+                    declarations.entry(path.to_string()).or_default().push(node.id());
+                }
+                if cursor.goto_first_child() {
+                    continue;
+                }
+                descending = false;
+            }
+            if cursor.goto_next_sibling() {
+                descending = true;
+                continue;
+            }
+            if !cursor.goto_parent() {
+                break;
+            }
+        }
+        SymbolTable { declarations }
+    }
+
+    pub fn cardinality(&self, symbol: &str) -> u32 {
+        self.declarations.get(symbol).map(|found| found.len() as u32).unwrap_or(0)
+    }
+
+    pub fn ordinal_of(&self, symbol: &str, node: Node<'_>) -> u32 {
+        let mut current = Some(node);
+        while let Some(candidate) = current {
+            if let Some(found) = self.declarations.get(symbol)
+                && let Some(position) =
+                    found.iter().position(|identity| *identity == candidate.id())
+            {
+                return position as u32;
+            }
+            current = candidate.parent();
+        }
+        0
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Anchor {
     pub file: RepoPath,
@@ -133,6 +186,10 @@ pub struct Anchor {
     pub preceding: ContextFingerprint,
     pub following: ContextFingerprint,
     pub shape: BTreeMap<String, u32>,
+    #[serde(default = "one_declaration")]
+    pub symbol_cardinality: u32,
+    #[serde(default)]
+    pub symbol_ordinal: u32,
     pub range: SourceRange,
 }
 
@@ -143,7 +200,8 @@ impl Anchor {
             root = parent;
         }
         let digests = fingerprint::compute_all(root, adapter, source);
-        Anchor::capture_with(file, adapter, source, node, &digests)
+        let symbols = SymbolTable::build(root, adapter, source);
+        Anchor::capture_with(file, adapter, source, node, &digests, &symbols)
     }
 
     pub fn capture_with(
@@ -152,8 +210,10 @@ impl Anchor {
         source: &str,
         node: Node<'_>,
         digests: &fingerprint::Digests,
+        symbols: &SymbolTable,
     ) -> Self {
         let symbol = symbol_path_of(node, adapter, source);
+        let rendered = symbol.as_ref().map(ToString::to_string).unwrap_or_default();
         let symbol_root = symbol.as_ref().and_then(|_| enclosing_declaration(node, adapter));
         Anchor {
             file,
@@ -166,6 +226,8 @@ impl Anchor {
             preceding: fingerprint::preceding_context_with(node, adapter, digests),
             following: fingerprint::following_context_with(node, adapter, digests),
             shape: fingerprint::shape_histogram(node, adapter),
+            symbol_cardinality: symbols.cardinality(&rendered),
+            symbol_ordinal: symbols.ordinal_of(&rendered, node),
             range: SourceRange::of(node),
         }
     }
@@ -179,6 +241,10 @@ impl Anchor {
     pub fn is_whole_declaration(&self) -> bool {
         self.node_path.is_empty()
     }
+}
+
+fn one_declaration() -> u32 {
+    1
 }
 
 fn enclosing_declaration<'tree>(node: Node<'tree>, adapter: &Adapter) -> Option<Node<'tree>> {

@@ -240,6 +240,7 @@ dependencies = [
  "codedoc-index",
  "codedoc-lang",
  "codedoc-ledger",
+ "codedoc-ops",
  "codedoc-verify",
  "serde_json",
  "tempfile",
@@ -357,12 +358,31 @@ dependencies = [
  "codedoc-index",
  "codedoc-lang",
  "codedoc-ledger",
+ "codedoc-ops",
  "codedoc-verify",
  "rmcp",
  "schemars",
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "codedoc-ops"
+version = "0.1.0"
+dependencies = [
+ "codedoc-anchor",
+ "codedoc-context",
+ "codedoc-core",
+ "codedoc-graph",
+ "codedoc-index",
+ "codedoc-lang",
+ "codedoc-ledger",
+ "codedoc-verify",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
 ]
 
 [[package]]

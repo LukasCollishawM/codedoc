@@ -271,7 +271,11 @@ impl<'tree, 'adapter> FileIndex<'tree, 'adapter> {
             .copied()
             .filter(|position| self.candidates[*position].declares)
             .collect();
-        let [declaration] = declarations.as_slice() else {
+
+        if declarations.len() as u32 != anchor.symbol_cardinality {
+            return Vec::new();
+        }
+        let Some(declaration) = declarations.get(anchor.symbol_ordinal as usize) else {
             return Vec::new();
         };
         let Some(target) = anchor.node_path.descend(self.candidates[*declaration].node) else {
@@ -290,6 +294,11 @@ impl<'tree, 'adapter> FileIndex<'tree, 'adapter> {
     fn by_similarity(&self, anchor: &Anchor) -> Option<Resolution> {
         let symbol = anchor.symbol.as_ref().map(ToString::to_string)?;
         let positions = self.by_symbol.get(&symbol)?;
+        let declarations =
+            positions.iter().filter(|position| self.candidates[**position].declares).count();
+        if declarations as u32 != anchor.symbol_cardinality {
+            return None;
+        }
         let mut scored: Vec<(f64, usize)> = positions
             .iter()
             .copied()
