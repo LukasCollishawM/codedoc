@@ -28,6 +28,8 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Changed
 
+- **Context retrieval is 60x faster at scale.** Relation lookup issued one query per symbol, with a `LIKE` the kind index cannot serve and an unindexed subquery. At 1.09M LOC and 27,420 records that cost 1.98s against a 100ms budget, while passing comfortably at 50k. A single bound query, an index-usable range predicate and an index on `parent` bring it to 33ms.
+
 - **The resolver no longer terminates on ambiguity.** A rung with more than one candidate falls through to rungs carrying more information rather than detaching immediately. On a 2095-record corpus this reduced detachment from 602 anchors to 121, without ever selecting among indistinguishable candidates. See [ADR-0004](docs/decisions/0004-ambiguity-falls-through.md).
 - **Fingerprints are computed bottom-up and memoised**, making whole-file fingerprinting linear in node count rather than quadratic in tree size. See [ADR-0005](docs/decisions/0005-merkle-fingerprints.md).
 - **`codedoc context` answers from the SQLite projection** instead of parsing the whole ledger: 230ms to 74ms.

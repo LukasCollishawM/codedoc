@@ -201,15 +201,18 @@ Behaviour that the specification mandates is tested from `conformance/` vectors 
 
 ### Performance budgets
 
-Measured, not aspirational. Figures come from a release build over the `rmcp` 3.4.1 source — 65 files, ~50k LOC, 2095 imported records:
+Measured, not aspirational. Two corpora, both release builds. The small one is the `rmcp` 3.4.1 source (65 files, ~50k LOC, 2095 records). The large one is 120 crates from the cargo registry: **1,910 files, 1.09M LOC, 27,420 records**.
 
-| operation | measured | budget |
-| --- | --- | --- |
-| `import --write` | 1.5s | 5s |
-| `verify` (2095 anchors) | 3.0s | 5s |
-| `context` | 74ms | 100ms |
+| operation | 50k LOC | 1.09M LOC | budget |
+| --- | --- | --- | --- |
+| `import --write` | 1.5s | 20.7s | — |
+| `reindex` | — | 2.9s | 60s |
+| `verify` | 3.0s | 30.0s | 60s |
+| `context` (depth 2) | 74ms | 33ms | 100ms |
 
-Both figures that were once over budget are back under, and how matters more than the numbers. `context` now answers from the SQLite projection instead of parsing the whole ledger — the index existed and the read path ignored it. `verify` got faster by accumulating symbol paths down the tree walk rather than rebuilding and reparsing a path string at every node; the hashing was never the bottleneck.
+Everything is inside budget at a million lines, but only after the scale test found something a smaller corpus could not. `context` was **1.98s** at 1M LOC while passing comfortably at 50k, because relation lookup ran one query per symbol, used a `LIKE 'relation.%'` that the kind index cannot serve, and an unindexed `NOT IN` subquery — a cost invisible until a file carried enough claims for the per-symbol loop to matter. One query with a bound `IN` list, a range predicate the index can use, and an index on `parent` took it to 33ms.
+
+The lesson is worth more than the number: a budget met on a small corpus says nothing about an algorithm that is linear in the wrong variable. Measure on the large corpus before claiming a budget is met.
 
 **Always measure release builds.** Debug figures for this workload are five to twenty times worse and will send you optimising the wrong thing; an early `verify` reading of two minutes was mostly `-O0`.
 
@@ -305,6 +308,6 @@ Correctness properties, not feature counts. All tracks proceed concurrently; the
 - **G1** Canonical encoding byte-identical across Linux, macOS, and Windows. Vectors in `conformance/encoding/`, run on a three-OS matrix.
 - **G2** Zero false reattachments. **The hard zero is carried by the property test**, which has ground truth by construction: for any tree and any edit script, resolution is correct or `Detached`. Replay over real history cannot label outcomes automatically, so it measures survival and *flags* confident rungs landing on a different symbol for human inspection. Do not claim replay proves the invariant; it evidences it.
 - **G3** Ledger verifies from genesis; index rebuilds byte-identically from it. **Met** — asserted by `crates/codedoc-index/tests/rebuildable.rs`.
-- **G4** Context retrieval within budget. **Met** at 50k LOC; not yet exercised at 1M.
+- **G4** Context retrieval within budget on a 1M-LOC repository. **Met** — 33ms at 1.09M LOC and 27,420 records.
 - **G5** **Dogfood.** This repository contains zero comments, carries its own architecture in its own ledger, and `codedoc verify` runs green in its own CI. The project is not real until it is its own first user.
 - **G6** **Independence.** A second implementation, written in another language against `docs/spec/` alone and never reading the Rust, passes `conformance/`. Until that happens this is a tool with a data directory; afterwards it is a format.

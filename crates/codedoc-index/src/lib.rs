@@ -8,7 +8,7 @@ use rusqlite::{Connection, params};
 use thiserror::Error;
 
 pub const INDEX_FILE: &str = "index.sqlite";
-pub const INDEX_SCHEMA_VERSION: i64 = 2;
+pub const INDEX_SCHEMA_VERSION: i64 = 3;
 
 const SCHEMA: &str = "
 CREATE TABLE records (
@@ -39,6 +39,8 @@ CREATE TABLE anchors (
 CREATE INDEX anchors_by_file ON anchors(file);
 CREATE INDEX anchors_by_symbol ON anchors(symbol);
 CREATE INDEX records_by_kind ON records(kind);
+CREATE INDEX records_by_parent ON records(parent) WHERE parent IS NOT NULL;
+CREATE INDEX anchors_by_symbol_record ON anchors(symbol, record_id);
 ";
 
 #[derive(Debug, Error)]
@@ -312,24 +314,26 @@ impl Index {
     }
 
     pub fn active_relations_touching(&self, symbols: &[String]) -> Result<Vec<Record>, IndexError> {
-        let mut collected: Vec<Record> = Vec::new();
-        for symbol in symbols {
-            let found = self.decode_rows(
-                "SELECT DISTINCT r.canonical FROM records r
-                 JOIN anchors a ON a.record_id = r.id
-                 WHERE a.symbol = ?1 AND r.kind LIKE 'relation.%'
-                   AND r.id NOT IN (SELECT parent FROM records WHERE parent IS NOT NULL)
-                 ORDER BY r.canonical",
-                &[symbol],
-            )?;
-            for record in found {
-                let known = collected.iter().any(|existing| existing.id() == record.id());
-                if !known {
-                    collected.push(record);
-                }
-            }
+        if symbols.is_empty() {
+            return Ok(Vec::new());
         }
-        Ok(collected)
+        let mut unique: Vec<&String> = symbols.iter().collect();
+        unique.sort();
+        unique.dedup();
+
+        let placeholders = vec!["?"; unique.len()].join(",");
+        let sql = format!(
+            "SELECT DISTINCT r.canonical FROM records r
+             JOIN anchors a ON a.record_id = r.id
+             WHERE a.symbol IN ({placeholders})
+               AND r.kind >= 'relation.' AND r.kind < 'relation/'
+               AND r.parent IS NULL
+               AND r.id NOT IN (SELECT parent FROM records WHERE parent IS NOT NULL)
+             ORDER BY r.canonical"
+        );
+        let bound: Vec<&dyn rusqlite::ToSql> =
+            unique.iter().map(|symbol| *symbol as &dyn rusqlite::ToSql).collect();
+        self.decode_rows(&sql, &bound)
     }
 
     pub fn files(&self) -> Result<Vec<String>, IndexError> {
