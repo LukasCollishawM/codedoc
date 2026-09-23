@@ -383,6 +383,7 @@ dependencies = [
  "codedoc-ledger",
  "codedoc-render",
  "codedoc-verify",
+ "rayon",
  "serde",
  "serde_json",
  "tempfile",

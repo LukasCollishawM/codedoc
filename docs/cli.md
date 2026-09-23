@@ -107,6 +107,22 @@ Projects the ledger into something other than a terminal.
 
 Writes to stdout, or to `--out`.
 
+### `codedoc coverage [<path>...] [--limit N]`
+
+What fraction of declarations carry at least one active record, overall and by file,
+with the thinnest files listed first. Tests, examples, benches and vendored
+directories are excluded, since they are not what you document.
+
+```
+$ codedoc coverage crates
+3% — 21 of 686 declarations carry a record, across 41 files
+```
+
+**Coverage is a prompt, not a target.** A codebase where every declaration carries a
+record has mostly restated its own code, which is the failure mode this project
+exists to avoid. It is useful for the opposite question: after importing a few
+thousand comments, which parts of the system got nothing?
+
 ### `codedoc stats`
 
 Record counts by kind, relation count, ledger integrity, and which scopes are present.

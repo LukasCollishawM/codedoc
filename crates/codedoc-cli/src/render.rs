@@ -21,6 +21,7 @@ pub fn human(payload: &Value) -> String {
         Some("retract") => render_retract(payload, &mut out),
         Some("detached") => render_detached(payload, &mut out),
         Some("conflicts") => render_conflicts(payload, &mut out),
+        Some("coverage") => render_coverage(payload, &mut out),
         Some("repair") => render_repair(payload, &mut out),
         Some("review") => {
             let _ = writeln!(out, "{}", text(payload, "output"));
@@ -331,6 +332,41 @@ fn render_detached(payload: &Value, out: &mut String) {
     let _ = writeln!(out, "  codedoc resolve <record> --to-line <line> --in-file <path>");
     let _ = writeln!(out, "or drop it:");
     let _ = writeln!(out, "  codedoc retract <record> --reason \"...\"");
+}
+
+fn render_coverage(payload: &Value, out: &mut String) {
+    let declared = count(payload, "declarations");
+    if declared == 0 {
+        let _ = writeln!(out, "no declarations found in the scanned paths");
+        return;
+    }
+    let _ = writeln!(
+        out,
+        "{}% — {} of {} declarations carry a record, across {} files",
+        count(payload, "percent"),
+        count(payload, "documented"),
+        declared,
+        count(payload, "files")
+    );
+
+    let empty = Vec::new();
+    let thinnest = payload["thinnest"].as_array().unwrap_or(&empty);
+    if !thinnest.is_empty() {
+        let _ = writeln!(out);
+        let _ = writeln!(out, "thinnest coverage:");
+        for entry in thinnest {
+            let _ = writeln!(
+                out,
+                "  {:>3}/{:<3}  {}",
+                entry["documented"].as_u64().unwrap_or(0),
+                entry["declarations"].as_u64().unwrap_or(0),
+                entry["file"].as_str().unwrap_or("")
+            );
+        }
+    }
+    let _ = writeln!(out);
+    let _ = writeln!(out, "Coverage is a prompt, not a target. A codebase where every");
+    let _ = writeln!(out, "declaration carries a record has mostly restated its own code.");
 }
 
 fn render_conflicts(payload: &Value, out: &mut String) {

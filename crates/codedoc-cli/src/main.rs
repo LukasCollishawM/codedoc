@@ -189,6 +189,13 @@ enum Command {
 
     Conflicts,
 
+    Coverage {
+        paths: Vec<String>,
+
+        #[arg(long, default_value_t = 10)]
+        limit: usize,
+    },
+
     Review {
         #[arg(default_value = "HEAD")]
         base: String,
@@ -331,6 +338,7 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
         Command::Relate(args) => command_relate(&cli.root, scope, args),
         Command::Detached => command_detached(&cli.root),
         Command::Conflicts => Ok(ops::conflicts(&cli.root)?),
+        Command::Coverage { paths, limit } => Ok((ops::coverage(&cli.root, paths, *limit)?, 0)),
         Command::Review { base, out } => {
             let (payload, code) = ops::review(&cli.root, base)?;
             if let Some(path) = out {

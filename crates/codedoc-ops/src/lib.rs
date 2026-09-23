@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 mod author;
+mod coverage;
 mod import;
 mod lifecycle;
 mod query;
@@ -8,6 +9,7 @@ mod record;
 mod repair;
 
 pub use author::Attribution;
+pub use coverage::coverage;
 pub use import::import;
 pub use lifecycle::{Relocation, resolve, retract, supersede};
 pub use query::{
