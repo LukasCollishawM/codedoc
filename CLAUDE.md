@@ -185,15 +185,15 @@ Behaviour that the specification mandates is tested from `conformance/` vectors 
 
 ### Performance budgets
 
-Measured, not aspirational. Current figures come from a release build over the `rmcp` 3.4.1 source — 65 files, ~50k LOC, 2095 imported records:
+Measured, not aspirational. Figures come from a release build over the `rmcp` 3.4.1 source — 65 files, ~50k LOC, 2095 imported records:
 
 | operation | measured | budget |
 | --- | --- | --- |
 | `import --write` | 1.5s | 5s |
-| `verify` (2095 anchors) | 6.4s | 5s |
-| `context` | 230ms | 100ms |
+| `verify` (2095 anchors) | 3.0s | 5s |
+| `context` | 74ms | 100ms |
 
-Two of those are over budget, deliberately recorded rather than quietly restated. `verify` costs a full Merkle pass per file with records; the fix is caching digests keyed by file content hash. `context` loads and parses the entire ledger through `Graph::load` when it should answer from the SQLite projection — the index exists and the read path does not use it, which is the most glaring architectural gap in the current tree.
+Both figures that were once over budget are back under, and how matters more than the numbers. `context` now answers from the SQLite projection instead of parsing the whole ledger — the index existed and the read path ignored it. `verify` got faster by accumulating symbol paths down the tree walk rather than rebuilding and reparsing a path string at every node; the hashing was never the bottleneck.
 
 **Always measure release builds.** Debug figures for this workload are five to twenty times worse and will send you optimising the wrong thing; an early `verify` reading of two minutes was mostly `-O0`.
 
@@ -289,6 +289,6 @@ Correctness properties, not feature counts. All tracks proceed concurrently; the
 - **G1** Canonical encoding byte-identical across Linux, macOS, and Windows. Vectors in `conformance/encoding/`, run on a three-OS matrix.
 - **G2** Zero false reattachments. **The hard zero is carried by the property test**, which has ground truth by construction: for any tree and any edit script, resolution is correct or `Detached`. Replay over real history cannot label outcomes automatically, so it measures survival and *flags* confident rungs landing on a different symbol for human inspection. Do not claim replay proves the invariant; it evidences it.
 - **G3** Ledger verifies from genesis; index rebuilds byte-identically from it. **Met** — asserted by `crates/codedoc-index/tests/rebuildable.rs`.
-- **G4** Context retrieval within budget on a 1M-LOC repository. Not met; see the budgets table.
+- **G4** Context retrieval within budget. **Met** at 50k LOC; not yet exercised at 1M.
 - **G5** **Dogfood.** This repository contains zero comments, carries its own architecture in its own ledger, and `codedoc verify` runs green in its own CI. The project is not real until it is its own first user.
 - **G6** **Independence.** A second implementation, written in another language against `docs/spec/` alone and never reading the Rust, passes `conformance/`. Until that happens this is a tool with a data directory; afterwards it is a format.
