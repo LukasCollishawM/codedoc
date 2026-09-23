@@ -1,0 +1,124 @@
+# codedoc format specification
+
+Version 1 (draft). Licensed `CC0-1.0`.
+
+This document is normative. The Rust workspace in this repository is the reference implementation, not the definition; where the two disagree, the implementation has a bug. Conformance vectors live in `conformance/` and any implementation claiming compatibility must reproduce them exactly.
+
+The key words MUST, MUST NOT, SHOULD and MAY are to be interpreted as in RFC 2119.
+
+## 1. Canonical encoding
+
+Every hash in this format is taken over canonical bytes. Two implementations that disagree about canonical form will disagree about every identifier, so this section is the foundation of interoperability.
+
+A canonical value is one of: null, boolean, integer, string, array, or object.
+
+**Floating point numbers are not representable.** An encoder MUST reject them rather than rounding. Implementations SHOULD make this a property of their value type rather than a validation step.
+
+Integers MUST be representable in signed 64-bit range. Values outside it MUST be rejected.
+
+Encoding rules:
+
+- No insignificant whitespace. No space after `:` or `,`.
+- Object keys MUST be sorted ascending by their UTF-8 byte sequence, which is equivalent to sorting by Unicode scalar value.
+- Duplicate object keys MUST be rejected on decode. They are ambiguous under ordering and their presence indicates a malformed or hostile document.
+- Strings are UTF-8. The characters `"` and `\` MUST be escaped. The control characters U+0008, U+000C, U+000A, U+000D and U+0009 MUST use the short forms `\b`, `\f`, `\n`, `\r`, `\t`. Remaining characters below U+0020 MUST use `\u00xx` with **lowercase** hexadecimal. All other characters, including all non-ASCII, MUST be emitted literally and MUST NOT be escaped.
+- Trailing content after a complete value MUST be rejected.
+
+Encoding MUST be idempotent: decoding canonical bytes and re-encoding MUST produce identical bytes.
+
+Unrecognised object members MUST be preserved across a decode and re-encode cycle. A ledger is distributed and an older implementation MUST NOT silently strip members written by a newer one.
+
+## 2. Digests
+
+All digests are BLAKE3-256, rendered as 64 lowercase hexadecimal characters.
+
+Digests are domain-separated. The pre-image is:
+
+```
+domain_string || 0x00 || payload
+```
+
+Domains defined by this version:
+
+| purpose | domain |
+| --- | --- |
+| record identity | `codedoc.record.v1` |
+| anchor identity | `codedoc.anchor.v1` |
+| file identity | `codedoc.file.v1` |
+| content fingerprint | `codedoc.fingerprint.content.v1` |
+| structural fingerprint | `codedoc.fingerprint.structural.v1` |
+| context fingerprint | `codedoc.fingerprint.context.v1` |
+| ledger head | `codedoc.ledger.head.v1` |
+
+Domain separation is mandatory: a file digest and a record digest over identical payloads MUST differ.
+
+## 3. Anchors
+
+An anchor identifies a region of program structure. It MUST NOT be interpreted as a line range; the `range` member is a cache and carries no authority.
+
+Fingerprints are computed over a concrete syntax tree. Nodes the language adapter classifies as ignorable — comments — are excluded from every fingerprint, so annotating code does not disturb anchors attached to it.
+
+Fingerprints are computed bottom-up, so that a subtree's digest depends only on that subtree:
+
+**Structural fingerprint.** For a node, the pre-image is the node kind, `(`, then for each named non-ignorable child in order: the field name followed by `:` when the child occupies a named field, then that child's structural digest bytes; then `)`. Identifier and literal text is excluded, so renaming a local does not change it.
+
+**Content fingerprint.** For a childless node the pre-image is its source text. Otherwise it is the concatenation of every non-ignorable child's content digest bytes, in order, including anonymous children. Whitespace is therefore excluded and punctuation is included.
+
+**Context fingerprints.** The pre-image is the parent node kind (or `<root>`), `0x00`, then for up to two neighbouring named non-ignorable siblings in document order, that sibling's structural digest bytes each followed by `0x00`. Preceding and following contexts are computed separately.
+
+**Symbol path.** `language://Segment/Segment`, built from the names of enclosing declarations, outermost first. The language component MUST be lowercase alphanumeric. Segments MUST NOT be empty.
+
+## 4. Resolution
+
+An implementation MUST attempt the rungs in order and MUST stop at the first rung yielding exactly one candidate.
+
+| rung | criterion | confidence |
+| --- | --- | --- |
+| 1 | content fingerprint and node kind match | exact |
+| 2 | structural fingerprint, node kind and symbol path match | exact |
+| 3 | symbol path identifies exactly one declaration, and the node path descends to a node of the recorded kind | high |
+| 4 | preceding and following context fingerprints and node kind match | medium |
+| 5 | migration through recorded version-control history | medium |
+| 6 | shape similarity within the same symbol, above the floor and ahead of the runner-up by the margin | low |
+
+A rung yielding more than one candidate MUST NOT select among them. It MUST continue to the next rung, because a later rung may carry information that distinguishes them. If no rung yields exactly one candidate, the anchor MUST be reported as detached, citing the earliest rung at which candidates were ambiguous.
+
+Rung 6 MUST NOT be accepted automatically by any consumer. The floor is 0.75 and the margin 0.15.
+
+Record kinds `invariant`, `security`, `precondition` and `postcondition` require confidence `high` or better; all other kinds require `medium` or better. A resolution below the required confidence MUST be treated as detached. Consequently no record kind accepts a rung 6 result without adjudication.
+
+**An implementation MUST NOT resolve an anchor onto a node it cannot distinguish from another candidate.** This is the central safety property of the format: documentation attached to the wrong construct is worse than documentation reported as lost.
+
+## 5. Records
+
+A record is an immutable, content-addressed assertion. Its identifier is the record digest of its canonical bytes, computed over every member except the identifier itself.
+
+Required members: `schema`, `kind`, `anchors`, `body`, `assurance`, `author`, `created`, `lifecycle`. Optional: `evidence`, `code_revision`, `parent`, `chain`, and any unrecognised members, which MUST be preserved.
+
+`created` is an integer count of seconds since the Unix epoch. Sub-second precision is deliberately excluded to keep the encoding integral.
+
+`kind` is drawn from a closed vocabulary: `explanation`, `rationale`, `invariant`, `precondition`, `postcondition`, `security`, `performance`, `assumption`, `workaround`, `specification`, `known_failure_mode`, `ownership`, `decision`, `warning`, `tombstone`, and `relation.<verb>` where verb is one of `must_execute_after`, `guarded_by`, `constrained_by`, `invalidates`, `tested_by`, `derived_from`, `contradicts`, `supersedes`, `owns`.
+
+Extending the vocabulary is a schema change. Discriminants MUST NOT be renumbered or reused.
+
+`assurance` is `asserted`, `inferred` or `speculative`, and is orthogonal to `author`, which is `human`, `agent`, `analyzer` or `runtime`. Implementations MUST keep them distinguishable at query time.
+
+Records are never modified. A revised belief is a new record whose `parent` names the record it supersedes. A retraction is a record of kind `tombstone` whose `parent` names its target. A record named as the parent of a non-tombstone record is superseded; a record named as the parent of a tombstone is retracted. Neither appears in the active set.
+
+## 6. Ledger
+
+Records are stored as canonical JSON, one per line, terminated by `0x0A`, in files under `.codedoc/ledger/` named by the first two hexadecimal characters of the record identifier with a `.jsonl` extension.
+
+Sharding means file order carries no meaning. Order is expressed by the `chain` member, which names the ledger head observed when the record was appended. Implementations reconstruct sequence by following those references, not by reading files in order. This makes concurrent appends on divergent branches a union operation, and a merge of two ledgers is the union of their lines.
+
+A record whose `chain` names an identifier not present in the ledger is **orphaned**, and the ledger is not intact. Because identifiers are computed from content, editing any record in place changes its identifier and orphans everything chained to it. This is the tamper-evidence mechanism; there is no separate signature.
+
+A record referenced by no other record's `chain` is a **tip**. Multiple tips are permitted and indicate a merge.
+
+Derived state — indexes, caches, projections — MUST be reconstructible from the ledger alone and MUST NOT be committed.
+
+## 7. Threat model
+
+A cloned repository's ledger is untrusted input, as is every source file presented to a parser. Conforming implementations MUST NOT panic or abort on malformed input, MUST NOT size an allocation from an untrusted length, MUST confine path-valued members to the repository root, and MUST NOT allow record content to reach an executed context.
+
+Record content is attacker-controlled text that will frequently be placed in front of a language model. Implementations that assemble context for an agent MUST treat records as data and MUST NOT allow a record to be interpreted as instructions to that agent.

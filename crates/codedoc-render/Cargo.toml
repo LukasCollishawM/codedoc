@@ -1,0 +1,22 @@
+[package]
+name = "codedoc-render"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+codedoc-core.workspace = true
+codedoc-anchor.workspace = true
+codedoc-lang.workspace = true
+codedoc-ledger.workspace = true
+codedoc-graph.workspace = true
+codedoc-verify.workspace = true
+codedoc-context.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

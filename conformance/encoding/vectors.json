@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "description": "Canonical encoding vectors. Any implementation must reproduce canonical and record_digest exactly from input.",
+  "vectors": [
+    {
+      "name": "keys_sort_ascending",
+      "input": "{\"c\":3,\"a\":1,\"b\":2}",
+      "canonical": "{\"a\":1,\"b\":2,\"c\":3}",
+      "record_digest": "dc375f659b96476d52888b61237121fdbf6f0898e4e8854b84452e9c8d316710"
+    },
+    {
+      "name": "nested_keys_sort",
+      "input": "{\"z\":{\"y\":1,\"x\":{\"b\":2,\"a\":1}},\"a\":[3,2,1]}",
+      "canonical": "{\"a\":[3,2,1],\"z\":{\"x\":{\"a\":1,\"b\":2},\"y\":1}}",
+      "record_digest": "83951192e250c68d694838a5759fc221d038412bd69ceb83f66779c67195a3c3"
+    },
+    {
+      "name": "non_ascii_emitted_raw",
+      "input": "{\"greek\":\"αβ\",\"emoji\":\"😀\"}",
+      "canonical": "{\"emoji\":\"😀\",\"greek\":\"αβ\"}",
+      "record_digest": "cb1a1873f920b4fa151651ee72541bc8e2bbac512528254f10cafc6d118e3fe4"
+    },
+    {
+      "name": "control_characters_escape_lowercase",
+      "input": "{\"bell\":\"\\u0007\",\"unit\":\"\\u001f\"}",
+      "canonical": "{\"bell\":\"\\u0007\",\"unit\":\"\\u001f\"}",
+      "record_digest": "6a9dd6e7c4c47147811e9cd40939255092c86650953810d64ad4f3f45be4dfff"
+    },
+    {
+      "name": "short_escape_forms",
+      "input": "{\"s\":\"\\b\\f\\n\\r\\t\\\"\\\\\"}",
+      "canonical": "{\"s\":\"\\b\\f\\n\\r\\t\\\"\\\\\"}",
+      "record_digest": "ca46e8b53375358f8b36bc2a397480bc75ce45b450c20afecc11a9a055b6e5a7"
+    },
+    {
+      "name": "integer_bounds",
+      "input": "{\"max\":9223372036854775807,\"min\":-9223372036854775808}",
+      "canonical": "{\"max\":9223372036854775807,\"min\":-9223372036854775808}",
+      "record_digest": "711a7476d204d0befb7cb85ee34f8af5b0f823f4019b65c126e8a26bbc21643a"
+    },
+    {
+      "name": "empty_containers",
+      "input": "{\"array\":[],\"object\":{}}",
+      "canonical": "{\"array\":[],\"object\":{}}",
+      "record_digest": "b0cc09707b64e22cf1f4bbb589b0e12b3ed505eaa3e795c688fbc5e779cbfbc2"
+    },
+    {
+      "name": "scalars",
+      "input": "{\"null\":null,\"true\":true,\"false\":false,\"zero\":0}",
+      "canonical": "{\"false\":false,\"null\":null,\"true\":true,\"zero\":0}",
+      "record_digest": "4f43d23a6c6442ed85717c265dc54d6a6abb95a4e74856a2d3f8b346c5a8ad2d"
+    },
+    {
+      "name": "array_order_is_preserved",
+      "input": "{\"ordered\":[3,1,2,\"a\",\"A\"]}",
+      "canonical": "{\"ordered\":[3,1,2,\"a\",\"A\"]}",
+      "record_digest": "7f7882edca1c3c737b067e102c5bcde2a36d33cb3d1a8e7caeaf24b2465049b0"
+    },
+    {
+      "name": "key_ordering_is_bytewise",
+      "input": "{\"Z\":1,\"a\":2,\"A\":3,\"z\":4,\"é\":5}",
+      "canonical": "{\"A\":3,\"Z\":1,\"a\":2,\"z\":4,\"é\":5}",
+      "record_digest": "5a15f76f80c956b9d3aeed1a08439cc251d429942fa5af4651a9ca4cd72cda03"
+    }
+  ]
+}

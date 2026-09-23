@@ -1,0 +1,4 @@
+/target
+**/*.rs.bk
+.codedoc/index.sqlite
+.codedoc/index.sqlite-*

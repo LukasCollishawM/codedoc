@@ -1,0 +1,51 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "xtask"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/lukas/codedoc"
+authors = ["codedoc contributors"]
+
+[workspace.dependencies]
+codedoc-core = { path = "crates/codedoc-core", version = "0.1.0" }
+codedoc-lang = { path = "crates/codedoc-lang", version = "0.1.0" }
+codedoc-anchor = { path = "crates/codedoc-anchor", version = "0.1.0" }
+codedoc-ledger = { path = "crates/codedoc-ledger", version = "0.1.0" }
+codedoc-index = { path = "crates/codedoc-index", version = "0.1.0" }
+codedoc-graph = { path = "crates/codedoc-graph", version = "0.1.0" }
+codedoc-context = { path = "crates/codedoc-context", version = "0.1.0" }
+codedoc-verify = { path = "crates/codedoc-verify", version = "0.1.0" }
+codedoc-render = { path = "crates/codedoc-render", version = "0.1.0" }
+
+blake3 = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+thiserror = "2"
+tree-sitter = "0.25"
+tree-sitter-language = "0.1"
+tree-sitter-rust = "0.24"
+tree-sitter-python = "0.25"
+tree-sitter-c-sharp = "0.23"
+tree-sitter-go = "0.25"
+tree-sitter-java = "0.23"
+tree-sitter-typescript = "0.23"
+rusqlite = { version = "0.37", features = ["bundled"] }
+clap = { version = "4", features = ["derive"] }
+lsp-server = "0.10"
+lsp-types = "0.97"
+anyhow = "1"
+rmcp = { version = "3", features = ["server", "transport-io", "macros"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std"] }
+proptest = "1"
+insta = { version = "1", features = ["json"] }
+time = { version = "0.3", features = ["formatting", "parsing", "macros"] }
+walkdir = "2"
+tempfile = "3"
+
+[profile.release]
+lto = "thin"
+strip = true

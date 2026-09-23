@@ -1,0 +1,17 @@
+[package]
+name = "codedoc-anchor"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+codedoc-core.workspace = true
+codedoc-lang.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tree-sitter.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

@@ -1,0 +1,13 @@
+[package]
+name = "xtask"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+codedoc-core.workspace = true
+codedoc-anchor.workspace = true
+codedoc-lang.workspace = true
+walkdir.workspace = true
+tree-sitter.workspace = true

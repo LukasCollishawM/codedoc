@@ -1,0 +1,253 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this is
+
+codedoc is a **persistent semantic memory protocol for source repositories**. Documentation is one projection of it, not the point of it.
+
+Comments are knowledge trapped in the one medium that cannot be queried, versioned independently, typed, contradicted, superseded, or attached to more than one place at once. codedoc moves that knowledge into an append-only ledger of immutable, content-addressed records anchored to **program structure** — not to line numbers, not to files. The source file keeps only executable source. Everything else lives beside it and is projected back on demand.
+
+The consumer is an agent. Human legibility is a rendering concern, delivered by the LSP server and `codedoc render`. Design every interface for the agent first; if the human projection is inconvenient, fix the renderer, never the protocol.
+
+The thesis this repository exists to prove:
+
+```
+today:     repo -> agent infers -> agent acts -> understanding discarded
+codedoc:   repo + accumulated understanding -> agent acts -> repo + understanding + delta
+```
+
+`.codedoc/` is the mechanism by which a repository develops institutional memory.
+
+## The four invariants
+
+These are not guidelines. A change that violates one is wrong regardless of what it enables. They are enforced in CI and each has a dedicated test suite.
+
+**I1 — The ledger is the only truth.** Every index, cache, and projection is derived and must be reconstructible from the ledger alone. `codedoc reindex --from-scratch` after `rm -rf .codedoc/index.sqlite` must produce a byte-identical index. If a piece of state cannot be rebuilt, it does not belong outside the ledger.
+
+**I2 — Never silently reattach.** A resolution either clears its evidence threshold or the anchor becomes `DETACHED` and waits for adjudication. **Ambiguity is failure, not a tiebreak.** Two candidates at the same rung means DETACHED, always. Low survival rates are a quality problem and get iterated on; a single false reattachment is a corruption event, because it makes the corpus confidently wrong, which is worse than empty. Target anchor survival is soft. **False-reattachment rate is a hard zero.**
+
+**I3 — Records are immutable.** No record is ever edited or deleted. Change emits a superseding record; removal emits a tombstone. History is queryable by construction — "what did we believe about this code at commit X" is a primary query, not an archaeology exercise.
+
+**I4 — Canonical encoding is law.** Identical input produces identical bytes and therefore identical hashes, on every platform, forever. Sorted keys, no floats, UTF-8 NFC, explicit integer widths, `BTreeMap` never `HashMap` anywhere a value reaches serialization. Unknown fields survive a decode/encode round-trip untouched — the ledger is distributed, and an old binary must not silently strip what a new one wrote.
+
+## Architecture
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│ projections   LSP hovers/gutters · rustdoc · mermaid · site   │  codedoc-render
+│               PR comments · onboarding docs · arch diagrams   │  codedoc-lsp
+├───────────────────────────────────────────────────────────────┤
+│ agent API     attach · supersede · tombstone · query          │  codedoc-mcp
+│               traverse · verify · adjudicate · context        │  codedoc-cli
+├───────────────────────────────────────────────────────────────┤
+│ context       retrieval + ranking + packing to a token budget │  codedoc-context
+├───────────────────────────────────────────────────────────────┤
+│ graph         typed records · relations · lifecycle           │  codedoc-graph
+│               provenance · confidence · supersession chains   │  codedoc-verify
+├───────────────────────────────────────────────────────────────┤
+│ query         derived SQLite projection, rebuildable (I1)     │  codedoc-index
+├───────────────────────────────────────────────────────────────┤
+│ ledger        CAS objects · hash chain · git integration      │  codedoc-ledger
+├───────────────────────────────────────────────────────────────┤
+│ anchor        tree-sitter CST · fingerprints · resolver ladder│  codedoc-anchor
+│               per-language normalization adapters             │  codedoc-lang
+├───────────────────────────────────────────────────────────────┤
+│ primitives    ids · hashes · canonical codec · newtypes       │  codedoc-core
+└───────────────────────────────────────────────────────────────┘
+                              source code
+```
+
+Dependencies flow strictly downward. `core <- anchor <- lang`; `core <- ledger <- index`; `graph` over core+ledger; `context` over graph+index+anchor; cli/lsp/mcp/render at the top only. An upward or lateral dependency between peer crates is a design error — resolve it by moving the shared concept down, never by adding the edge.
+
+`editors/vscode/` and `editors/rider/` are thin JSON-RPC clients over `codedoc-lsp`. They contain **no** anchor logic, no ledger logic, and no schema knowledge beyond the wire types. Any editor feature requiring new intelligence is implemented in the server.
+
+## Anchors
+
+An anchor is a durable reference to program structure. It carries several independent signals, each of which fails differently, which is what lets the resolver distinguish "this moved" from "this changed":
+
+- `symbol_path` — language-normalized, e.g. `csharp://PaymentService/AuthorizeAsync`. Coarse and stable.
+- `node_path` — structural path within the symbol over **named** tree-sitter nodes only, e.g. `body/if[2]/consequence`. Skipping anonymous nodes makes it immune to formatting.
+- `structural_fingerprint` — subtree shape: node kinds and field names, identifiers and literals excluded. Survives renames; detects reshaping.
+- `content_fingerprint` — normalized token stream including identifiers, whitespace and comments stripped. Near-exact identity.
+- `context_fingerprints` — preceding and following sibling subtrees. Relocates a node that moved without changing.
+- `range` — cached `line:col`. **A cache. Never authoritative.** Code that treats it as identity is a bug.
+
+The resolver is a ladder. Each rung yields a confidence, and the rung that fired is **recorded in the resolution** — a `Resolution` value cannot exist without its provenance, because the type makes that unrepresentable:
+
+```
+1  content_fingerprint unique match                    -> Exact
+2  structural_fingerprint + symbol_path unique         -> Exact      (identifier renames)
+3  symbol_path + node_path                             -> High
+4  context fingerprints bracket a unique region        -> Medium
+5  git rename/hunk migration from recorded revision    -> Medium
+6  normalized-token similarity, unique best by margin  -> Low        (never auto-accepted)
+7  otherwise                                           -> Detached
+```
+
+Rung 6 never auto-accepts. Anything landing at `Low` is queued for adjudication. Kinds carrying safety weight — `invariant`, `security`, `precondition`, `postcondition` — require `High` or better and are otherwise detached even when a plausible candidate exists. Being wrong about an invariant is the failure mode that ends the project.
+
+**Language coverage, first wave:** Rust, C#, TypeScript, Python, Go, Java. Rust because the core is Rust and dogfooding is a gate. C# because it is the origin context. Python is **mandatory in the first wave specifically because it is structurally alien** — a resolver tuned only on brace languages silently encodes brace assumptions into its normalization, and that must surface in week one rather than year one. Each language is an adapter implementing one trait; a language-specific branch anywhere outside `codedoc-lang` is a leak.
+
+## Records
+
+Immutable, content-addressed by blake3 over canonical bytes. Every record carries `id`, `parent` (supersession chain), `chain` (ledger head at append), `kind`, `anchors`, `body`, `evidence`, `confidence`, `author`, `code_revision`, `created`, `lifecycle`.
+
+Two shapes, and the distinction is load-bearing:
+
+**Assertions** attach to one anchor: `explanation`, `rationale`, `invariant`, `precondition`, `postcondition`, `security`, `performance`, `assumption`, `workaround`, `specification`, `known_failure_mode`, `ownership`, `decision`, `warning`.
+
+**Relations** connect two role-tagged anchors and are the reason this is a graph rather than a comment store: `must_execute_after`, `guarded_by`, `constrained_by`, `invalidates`, `tested_by`, `derived_from`, `contradicts`, `supersedes`, `owns`. These encode facts belonging to neither endpoint, which therefore have no home in a comment — the clearest single argument for the whole format.
+
+`confidence` is `asserted | inferred | speculative`, orthogonal to `author`, which is `human | agent{model, session} | analyzer | runtime`. An agent's speculation and a human's assertion must never be indistinguishable at query time, and the context packer weights them differently.
+
+The kind vocabulary is **closed and versioned**. Extending it is a schema change with a decision record. Never renumber, never reuse a retired discriminant.
+
+## Storage
+
+```
+.codedoc/
+  ledger/*.jsonl     append-only, canonical JSON, one record per line, hash-prefix sharded
+  objects/           content-addressed blobs for large bodies
+  index.sqlite       derived, gitignored, rebuildable (I1)
+  config.toml
+```
+
+The ledger is committed text, not binary. Reviewability in a PR diff and greppability without tooling beat encoding efficiency; the SQLite projection carries query performance, so the ledger does not have to. Sharding by hash prefix plus append-only semantics makes merges a union operation — ship the driver via `codedoc git install-merge-driver` and never make a user hand-resolve a conflict in an append-only log.
+
+## Code standards
+
+Written for a repository whose entire purpose is the claim that code should carry no prose.
+
+### No comments. None.
+
+No `//`, no `/* */`, anywhere under `crates/**/src`. This is the thesis, enforced by `cargo xtask lint-comments` in CI.
+
+Explanation goes in the ledger. Until the ledger can hold it, it goes in `docs/decisions/`. The arc is deliberate: `///` doc comments are permitted **only on `pub` items**, and only until `codedoc render rustdoc` can generate them from the ledger — at which point they become build artifacts and the sources lose them too. The day this repository's public API documentation is emitted from its own ledger is the day the product is real.
+
+`unsafe` is banned outright, so `// SAFETY:` never arises. Every `#[allow(...)]` must have a corresponding `workaround` record anchored to that item; `codedoc lint allows` fails CI otherwise. The suppression and its justification are linked by structure rather than by adjacency — the entire pitch, applied to ourselves.
+
+If you feel the urge to write a comment, that urge is the product's input signal. Emit a record.
+
+### Types
+
+Newtype every identifier: `RecordId`, `AnchorId`, `SymbolPath`, `FileId`, `GitRev`, `Blake3`, `LedgerHead`. A bare `String` crossing a module boundary as an identifier is a defect. Parse, don't validate — the constructor is the only door into a valid value, and nothing past it re-checks.
+
+Make illegal states unrepresentable. `Resolution` carries its rung. A `Record` cannot exist without provenance. A detached anchor cannot be read as though resolved. Prefer the compiler refusing over a runtime guard, always.
+
+No booleans in signatures — `resolve(path, true, false)` is unreadable at the call site and an enum costs nothing.
+
+Every public enum and struct that can grow — record kinds, relation verbs, error types, resolver rungs — carries `#[non_exhaustive]`. This produces a deliberate asymmetry, and it is the right one: the attribute does not apply within the defining crate, so adding a record kind still breaks our own build until every site handles it, while downstream consumers keep compiling. Growth in the vocabulary must be free for the ecosystem and expensive for us.
+
+Two rules follow from that asymmetry, and the second one matters more than it looks:
+
+**Inside the defining crate, no catch-all `_ =>`.** Exhaustiveness is how a newly added record kind finds every site obliged to handle it. When another of our crates needs a projection of an enum — a string form, a category — add the method next to the enum, where the match is exhaustive, rather than matching across the boundary. `Kind::as_str` and `Role::as_str` exist for exactly this reason.
+
+**Across a crate boundary the wildcard is mandatory, so it must fail safe.** A wildcard over a variant that did not exist when the code was written is a prediction about the future, and the only honest prediction is the conservative one. `codedoc-verify` maps an unrecognised resolver rung to `Detached`, never to `Fresh`: a rung added by a later version must degrade into adjudication rather than silently present itself as verified. Every cross-crate wildcard picks the arm that would be safe if the unknown variant turned out to be the most dangerous one.
+
+### Errors
+
+Libraries use `thiserror` with typed, exhaustive enums. `anyhow`/`miette` appear only at binary edges. No `Box<dyn Error>` in a library signature — it discards precisely the information the caller needs.
+
+`unwrap()` outside tests is a defect. `expect()` is permitted only where the invariant is guaranteed by construction **and** carries an `invariant` record. No `panic!` on any path reachable from user input or file contents — a malformed source file is an expected input to a parser, not an exceptional one.
+
+### Structure
+
+One level of abstraction per function. Early return over nesting; depth 3 is the ceiling. No `utils`, `helpers`, `common`, or `misc` modules — a name that does not say what is inside will collect anything. No `Manager`, `Handler`, `Service`, or `Processor` suffixes unless that word is genuinely the domain term. `pub(crate)` by default; widening visibility is a deliberate API decision.
+
+Do not add a trait with one implementation. Do not add indirection for a second case that does not yet exist. The crate boundaries above already encode the extension points that were worth predicting.
+
+### CLI and agent surface
+
+Every command emits stable JSON under `--json`, and the human renderer is written **over** that JSON, never the reverse. Divergence between the two output paths is a bug, and snapshot tests cover both from the one source. Exit codes are semantic: `0` clean, `1` stale documentation present, `2` detached anchors requiring adjudication, `3` ledger integrity failure. Agents branch on these.
+
+### Testing
+
+Property tests are the primary instrument for the resolver, because the core claim is universally quantified: **for any tree and any edit script, the resolution is correct or `Detached` — never wrong.** That is one `proptest` property, and it is the most important test in the repository.
+
+The replay harness (`cargo xtask replay`) walks real git history in real open-source repositories, migrating anchors commit by commit, reporting survival and false reattachment. Survival is tracked and improved. False reattachment is a hard zero and fails the build.
+
+`insta` snapshots cover canonical encodings and CLI output; a golden-file suite pins cross-platform encoding determinism (I4). No mocks of our own code — test through public APIs, and when that is awkward the API is the problem. Every bug fix starts with the failing test, and that test gets a `known_failure_mode` record so the next agent inherits the lesson instead of rediscovering it.
+
+Behaviour that the specification mandates is tested from `conformance/` vectors rather than from Rust-native fixtures, so that the same assertions bind any implementation.
+
+### Performance budgets
+
+Stated numbers, so regressions are detectable rather than merely felt: full index of a 1M-LOC repository under 60s; incremental verify of a single file under 50ms, because it runs on every keystroke behind the LSP; context retrieval under 100ms at depth 2. A change that blows a budget is reverted, or the budget is renegotiated explicitly — never left to drift.
+
+## Open source
+
+This ships as OSS, and for a format project that is a design constraint rather than a distribution choice.
+
+### The compatibility surface is the format, not the API
+
+Once a second implementation exists, `.codedoc/` bytes are a contract forever. Everything below follows from that.
+
+`docs/spec/` holds a normative, implementation-independent specification, versioned separately from the crates. The Rust workspace is the **reference implementation, not the definition** — when code and spec disagree, one of them is a bug and the spec decides which. `conformance/` holds language-neutral vectors (input to canonical bytes to expected hash; anchor plus edit script to expected rung and confidence). The Rust test suite is one consumer of those vectors; a Go or TypeScript implementation must be able to run them without reading a line of Rust.
+
+Before 1.0 the format may change, but never without a mechanical `codedoc migrate` path. After 1.0 it does not change incompatibly at all. A user's ledger is their institutional memory, accumulated over years and not reproducible — corrupting it is unforgivable in a way that breaking an API never is. When a format change and an ergonomics win are in tension, the format wins.
+
+### Semver and published surface
+
+Publish narrowly. A crate on crates.io is a permanent obligation, so crates whose API has not settled carry `publish = false` rather than a `0.x` promise nobody intends to keep. `cargo-semver-checks` runs in CI on everything published. MSRV is declared in `rust-version`, tested in the matrix, and raised only in a minor release.
+
+### Rules are enforced by machines, never by reviewers
+
+Standards this strict, enforced by human review, become gatekeeping — and drive off precisely the contributors a young project needs. **Every rule in this file is a CI check or it is not a rule.** A reviewer must never be the first person to tell a contributor that their comment is not allowed; the lint says so locally, before the PR, and prints the command that fixes it. Lint messages carry the remedy, not merely the violation. If a standard cannot be checked mechanically, either build the check or drop the standard.
+
+The no-comments rule in particular will startle every drive-by contributor. That is a documentation and tooling problem, and it is ours, not theirs.
+
+### Licensing and provenance
+
+Code is dual `MIT OR Apache-2.0`, the Rust ecosystem default, and Apache's explicit patent grant matters disproportionately for a format hoping to attract independent implementations. The spec and conformance vectors are `CC0-1.0` — nobody adopts a format whose specification is encumbered. Contributions are DCO sign-off, not a CLA; on a protocol project a CLA reads as a retained relicensing option and costs goodwill that is worth more than the option. `cargo deny` gates advisories, licences, and banned or duplicated crates.
+
+### Security posture
+
+A cloned repository's `.codedoc/` is attacker-controlled input, and so is every source file handed to the parser. The canonical decoder, the ledger reader, and the index writer all sit on that trust boundary: no panics, no allocation sized by an untrusted length field, no path in any record field escaping the repository root, and no record content reaching an executed context. `#![forbid(unsafe_code)]` in every crate. Fuzz targets for the canonical decoder and the ledger reader are part of the suite, not an aspiration. The threat model belongs in the spec, since it binds other implementations too.
+
+### Governance
+
+Decisions happen in public. `docs/decisions/` carries ADRs, and any format change requires one. Conventional Commits drive a generated CHANGELOG. The CI matrix covers Linux, macOS, and Windows, because G1 is a cross-platform claim and only a matrix can substantiate it.
+
+The README is a product surface, not a formality — this idea is unfamiliar enough that adoption depends on it being legible in sixty seconds.
+
+## Commands
+
+The workspace does not exist yet. These are the contract it will be scaffolded to satisfy; keep this section true as it lands.
+
+```bash
+just build                  # cargo build --workspace --all-targets
+just test                   # cargo nextest run --workspace
+just lint                   # clippy -D warnings + fmt --check
+                            #   + cargo xtask lint-comments + cargo deny check
+just check                  # lint + test + replay, i.e. what CI runs
+
+cargo nextest run -p codedoc-anchor resolver::exact_match     # one test
+cargo nextest run -p codedoc-anchor -- --nocapture            # one crate, with output
+cargo insta review                                            # triage snapshot diffs
+cargo xtask replay --corpus corpora/ --commits 1000           # anchor survival harness
+cargo xtask lint-comments                                     # the no-comments gate
+
+cargo run -p codedoc-cli -- verify --json
+cargo run -p codedoc-cli -- context src/auth.rs:83 --depth 2
+cargo run -p codedoc-mcp                                      # stdio MCP server
+```
+
+## Dependencies
+
+Curated deliberately; do not introduce alternatives without a decision record.
+
+`tree-sitter` + grammars · `blake3` · `serde` + `serde_json` · `rusqlite` (bundled) · `gix` · `clap` · `tower-lsp` · `thiserror` · `miette` · `tokio` · `rayon` · `proptest` · `insta` · `cargo-nextest` · `cargo-deny` · `cargo-semver-checks` · `cargo-fuzz`.
+
+`gix` over `git2`, and `rusqlite` bundled, for the same reason: a static single binary with no system dependencies, because agents will install this into arbitrary environments.
+
+## Gates
+
+Correctness properties, not feature counts. All tracks proceed concurrently; these gate merges.
+
+- **G1** Canonical encoding byte-identical across Linux, macOS, and Windows.
+- **G2** Zero false reattachments across the replay corpus. Hard.
+- **G3** Ledger verifies from genesis; index rebuilds byte-identically from it.
+- **G4** Context retrieval within budget on a 1M-LOC repository.
+- **G5** **Dogfood.** This repository contains zero comments, carries its own architecture in its own ledger, and `codedoc verify` runs green in its own CI. The project is not real until it is its own first user.
+- **G6** **Independence.** A second implementation, written in another language against `docs/spec/` alone and never reading the Rust, passes `conformance/`. Until that happens this is a tool with a data directory; afterwards it is a format.
