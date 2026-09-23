@@ -214,6 +214,8 @@ Everything is inside budget at a million lines, but only after the scale test fo
 
 The lesson is worth more than the number: a budget met on a small corpus says nothing about an algorithm that is linear in the wrong variable. Measure on the large corpus before claiming a budget is met.
 
+**A green local gate says nothing about what you committed.** Every check here runs against the working tree, so none of them can see a file that was edited but never staged. That happened: three commits carried a module that existed only on one disk, because `git add` was given a pathspec for its old location, failed atomically, and its error was discarded. Local builds passed throughout; CI failed three times saying exactly what was wrong. Before trusting a push, either read CI or clone the pushed commit somewhere clean and build it — and never silence `git add`.
+
 **Always measure release builds.** Debug figures for this workload are five to twenty times worse and will send you optimising the wrong thing; an early `verify` reading of two minutes was mostly `-O0`.
 
 ## Open source
