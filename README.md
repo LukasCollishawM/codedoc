@@ -12,12 +12,12 @@ You mostly do not run codedoc. Your agent does.
 ---
 
 Every coding agent that touches your repository works out how it fits together,
-notices the constraint that isn't obvious, spots the trap in the retry path — then
-writes it into a comment or a chat message, and loses it. The next session derives
-it again, from scratch, and pays for it again.
+notices the constraints that aren't obvious, and finds the traps. It then writes
+that into a comment or a chat message, where the next refactor destroys it or the
+session ends. The next agent derives it again.
 
-The problem was never that agents under-document. It's that the only channel
-available throws the work away.
+Agents do not under-document. The channel available to them does not retain the
+work.
 
 ## Install
 
@@ -64,7 +64,7 @@ modifies your source.
 
 ## How it works
 
-Three ideas, and the third is the one that matters.
+Three ideas.
 
 **Records, not comments.** A record is a typed claim — `invariant`, `security`,
 `known_failure_mode`, `rationale` — attached to a piece of code. It carries who
@@ -77,21 +77,22 @@ fingerprint of its *content* that ignores formatting, and fingerprints of its
 neighbours. Insert fifty lines above a claim and it still points at the same code.
 Rename the locals inside it and it still points at the same code.
 
-**It refuses to guess.** When a resolver runs out of evidence, the anchor
-**detaches** and waits for a decision, rather than attaching to whatever looks
-closest. Documentation confidently pointing at the wrong function is worse than
-documentation that admits it is lost — so anchor survival is a quality metric we
-work to improve, and false attachment is a hard zero enforced by a property test.
+**It refuses to guess.** When the resolver runs out of evidence, the anchor
+**detaches** and waits for a decision rather than attaching to whatever looks
+closest. Attaching a claim to the wrong function is a worse outcome than reporting
+that it could not be placed, so the two are not traded off against each other:
+anchor survival is a quality metric to improve, and false attachment is a hard zero
+enforced by a property test.
 
 ```
 $ codedoc verify
 1493 unchanged   270 migrated   196 stale   136 detached
 ```
 
-*Unchanged* and *migrated* held. *Stale* means the code changed enough to be worth a
-look — including the case where a function keeps its name and signature but its body
-is rewritten underneath a claim, which resolves perfectly and is still flagged.
-*Detached* means codedoc will not guess, and is asking.
+*Unchanged* and *migrated* held. *Stale* means the code changed enough to warrant
+review; this includes a function that keeps its name and signature while its body is
+rewritten, which resolves cleanly and is still flagged. *Detached* means the anchor
+could not be placed and is waiting for a decision.
 
 Records are immutable. Revising one writes a superseding record; retracting writes
 a tombstone. Nothing is edited and nothing is deleted, so "what did we believe about
@@ -122,10 +123,10 @@ not a rewrite.
 
 ## Status
 
-Early, and the format is **not yet stable**. Before 1.0 it may change, but never
-without a mechanical `codedoc migrate` path; after 1.0 it will not change
-incompatibly. A ledger is accumulated memory and cannot be regenerated, so it is
-treated that way.
+Early. The format is **not yet stable**: before 1.0 it may change, always with a
+mechanical `codedoc migrate` path, and after 1.0 it will not change incompatibly.
+A ledger accumulates over months and cannot be regenerated from the code, which is
+why the compatibility rules are stricter than the API's.
 
 Working today: the ledger and its integrity checking, anchoring and resolution
 across six languages, comment import, the full record lifecycle, relations, and the
