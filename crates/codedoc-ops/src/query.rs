@@ -64,6 +64,7 @@ pub fn context(
         depth,
     );
     pack.deduplicate();
+    pack.rank();
     if let Some(limit) = budget {
         pack.fit_within(limit);
     }

@@ -18,4 +18,5 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+codedoc-lang.workspace = true
 tempfile.workspace = true

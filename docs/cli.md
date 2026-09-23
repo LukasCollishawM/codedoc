@@ -81,8 +81,10 @@ Prints the record kind vocabulary.
 ### `codedoc context <file>[:line] [--symbol <path>] [--depth N] [--budget N]`
 
 Retrieves what is known about a location: invariants, security, known failure modes,
-rationale, and relations at `--depth` (default 2). `--budget` caps the assembled size
-for a context window.
+rationale, and relations at `--depth` (default 2).
+
+Claims are ranked by trust — assurance, then authorship, then age — and `--budget`
+caps the assembled size by dropping the least trustworthy first.
 
 ### `codedoc list [--file <path>] [--symbol <path>]`
 

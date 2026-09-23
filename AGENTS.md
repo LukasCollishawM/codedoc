@@ -72,8 +72,17 @@ Set these so records can be traced to the agent that made them:
 
 Agent-authored records default to `assurance: inferred`. A record only becomes
 `asserted` if the agent explicitly claims it, which the instructions tell it to do
-only for something it verified. This is what keeps an agent's guess and a human's
-verified claim distinguishable at query time, which matters more as the ledger grows.
+only for something it verified.
+
+This is not bookkeeping. `codedoc_context` **ranks by trust**, computed from how
+certain the claim was, who made it, and how long ago. A human assertion scores 100;
+a fresh agent speculation scores around 21. When a budget forces claims to be
+dropped, the lowest-trust ones go first, so what reaches a context window is what is
+most likely to be true.
+
+Recency is deliberately a weak signal, floored so that age alone can never let a
+fresh guess displace something a human verified years ago. A claim does not become
+false by getting old — that is what `codedoc verify` is for.
 
 ## Getting good records out of an agent
 

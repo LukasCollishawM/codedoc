@@ -18,6 +18,44 @@ pub struct Claim {
     pub author: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub evidence: Vec<String>,
+    pub trust: u32,
+}
+
+fn now_seconds() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|span| span.as_secs() as i64)
+        .unwrap_or(0)
+}
+
+pub const RECENCY_HALF_LIFE_DAYS: f64 = 180.0;
+
+fn assurance_weight(record: &Record) -> f64 {
+    match record.content().assurance {
+        codedoc_ledger::Assurance::Asserted => 1.0,
+        codedoc_ledger::Assurance::Inferred => 0.6,
+        codedoc_ledger::Assurance::Speculative => 0.3,
+        _ => 0.3,
+    }
+}
+
+fn authority_weight(record: &Record) -> f64 {
+    match record.content().author {
+        codedoc_ledger::Author::Human { .. } => 1.0,
+        codedoc_ledger::Author::Analyzer { .. } => 0.9,
+        codedoc_ledger::Author::Runtime { .. } => 0.9,
+        codedoc_ledger::Author::Agent { .. } => 0.7,
+        _ => 0.5,
+    }
+}
+
+fn recency_weight(record: &Record, now: i64) -> f64 {
+    let age_days = ((now - record.content().created.unix_seconds()).max(0) as f64) / 86_400.0;
+    0.5f64.powf(age_days / RECENCY_HALF_LIFE_DAYS).clamp(0.25, 1.0)
+}
+
+pub fn trust_of(record: &Record, now: i64) -> f64 {
+    assurance_weight(record) * authority_weight(record) * recency_weight(record, now)
 }
 
 impl Claim {
@@ -37,6 +75,7 @@ impl Claim {
                     serde_json::to_string(item).unwrap_or_else(|_| "unrenderable".to_owned())
                 })
                 .collect(),
+            trust: (trust_of(record, now_seconds()) * 100.0).round() as u32,
         }
     }
 
@@ -136,6 +175,18 @@ impl ContextPack {
             seen_relations.push(identity);
             true
         });
+    }
+
+    pub fn rank(&mut self) {
+        for section in [
+            &mut self.invariants,
+            &mut self.security,
+            &mut self.failure_modes,
+            &mut self.rationale,
+            &mut self.other,
+        ] {
+            section.sort_by(|left, right| right.trust.cmp(&left.trust));
+        }
     }
 
     pub fn fit_within(&mut self, budget: usize) {
@@ -238,4 +289,92 @@ pub fn assemble(graph: &Graph, target: Target, depth: u8) -> ContextPack {
     }
 
     pack
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use codedoc_anchor::Anchor;
+    use codedoc_core::RepoPath;
+    use codedoc_lang::Registry;
+    use codedoc_ledger::{
+        AnchorRole, Assurance, Author, Body, Kind, Lifecycle, RecordContent, Role, SCHEMA_VERSION,
+        Timestamp,
+    };
+    use std::collections::BTreeMap;
+
+    const NOW: i64 = 1_800_000_000;
+
+    fn record(author: Author, assurance: Assurance, age_days: i64) -> Record {
+        let adapter = Registry::by_name("rust").unwrap();
+        let source = "fn target() { work(); }\n";
+        let tree = adapter.parse(source).unwrap();
+        let anchor = Anchor::capture(
+            RepoPath::parse("src/lib.rs").unwrap(),
+            adapter,
+            source,
+            tree.root_node().child(0).unwrap(),
+        );
+        Record::seal(RecordContent {
+            schema: SCHEMA_VERSION,
+            kind: Kind::Invariant,
+            anchors: vec![AnchorRole { role: Role::Subject, anchor }],
+            body: Body { claim: "a claim".to_owned(), detail: None },
+            evidence: Vec::new(),
+            assurance,
+            author,
+            code_revision: None,
+            created: Timestamp::from_unix_seconds(NOW - age_days * 86_400),
+            lifecycle: Lifecycle::Active,
+            parent: None,
+            chain: None,
+            unrecognised: BTreeMap::new(),
+        })
+        .unwrap()
+    }
+
+    fn human() -> Author {
+        Author::Human { identity: "maintainer".to_owned() }
+    }
+
+    fn agent() -> Author {
+        Author::Agent { model: "some-model".to_owned(), session: "s".to_owned() }
+    }
+
+    #[test]
+    fn a_verified_human_claim_outranks_a_fresh_agent_guess() {
+        let asserted = record(human(), Assurance::Asserted, 0);
+        let speculated = record(agent(), Assurance::Speculative, 0);
+        assert!(trust_of(&asserted, NOW) > trust_of(&speculated, NOW));
+    }
+
+    #[test]
+    fn an_old_speculation_ranks_below_a_recent_one() {
+        let stale = record(agent(), Assurance::Speculative, 720);
+        let fresh = record(agent(), Assurance::Speculative, 0);
+        assert!(trust_of(&fresh, NOW) > trust_of(&stale, NOW));
+    }
+
+    #[test]
+    fn age_never_erases_a_human_assertion_below_a_fresh_speculation() {
+        let ancient = record(human(), Assurance::Asserted, 3650);
+        let fresh_guess = record(agent(), Assurance::Speculative, 0);
+        assert!(
+            trust_of(&ancient, NOW) > trust_of(&fresh_guess, NOW),
+            "recency is a tiebreak between comparable claims, not a way for a guess to \
+             displace something a human verified"
+        );
+    }
+
+    #[test]
+    fn trust_stays_within_bounds() {
+        for author in [human(), agent()] {
+            for assurance in [Assurance::Asserted, Assurance::Inferred, Assurance::Speculative] {
+                for age in [0, 365, 10_000] {
+                    let score = trust_of(&record(author.clone(), assurance, age), NOW);
+                    assert!((0.0..=1.0).contains(&score), "score {score} out of range");
+                }
+            }
+        }
+    }
 }
