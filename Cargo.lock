@@ -379,6 +379,7 @@ dependencies = [
  "codedoc-index",
  "codedoc-lang",
  "codedoc-ledger",
+ "codedoc-render",
  "codedoc-verify",
  "serde",
  "serde_json",

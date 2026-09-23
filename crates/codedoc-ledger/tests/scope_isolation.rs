@@ -126,12 +126,8 @@ fn reads_merge_across_scopes_while_writes_target_one() {
     local.append(mine).unwrap();
 
     let found = Workspace::at(root);
-    let claims: Vec<String> = found
-        .records()
-        .unwrap()
-        .iter()
-        .map(|record| record.content().body.claim.clone())
-        .collect();
+    let claims: Vec<String> =
+        found.records().unwrap().iter().map(|record| record.content().body.claim.clone()).collect();
     assert_eq!(claims.len(), 2, "reads must merge every scope present");
     assert!(claims.iter().any(|text| text == "The team knows this."));
     assert!(claims.iter().any(|text| text == "Only I know this."));
