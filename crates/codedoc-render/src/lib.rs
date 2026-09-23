@@ -216,6 +216,8 @@ pub struct ReviewInput<'a> {
     pub stale: Vec<(String, String, String, Option<u32>)>,
     pub detached: Vec<(String, String, String)>,
     pub unchanged: usize,
+    pub touched_declarations: usize,
+    pub undocumented_declarations: usize,
 }
 
 pub fn review_markdown(input: &ReviewInput<'_>) -> String {
@@ -232,6 +234,7 @@ pub fn review_markdown(input: &ReviewInput<'_>) -> String {
             input.unchanged,
             if input.unchanged == 1 { " still holds" } else { "s still hold" }
         ));
+        out.push_str(&undocumented_note(input));
         return out;
     }
 
@@ -286,7 +289,22 @@ pub fn review_markdown(input: &ReviewInput<'_>) -> String {
         "\nA claim listed here is not necessarily wrong. It means the code it describes \
          moved or changed enough to be worth re-reading before merge.\n",
     );
+    out.push_str(&undocumented_note(input));
     out
+}
+
+fn undocumented_note(input: &ReviewInput<'_>) -> String {
+    if input.undocumented_declarations == 0 || input.touched_declarations == 0 {
+        return String::new();
+    }
+    format!(
+        "\n<sub>This change touched {} declaration{}, {} of which carry no recorded \
+         knowledge. If you worked something out about them that the code does not say, \
+         `codedoc attach` is cheaper than the next person deriving it again.</sub>\n",
+        input.touched_declarations,
+        if input.touched_declarations == 1 { "" } else { "s" },
+        input.undocumented_declarations
+    )
 }
 
 pub fn overview_markdown(records: &[&Record], title: &str) -> String {

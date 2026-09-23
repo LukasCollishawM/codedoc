@@ -164,6 +164,10 @@ It lists claims whose anchors detached (the code they described could not be fou
 and claims that resolved but whose code drifted, with the percentage. Exit codes are
 the same as `verify`, so a workflow can fail or comment on `1` and `2`.
 
+It closes with a footnote counting the declarations the change touched that carry no
+recorded knowledge. That is a prompt at the one moment someone has the context to act
+on it, not a demand: the note disappears when there is nothing to say.
+
 A claim appearing here is not necessarily wrong. It means the code it describes moved
 or changed enough to be worth re-reading before merge, which is the moment that
 knowledge is most worth having and least likely to be looked up.

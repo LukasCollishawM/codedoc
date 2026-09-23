@@ -82,6 +82,35 @@ fn declarations_in(root: &Path, relative: &RepoPath) -> Option<FileCoverage> {
     })
 }
 
+pub(crate) fn touched_declarations(root: &Path, files: &[String]) -> Option<(usize, usize)> {
+    let found = workspace(root).ok()?;
+    let graph = Graph::across(&found).ok()?;
+    let documented: BTreeSet<String> = graph
+        .active()
+        .iter()
+        .flat_map(|record| record.content().anchors.iter())
+        .filter_map(|entry| entry.anchor.symbol.as_ref().map(ToString::to_string))
+        .collect();
+
+    let mut total = 0usize;
+    let mut missing = 0usize;
+    for file in files {
+        let Ok(relative) = RepoPath::parse(file) else {
+            continue;
+        };
+        let Some(entry) = declarations_in(found.root(), &relative) else {
+            continue;
+        };
+        for symbol in &entry.declared {
+            total += 1;
+            if !documented.contains(symbol) {
+                missing += 1;
+            }
+        }
+    }
+    Some((total, missing))
+}
+
 pub fn coverage(root: &Path, paths: &[String], limit: usize) -> Outcome {
     let found = workspace(root)?;
     let graph = Graph::across(&found)?;

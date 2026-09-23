@@ -153,6 +153,8 @@ The local and global scopes exist so that codedoc can be used on a repository th
 
 Reads MUST merge every scope present, deduplicating by record identifier. Writes MUST target exactly one.
 
+This clause is filesystem behaviour rather than a property of any byte sequence, so it cannot be expressed as a vector in `conformance/`. The reference implementation covers it with integration tests against a real repository, including that `git add -A` followed by a commit cannot capture a local ledger. An implementation claiming scope support should test the same property the same way; a vector set that passes says nothing about it.
+
 ## 9. Threat model
 
 A cloned repository's ledger is untrusted input, as is every source file presented to a parser. Conforming implementations MUST NOT panic or abort on malformed input, MUST NOT size an allocation from an untrusted length, MUST confine path-valued members to the repository root, and MUST NOT allow record content to reach an executed context.

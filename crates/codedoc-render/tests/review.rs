@@ -1,0 +1,80 @@
+use codedoc_render::{ReviewInput, review_markdown};
+
+fn input<'a>(base: &'a str) -> ReviewInput<'a> {
+    ReviewInput {
+        base,
+        files: &[],
+        stale: Vec::new(),
+        detached: Vec::new(),
+        unchanged: 0,
+        touched_declarations: 0,
+        undocumented_declarations: 0,
+    }
+}
+
+#[test]
+fn a_change_that_breaks_nothing_says_so_plainly() {
+    let mut given = input("origin/main");
+    given.unchanged = 4;
+    let rendered = review_markdown(&given);
+    assert!(rendered.contains("4 recorded claims still hold"));
+    assert!(!rendered.contains("may no longer hold"));
+}
+
+#[test]
+fn the_singular_case_reads_as_english() {
+    let mut given = input("origin/main");
+    given.unchanged = 1;
+    assert!(review_markdown(&given).contains("1 recorded claim still holds"));
+}
+
+#[test]
+fn detached_claims_say_that_codedoc_refused_to_guess() {
+    let mut given = input("origin/main");
+    given.detached = vec![(
+        "src/auth.rs".to_owned(),
+        "rust://validate".to_owned(),
+        "Validation precedes resolution.".to_owned(),
+    )];
+    let rendered = review_markdown(&given);
+    assert!(rendered.contains("could not be found"));
+    assert!(rendered.contains("will not guess"));
+    assert!(rendered.contains("rust://validate"));
+}
+
+#[test]
+fn stale_claims_carry_their_drift() {
+    let mut given = input("origin/main");
+    given.stale = vec![(
+        "src/pay.rs".to_owned(),
+        "rust://settle".to_owned(),
+        "The fee is deducted.".to_owned(),
+        Some(36),
+    )];
+    let rendered = review_markdown(&given);
+    assert!(rendered.contains("(36% changed)"));
+    assert!(
+        rendered.contains("not necessarily wrong"),
+        "the wording must not assert more than it knows, or reviewers learn to dismiss it"
+    );
+}
+
+#[test]
+fn undocumented_declarations_prompt_without_nagging() {
+    let mut given = input("origin/main");
+    given.unchanged = 1;
+    given.touched_declarations = 5;
+    given.undocumented_declarations = 4;
+    let rendered = review_markdown(&given);
+    assert!(rendered.contains("touched 5 declarations, 4 of which"));
+    assert!(rendered.contains("<sub>"), "the prompt is a footnote, not a headline");
+}
+
+#[test]
+fn fully_documented_changes_get_no_prompt() {
+    let mut given = input("origin/main");
+    given.unchanged = 2;
+    given.touched_declarations = 3;
+    given.undocumented_declarations = 0;
+    assert!(!review_markdown(&given).contains("carry no recorded knowledge"));
+}

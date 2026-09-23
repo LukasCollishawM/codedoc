@@ -264,12 +264,17 @@ pub fn review(root: &Path, base: &str) -> Result<(Value, i32), OpsError> {
         }
     }
 
+    let (touched, undocumented) =
+        crate::coverage::touched_declarations(found.root(), &changed).unwrap_or((0, 0));
+
     let rendered = codedoc_render::review_markdown(&codedoc_render::ReviewInput {
         base,
         files: &changed,
         stale,
         detached,
         unchanged,
+        touched_declarations: touched,
+        undocumented_declarations: undocumented,
     });
 
     Ok((
@@ -278,6 +283,8 @@ pub fn review(root: &Path, base: &str) -> Result<(Value, i32), OpsError> {
             "base": base,
             "files_changed": changed.len(),
             "output": rendered,
+            "touched_declarations": touched,
+            "undocumented_declarations": undocumented,
             "stale": payload["counts"]["stale"],
             "detached": payload["counts"]["detached"],
         }),
