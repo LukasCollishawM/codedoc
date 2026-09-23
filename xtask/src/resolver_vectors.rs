@@ -86,6 +86,38 @@ pub const CASES: &[Case] = &[
         after: "fn beta() {\n    prepare();\n    commit();\n}\n\nfn gamma() {\n    prepare();\n    commit();\n}\n",
         symbol: "rust://alpha",
     },
+    Case {
+        name: "cpp_reformatting_holds_by_content_identity",
+        language: "cpp",
+        path: "src/session.cpp",
+        before: "int Session::open(){int handle=7;return handle;}\n",
+        after: "int Session::open() {\n    int handle = 7;\n    return handle;\n}\n",
+        symbol: "cpp://Session/open",
+    },
+    Case {
+        name: "cpp_local_rename_holds_by_structural_identity",
+        language: "cpp",
+        path: "src/session.cpp",
+        before: "int Session::open() {\n    int handle = 7;\n    return handle;\n}\n",
+        after: "int Session::open() {\n    int descriptor = 7;\n    return descriptor;\n}\n",
+        symbol: "cpp://Session/open",
+    },
+    Case {
+        name: "cpp_insertion_above_does_not_shift_the_anchor",
+        language: "cpp",
+        path: "src/session.cpp",
+        before: "int Session::open() {\n    int handle = 7;\n    return handle;\n}\n",
+        after: "void Session::warm() {\n    int primer = 1;\n    (void)primer;\n}\n\nint Session::open() {\n    int handle = 7;\n    return handle;\n}\n",
+        symbol: "cpp://Session/open",
+    },
+    Case {
+        name: "cpp_deleting_an_overload_with_an_identical_twin_detaches",
+        language: "cpp",
+        path: "src/gate.cpp",
+        before: "int Gate::admit(int value) {\n    int scaled = value;\n    return scaled;\n}\n\nint Gate::admit(long value) {\n    int scaled = value;\n    return scaled;\n}\n",
+        after: "int Gate::admit(long value) {\n    int scaled = value;\n    return scaled;\n}\n",
+        symbol: "cpp://Gate/admit",
+    },
 ];
 
 pub fn outcome_for(case: &Case) -> Option<(String, String)> {

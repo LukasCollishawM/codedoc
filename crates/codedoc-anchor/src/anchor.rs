@@ -263,7 +263,7 @@ pub fn symbol_path_of(node: Node<'_>, adapter: &Adapter, source: &str) -> Option
     let mut current = Some(node);
     while let Some(candidate) = current {
         if let Some(name) = adapter.declaration_name(candidate, source) {
-            names.push(name.to_owned());
+            names.push(name.into_owned());
         }
         current = candidate.parent();
     }
