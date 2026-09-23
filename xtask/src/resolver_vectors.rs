@@ -118,7 +118,87 @@ pub const CASES: &[Case] = &[
         after: "int Gate::admit(long value) {\n    int scaled = value;\n    return scaled;\n}\n",
         symbol: "cpp://Gate/admit",
     },
+    Case {
+        name: "cpp_in_class_and_out_of_line_share_one_symbol",
+        language: "cpp",
+        path: "src/session.cpp",
+        before: "class Session {\n    int open();\n};\n\nint Session::open() {\n    int handle = 7;\n    return handle;\n}\n",
+        after: "class Session {\n    int open();\n};\n\nint Session::open() {\n    int descriptor = 7;\n    return descriptor;\n}\n",
+        symbol: "cpp://Session/open",
+    },
+    Case {
+        name: "java_reformatting_holds",
+        language: "java",
+        path: "src/Gate.java",
+        before: "class Gate {\n    int admit(int id) { return id; }\n}\n",
+        after: "class Gate {\n\n    int admit(int id) {\n        return id;\n    }\n}\n",
+        symbol: "java://Gate/admit",
+    },
+    Case {
+        name: "java_local_rename_holds_by_structural_identity",
+        language: "java",
+        path: "src/Gate.java",
+        before: "class Gate {\n    int admit(int id) {\n        int checked = id;\n        return checked;\n    }\n}\n",
+        after: "class Gate {\n    int admit(int id) {\n        int verified = id;\n        return verified;\n    }\n}\n",
+        symbol: "java://Gate/admit",
+    },
+    Case {
+        name: "go_reformatting_holds",
+        language: "go",
+        path: "cmd/gate.go",
+        before: "package main\n\nfunc Admit(id int) int {\n\tchecked := id\n\treturn checked\n}\n",
+        after: "package main\n\nfunc Admit(id int) int {\n\n\tchecked := id\n\n\treturn checked\n}\n",
+        symbol: "go://Admit",
+    },
+    Case {
+        name: "go_local_rename_holds_by_structural_identity",
+        language: "go",
+        path: "cmd/gate.go",
+        before: "package main\n\nfunc Admit(id int) int {\n\tchecked := id\n\treturn checked\n}\n",
+        after: "package main\n\nfunc Admit(id int) int {\n\tverified := id\n\treturn verified\n}\n",
+        symbol: "go://Admit",
+    },
+    Case {
+        name: "csharp_reformatting_holds",
+        language: "csharp",
+        path: "Gate.cs",
+        before: "class Gate {\n    int Admit(int id) { return id; }\n}\n",
+        after: "class Gate {\n\n    int Admit(int id) {\n        return id;\n    }\n}\n",
+        symbol: "csharp://Gate/Admit",
+    },
+    Case {
+        name: "csharp_local_rename_holds_by_structural_identity",
+        language: "csharp",
+        path: "Gate.cs",
+        before: "class Gate {\n    int Admit(int id) {\n        int checked_id = id;\n        return checked_id;\n    }\n}\n",
+        after: "class Gate {\n    int Admit(int id) {\n        int verified = id;\n        return verified;\n    }\n}\n",
+        symbol: "csharp://Gate/Admit",
+    },
+    Case {
+        name: "typescript_reformatting_holds",
+        language: "typescript",
+        path: "src/gate.ts",
+        before: "export function admit(id: number): number { return id; }\n",
+        after: "export function admit(id: number): number {\n    return id;\n}\n",
+        symbol: "typescript://admit",
+    },
+    Case {
+        name: "typescript_local_rename_holds_by_structural_identity",
+        language: "typescript",
+        path: "src/gate.ts",
+        before: "export function admit(id: number): number {\n    const checked = id;\n    return checked;\n}\n",
+        after: "export function admit(id: number): number {\n    const verified = id;\n    return verified;\n}\n",
+        symbol: "typescript://admit",
+    },
 ];
+
+pub fn cardinality_for(case: &Case) -> Option<u32> {
+    let adapter = Registry::by_name(case.language)?;
+    let path = RepoPath::parse(case.path).ok()?;
+    let tree = adapter.parse(case.before).ok()?;
+    let node = codedoc_anchor::locate::by_symbol(&tree, case.before, adapter, case.symbol)?;
+    Some(Anchor::capture(path, adapter, case.before, node).symbol_cardinality)
+}
 
 pub fn outcome_for(case: &Case) -> Option<(String, String)> {
     let adapter = Registry::by_name(case.language)?;
@@ -149,11 +229,12 @@ pub fn generate() -> Result<usize, String> {
         let (outcome, detail) = outcome_for(case)
             .ok_or_else(|| format!("case {} could not be evaluated", case.name))?;
         entries.push(format!(
-            "    {{\n      \"name\": {},\n      \"language\": {},\n      \"path\": {},\n      \"symbol\": {},\n      \"before\": {},\n      \"after\": {},\n      \"expect\": {{ \"outcome\": {}, \"detail\": {} }}\n    }}",
+            "    {{\n      \"name\": {},\n      \"language\": {},\n      \"path\": {},\n      \"symbol\": {},\n      \"symbol_cardinality\": {},\n      \"before\": {},\n      \"after\": {},\n      \"expect\": {{ \"outcome\": {}, \"detail\": {} }}\n    }}",
             quote(case.name),
             quote(case.language),
             quote(case.path),
             quote(case.symbol),
+            cardinality_for(case).unwrap_or(1),
             quote(case.before),
             quote(case.after),
             quote(&outcome),

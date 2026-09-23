@@ -47,6 +47,14 @@ fn every_resolver_vector_reaches_its_stated_outcome() {
             .unwrap_or_else(|| panic!("{name}: symbol {symbol} not found in before"));
         let anchor = Anchor::capture(repo_path, adapter, before, node);
 
+        if let Some(Canonical::Integer(expected)) = case.field("symbol_cardinality") {
+            assert_eq!(
+                i64::from(anchor.symbol_cardinality),
+                *expected,
+                "{name}: a symbol path that names several declarations must record how                  many, or deleting one of them silently reattaches its record to a sibling"
+            );
+        }
+
         let after_tree =
             adapter.parse(after).unwrap_or_else(|_| panic!("{name}: after does not parse"));
         let index = FileIndex::build(adapter, after, &after_tree);
@@ -95,6 +103,14 @@ fn no_vector_resolves_onto_a_node_absent_from_the_original() {
         let node =
             codedoc_anchor::locate::by_symbol(&before_tree, before, adapter, symbol).unwrap();
         let anchor = Anchor::capture(repo_path, adapter, before, node);
+
+        if let Some(Canonical::Integer(expected)) = case.field("symbol_cardinality") {
+            assert_eq!(
+                i64::from(anchor.symbol_cardinality),
+                *expected,
+                "{name}: a symbol path that names several declarations must record how                  many, or deleting one of them silently reattaches its record to a sibling"
+            );
+        }
 
         let after_tree = adapter.parse(after).unwrap();
         let index = FileIndex::build(adapter, after, &after_tree);

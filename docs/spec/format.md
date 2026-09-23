@@ -76,6 +76,8 @@ This is not bookkeeping. Without it, deleting one member of an overload set leav
 
 Implementations reading a record written before these members existed MUST treat the cardinality as 1 and the ordinal as 0.
 
+Cardinality is not rare. A C++ overload set produces it, and so does an in-class declaration paired with its out-of-line definition, since both contribute the same symbol path by different routes. `conformance/resolver/` carries both shapes with the expected cardinality stated.
+
 **Shape histogram.** An anchor records a count of node kinds in its subtree, used both to rank candidates at rung 6 and to measure drift. It excludes ignorable nodes.
 
 ## 4. Resolution

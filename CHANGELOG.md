@@ -27,6 +27,7 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 - **`codedoc git install-merge-driver`** and the driver behind it, so concurrent branches union their ledger shards instead of conflicting. The driver refuses to write if any input line is not a valid record.
 - **MCP server** (`codedoc-mcp`) built on the official `rmcp` SDK, exposing context retrieval, attach, verify and list.
 - **LSP server** (`codedoc-lsp`) providing hovers and code lenses resolved live against the buffer.
+- **Resolver vectors for every shipped language.** Java, Go, C# and TypeScript had adapters and no coverage at all; each now has reformat-holds and rename-holds, and the vectors carry the expected `symbol_cardinality` so the overload invariant is asserted rather than implied. A C++ case covers an in-class declaration and its out-of-line definition resolving to one symbol.
 - **Conformance vectors** for canonical encoding and for the resolver, under `conformance/`, licensed CC0 so other implementations are unencumbered.
 - **`cargo xtask lint-docs`** fails the build when a CLI subcommand is missing from the README, because documentation drift is a defect like any other.
 
