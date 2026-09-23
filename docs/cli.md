@@ -135,6 +135,23 @@ perform the whole-ledger integrity scan and says so rather than implying it pass
 Lists anchors that could not be located. These are awaiting a decision, not errors —
 an anchor detaches rather than attaching to the wrong code.
 
+### `codedoc review [<base>] [--out <path>]`
+
+Renders the claims a change has put in doubt, as markdown suitable for posting on a
+pull request. `base` defaults to `HEAD`; in CI use the merge base.
+
+```bash
+codedoc review origin/main --out review.md
+```
+
+It lists claims whose anchors detached (the code they described could not be found)
+and claims that resolved but whose code drifted, with the percentage. Exit codes are
+the same as `verify`, so a workflow can fail or comment on `1` and `2`.
+
+A claim appearing here is not necessarily wrong. It means the code it describes moved
+or changed enough to be worth re-reading before merge, which is the moment that
+knowledge is most worth having and least likely to be looked up.
+
 ### `codedoc conflicts`
 
 Reports records that appear to disagree:

@@ -238,6 +238,53 @@ pub fn render(root: &Path, format: &str, title: &str) -> Outcome {
     }))
 }
 
+pub fn review(root: &Path, base: &str) -> Result<(Value, i32), OpsError> {
+    let found = workspace(root)?;
+    let changed = codedoc_verify::history::changed_since(found.root(), base).ok_or_else(|| {
+        OpsError::Ledger { detail: format!("could not read what changed since {base}") }
+    })?;
+
+    let (payload, code) = verify_scoped(root, &changed, None)?;
+    let findings: Vec<codedoc_verify::Finding> =
+        serde_json::from_value(payload["findings"].clone()).unwrap_or_default();
+
+    let mut stale = Vec::new();
+    let mut detached = Vec::new();
+    let mut unchanged = 0usize;
+    for finding in &findings {
+        let symbol = finding.symbol.clone().unwrap_or_else(|| finding.file.clone());
+        match finding.status {
+            codedoc_verify::Status::Stale => {
+                stale.push((finding.file.clone(), symbol, finding.claim.clone(), finding.drift))
+            }
+            codedoc_verify::Status::Detached => {
+                detached.push((finding.file.clone(), symbol, finding.claim.clone()))
+            }
+            _ => unchanged += 1,
+        }
+    }
+
+    let rendered = codedoc_render::review_markdown(&codedoc_render::ReviewInput {
+        base,
+        files: &changed,
+        stale,
+        detached,
+        unchanged,
+    });
+
+    Ok((
+        json!({
+            "command": "review",
+            "base": base,
+            "files_changed": changed.len(),
+            "output": rendered,
+            "stale": payload["counts"]["stale"],
+            "detached": payload["counts"]["detached"],
+        }),
+        code,
+    ))
+}
+
 pub fn conflicts(root: &Path) -> Result<(Value, i32), OpsError> {
     let found = workspace(root)?;
     let graph = Graph::across(&found)?;

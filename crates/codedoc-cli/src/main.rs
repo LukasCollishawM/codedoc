@@ -189,6 +189,14 @@ enum Command {
 
     Conflicts,
 
+    Review {
+        #[arg(default_value = "HEAD")]
+        base: String,
+
+        #[arg(long)]
+        out: Option<String>,
+    },
+
     Repair {
         #[arg(long)]
         write: bool,
@@ -323,6 +331,14 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
         Command::Relate(args) => command_relate(&cli.root, scope, args),
         Command::Detached => command_detached(&cli.root),
         Command::Conflicts => Ok(ops::conflicts(&cli.root)?),
+        Command::Review { base, out } => {
+            let (payload, code) = ops::review(&cli.root, base)?;
+            if let Some(path) = out {
+                let body = payload["output"].as_str().unwrap_or_default();
+                std::fs::write(path, body).with_context(|| format!("writing {path}"))?;
+            }
+            Ok((payload, code))
+        }
         Command::Repair { write } => Ok((ops::repair(&cli.root, scope, *write)?, 0)),
         Command::Render { format, title, out } => {
             let payload = ops::render(&cli.root, format, title)?;

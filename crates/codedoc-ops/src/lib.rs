@@ -11,7 +11,7 @@ pub use author::Attribution;
 pub use import::import;
 pub use lifecycle::{Relocation, resolve, retract, supersede};
 pub use query::{
-    conflicts, context, detached, history, list, render, stats, verify, verify_scoped,
+    conflicts, context, detached, history, list, render, review, stats, verify, verify_scoped,
 };
 pub use record::{AttachRequest, Provenance, RelateRequest, Target, attach, relate};
 pub use repair::repair;

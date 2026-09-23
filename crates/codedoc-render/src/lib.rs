@@ -210,6 +210,85 @@ fn identifier(label: &str) -> String {
     format!("n{}", &cleaned[..cleaned.len().min(48)])
 }
 
+pub struct ReviewInput<'a> {
+    pub base: &'a str,
+    pub files: &'a [String],
+    pub stale: Vec<(String, String, String, Option<u32>)>,
+    pub detached: Vec<(String, String, String)>,
+    pub unchanged: usize,
+}
+
+pub fn review_markdown(input: &ReviewInput<'_>) -> String {
+    let mut out = String::from(
+        "### codedoc
+
+",
+    );
+
+    if input.stale.is_empty() && input.detached.is_empty() {
+        out.push_str(&format!(
+            "{} recorded claim{} still hold against these changes.
+",
+            input.unchanged,
+            if input.unchanged == 1 { "" } else { "s" }
+        ));
+        return out;
+    }
+
+    let total = input.stale.len() + input.detached.len();
+    out.push_str(&format!(
+        "{total} recorded claim{} may no longer hold after this change.
+
+",
+        if total == 1 { "" } else { "s" }
+    ));
+
+    if !input.detached.is_empty() {
+        out.push_str(
+            "**The code these described could not be found.** codedoc will not guess \
+             which construct replaced it.\n\n",
+        );
+        for (file, symbol, claim) in &input.detached {
+            out.push_str(&format!(
+                "- `{file}` — `{symbol}`
+  > {claim}
+"
+            ));
+        }
+        out.push('\n');
+    }
+
+    if !input.stale.is_empty() {
+        out.push_str(
+            "**These resolved, but the code beneath them changed.**
+
+",
+        );
+        for (file, symbol, claim, drift) in &input.stale {
+            let measured = drift.map(|amount| format!(" ({amount}% changed)")).unwrap_or_default();
+            out.push_str(&format!(
+                "- `{file}` — `{symbol}`{measured}
+  > {claim}
+"
+            ));
+        }
+        out.push('\n');
+    }
+
+    out.push_str(&format!(
+        "_Compared against `{}`. {} other claim{} unaffected._
+",
+        input.base,
+        input.unchanged,
+        if input.unchanged == 1 { "" } else { "s" }
+    ));
+    out.push_str(
+        "\nA claim listed here is not necessarily wrong. It means the code it describes \
+         moved or changed enough to be worth re-reading before merge.\n",
+    );
+    out
+}
+
 pub fn overview_markdown(records: &[&Record], title: &str) -> String {
     let mut out = format!("# {title}\n\n");
     if records.is_empty() {

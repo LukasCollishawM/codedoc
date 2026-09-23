@@ -22,6 +22,9 @@ pub fn human(payload: &Value) -> String {
         Some("detached") => render_detached(payload, &mut out),
         Some("conflicts") => render_conflicts(payload, &mut out),
         Some("repair") => render_repair(payload, &mut out),
+        Some("review") => {
+            let _ = writeln!(out, "{}", text(payload, "output"));
+        }
         Some("render") => {
             let _ = writeln!(out, "{}", text(payload, "output"));
         }
