@@ -10,6 +10,8 @@ struct Tally {
     anchors: usize,
     by_rung: BTreeMap<&'static str, usize>,
     detached: usize,
+    reasons: BTreeMap<&'static str, usize>,
+    detached_detail: Vec<String>,
     suspicious: Vec<String>,
 }
 
@@ -58,12 +60,24 @@ pub fn run(arguments: &[String]) -> ExitCode {
     println!("replay: {} commits, {} files", commits.len(), files.len());
     println!("  anchors captured   {}", tally.anchors);
     println!("  survived           {} ({:.1}%)", tally.located(), tally.survival() * 100.0);
-    println!("  detached           {}", tally.detached);
     for (rung, count) in &tally.by_rung {
         println!("    {rung:<20} {count}");
     }
+    println!("  detached           {}", tally.detached);
+    for (reason, count) in &tally.reasons {
+        println!("    {reason:<20} {count}");
+    }
+
+    if !tally.detached_detail.is_empty() {
+        println!();
+        println!("  what detached, and why:");
+        for entry in &tally.detached_detail {
+            println!("    {entry}");
+        }
+    }
 
     if tally.suspicious.is_empty() {
+        println!();
         println!("  suspicious         0");
         return ExitCode::SUCCESS;
     }
@@ -108,7 +122,24 @@ fn replay_file(repository: &str, oldest: &str, newest: &str, file: &str, tally: 
         tally.anchors += 1;
 
         match resolver.resolve(&anchor, &after, &new_tree) {
-            Resolution::Detached(_) => tally.detached += 1,
+            Resolution::Detached(reason) => {
+                tally.detached += 1;
+                let named = match reason {
+                    codedoc_anchor::DetachReason::NoCandidate => "no_candidate",
+                    codedoc_anchor::DetachReason::Ambiguous { .. } => "ambiguous",
+                    codedoc_anchor::DetachReason::BelowThreshold { .. } => "below_threshold",
+                    codedoc_anchor::DetachReason::FileMissing => "file_missing",
+                    codedoc_anchor::DetachReason::LanguageUnsupported => "unsupported",
+                    _ => "unknown",
+                };
+                *tally.reasons.entry(named).or_insert(0) += 1;
+                if tally.detached_detail.len() < 12 {
+                    tally.detached_detail.push(format!(
+                        "{named:<16} {file}: {}",
+                        expected.clone().unwrap_or_else(|| "<anonymous>".to_owned())
+                    ));
+                }
+            }
             Resolution::Located(located) => {
                 let rung = rung_name(located.rung());
                 *tally.by_rung.entry(rung).or_insert(0) += 1;

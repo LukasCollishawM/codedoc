@@ -39,6 +39,8 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Changed
 
+- **The replay harness reports why anchors detached**, not just how many. Over this repository's own history that turned "5 detached" into five constructs that were genuinely deleted, which is a different fact entirely.
+
 - **The specification covers what the implementation does.** Symbol cardinality, drift-based staleness, scopes, and the rule that generic parameters never appear in a symbol path were all implemented before being written down, which inverts the rule this project states for itself. `docs/spec/format.md` now binds them, including the requirement that a local or global scope writes nothing to the working tree.
 
 - **Verification runs files in parallel**: 30s to 7.7s at 1.09M lines on 32 cores. Per-file resolution shares nothing, and findings are sorted after collection, so output is byte-identical across runs.
