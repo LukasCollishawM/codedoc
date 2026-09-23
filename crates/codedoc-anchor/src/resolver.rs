@@ -326,6 +326,18 @@ impl<'tree, 'adapter> FileIndex<'tree, 'adapter> {
         ))
     }
 
+    pub fn resolve_after_migration(&self, anchor: &Anchor) -> Resolution {
+        match self.resolve(anchor) {
+            Resolution::Located(located) => Resolution::Located(Located::new(
+                Rung::GitMigration,
+                located.range,
+                located.node_path,
+                located.node_kind,
+            )),
+            other => other,
+        }
+    }
+
     pub fn root(&self) -> Node<'tree> {
         self.root
     }

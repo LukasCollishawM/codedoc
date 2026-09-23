@@ -1,11 +1,13 @@
 #![forbid(unsafe_code)]
 
+pub mod history;
+
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use codedoc_anchor::{Anchor, DetachReason, FileIndex, Resolution, Rung, SourceRange};
-use codedoc_core::RecordId;
+use codedoc_core::{GitRev, RecordId, RepoPath};
 use codedoc_graph::Graph;
 use codedoc_lang::Registry;
 use codedoc_ledger::{Kind, Ledger, LedgerError, Verification};
@@ -89,6 +91,14 @@ impl Report {
     }
 }
 
+struct Pending {
+    record: RecordId,
+    kind: String,
+    claim: String,
+    anchor: Anchor,
+    revision: Option<GitRev>,
+}
+
 pub struct Verifier {
     root: PathBuf,
 }
@@ -102,33 +112,32 @@ impl Verifier {
         let graph = Graph::load(ledger)?;
         let integrity: Verification = ledger.verify()?;
 
-        let mut pending: BTreeMap<String, Vec<(RecordId, String, String, Anchor)>> =
-            BTreeMap::new();
+        let mut pending: BTreeMap<String, Vec<Pending>> = BTreeMap::new();
         for record in graph.active() {
             let content = record.content();
             for entry in &content.anchors {
-                pending.entry(entry.anchor.file.as_str().to_owned()).or_default().push((
-                    record.id(),
-                    content.kind.as_str(),
-                    content.body.claim.clone(),
-                    entry.anchor.clone(),
-                ));
+                pending.entry(entry.anchor.file.as_str().to_owned()).or_default().push(Pending {
+                    record: record.id(),
+                    kind: content.kind.as_str(),
+                    claim: content.body.claim.clone(),
+                    anchor: entry.anchor.clone(),
+                    revision: content.code_revision.clone(),
+                });
             }
         }
 
         let mut findings = Vec::new();
         for (file, entries) in pending {
             let resolutions = self.resolve_file(&file, &entries);
-            for ((record, kind, claim, anchor), resolution) in entries.into_iter().zip(resolutions)
-            {
+            for (item, resolution) in entries.into_iter().zip(resolutions) {
                 findings.push(Finding {
-                    record,
-                    kind,
-                    claim,
+                    record: item.record,
+                    kind: item.kind,
+                    claim: item.claim,
                     file: file.clone(),
-                    symbol: anchor.symbol.as_ref().map(ToString::to_string),
+                    symbol: item.anchor.symbol.as_ref().map(ToString::to_string),
                     status: classify(&resolution),
-                    recorded_range: anchor.range,
+                    recorded_range: item.anchor.range,
                     resolution,
                 });
             }
@@ -152,32 +161,69 @@ impl Verifier {
 }
 
 impl Verifier {
-    fn resolve_file(
-        &self,
-        file: &str,
-        entries: &[(RecordId, String, String, Anchor)],
-    ) -> Vec<Resolution> {
-        let Some((_, _, _, first)) = entries.first() else {
+    fn resolve_file(&self, file: &str, entries: &[Pending]) -> Vec<Resolution> {
+        let Some(first) = entries.first() else {
             return Vec::new();
         };
-        let Ok(source) = fs::read_to_string(self.root.join(file)) else {
-            return vec![Resolution::Detached(DetachReason::FileMissing); entries.len()];
+        match fs::read_to_string(self.root.join(file)) {
+            Ok(source) => {
+                let path = first.anchor.file.clone();
+                self.resolve_in(&path, &source, entries, false)
+            }
+            Err(_) => self.resolve_after_rename(file, entries),
+        }
+    }
+
+    fn resolve_after_rename(&self, file: &str, entries: &[Pending]) -> Vec<Resolution> {
+        let detached = vec![Resolution::Detached(DetachReason::FileMissing); entries.len()];
+        let Some(revision) = entries.iter().find_map(|item| item.revision.clone()) else {
+            return detached;
         };
-        let Ok(adapter) = Registry::for_path(&first.file) else {
-            return vec![Resolution::Detached(DetachReason::LanguageUnsupported); entries.len()];
+        let Some(moved) = history::renamed_to(&self.root, &revision, file) else {
+            return detached;
         };
-        let Ok(tree) = adapter.parse(&source) else {
-            return vec![Resolution::Detached(DetachReason::LanguageUnsupported); entries.len()];
+        let Ok(path) = RepoPath::parse(&moved) else {
+            return detached;
+        };
+        let Ok(source) = fs::read_to_string(self.root.join(path.as_str())) else {
+            return detached;
+        };
+        self.resolve_in(&path, &source, entries, true)
+    }
+
+    fn resolve_in(
+        &self,
+        path: &RepoPath,
+        source: &str,
+        entries: &[Pending],
+        migrated: bool,
+    ) -> Vec<Resolution> {
+        let Ok(adapter) = Registry::for_path(path) else {
+            return vec![
+                Resolution::Detached(DetachReason::LanguageUnsupported);
+                entries.len()
+            ];
+        };
+        let Ok(tree) = adapter.parse(source) else {
+            return vec![
+                Resolution::Detached(DetachReason::LanguageUnsupported);
+                entries.len()
+            ];
         };
 
-        let index = FileIndex::build(adapter, &source, &tree);
+        let index = FileIndex::build(adapter, source, &tree);
         entries
             .iter()
-            .map(|(_, kind, _, anchor)| {
-                let required = Kind::parse(kind)
+            .map(|item| {
+                let required = Kind::parse(&item.kind)
                     .map(Kind::required_confidence)
                     .unwrap_or(codedoc_anchor::Confidence::High);
-                index.resolve(anchor).require(required)
+                let resolution = if migrated {
+                    index.resolve_after_migration(&item.anchor)
+                } else {
+                    index.resolve(&item.anchor)
+                };
+                resolution.require(required)
             })
             .collect()
     }

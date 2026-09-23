@@ -2,3 +2,6 @@
 **/*.rs.bk
 .codedoc/index.sqlite
 .codedoc/index.sqlite-*
+chat.txt
+*.chat.txt
+notes/
