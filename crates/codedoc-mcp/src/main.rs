@@ -4,8 +4,8 @@ use std::path::PathBuf;
 
 use codedoc_ledger::{Assurance, Scope};
 use codedoc_ops::{
-    AttachRequest, Attribution, Provenance, RelateRequest, Target, attach, context, detached,
-    history, list, relate, resolve, retract, stats, supersede, verify,
+    AttachRequest, Attribution, Provenance, RelateRequest, Target, attach, conflicts, context,
+    detached, history, list, relate, resolve, retract, stats, supersede, verify,
 };
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
@@ -297,6 +297,16 @@ impl Codedoc {
         Parameters(args): Parameters<RecordArgs>,
     ) -> Result<CallToolResult, McpError> {
         respond(history(&self.root, &args.record))
+    }
+
+    #[tool(
+        description = "Report records that appear to disagree: an explicit contradicts relation, two near-identical claims on the same code that probably should have been a supersede, or an asserted and a speculative claim of the same kind. These are signals for you to adjudicate, not verdicts."
+    )]
+    async fn codedoc_conflicts(
+        &self,
+        Parameters(_args): Parameters<NoArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        respond_coded(conflicts(&self.root))
     }
 
     #[tool(

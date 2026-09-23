@@ -183,6 +183,8 @@ enum Command {
 
     Detached,
 
+    Conflicts,
+
     Relate(RelateArgs),
 
     Migrate {
@@ -292,6 +294,7 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
         }
         Command::Relate(args) => command_relate(&cli.root, args),
         Command::Detached => command_detached(&cli.root),
+        Command::Conflicts => Ok(ops::conflicts(&cli.root)?),
         Command::Migrate { write } => migrate::run(&cli.root, *write),
         Command::Git(GitCommand::InstallMergeDriver) => gitops::install_merge_driver(&cli.root),
         Command::Git(GitCommand::MergeDriver { base, ours, theirs }) => {

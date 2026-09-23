@@ -8,6 +8,11 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Added
 
+- **Relations are writable.** `codedoc relate` and `codedoc_relate` create records about the link between two pieces of code — `must_execute_after`, `guarded_by`, `constrained_by` and the rest. The vocabulary, the graph traversal and the context rendering all existed; nothing could create one, because `attach` took a single anchor.
+- **Agent parity, and then some.** The MCP server exposes eleven tools, including the full record lifecycle. Both the CLI and MCP now sit on a shared `codedoc-ops` layer so the two surfaces cannot drift apart.
+- **`codedoc conflicts`** reports declared contradictions, near-duplicate claims on the same code, and same-kind claims that disagree about certainty. Ledger hygiene for a corpus that agents write to continuously.
+- **Ledger scopes.** `--scope local` keeps the ledger in `.git/codedoc/`, which git cannot track, so codedoc can be used on a repository you do not own without leaving evidence in it. `--scope global` keeps it outside the repository entirely.
+- `AGENTS.md` and `docs/cli.md`, so the README can explain what codedoc is rather than double as a command reference.
 - **Record lifecycle from the command line.** `codedoc supersede` revises a claim, `codedoc retract` retires one, and `codedoc resolve` places a detached anchor explicitly. `codedoc detached` lists anchors awaiting a decision. Records remain immutable; revision writes a superseding record and retraction writes a tombstone, so `codedoc history` still answers what was believed earlier.
 - **`codedoc import`** harvests the comments an existing codebase already has, anchors each to the construct it documents, and classifies it by marker. Dry run by default, additive, and never edits source.
 - **Rung 5 of the resolver.** A file renamed in git no longer detaches every anchor in it; the verifier consults history from the revision recorded on the record and re-resolves in the new path at medium confidence.
@@ -28,6 +33,9 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Fixed
 
+- **A false reattachment at high confidence.** Deleting one of two overloads reattached its record to the surviving overload, because the resolver assumed a symbol path uniquely identifies a declaration. Anchors now record how many declarations shared their symbol path, and both the symbol and similarity rungs refuse when that count has changed. Found while adding C++, where overloading is idiomatic, but the defect was language-agnostic and reproduced in Java.
+- The index rebuilds itself when its schema version does not match, rather than failing on a stale column.
+- Relations now resolve for the symbol being queried, not only for symbols of records already matched, so a symbol carrying only a relation is no longer reported as having none.
 - Writing to a closed stdout no longer panics. Piping `verify` to `head` is ordinary use.
 - `#[non_exhaustive]` wildcards across crate boundaries now fail safe: an unrecognised resolver rung classifies as detached, never as fresh.
 

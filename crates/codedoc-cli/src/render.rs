@@ -20,6 +20,7 @@ pub fn human(payload: &Value) -> String {
         Some("resolve") => render_resolve(payload, &mut out),
         Some("retract") => render_retract(payload, &mut out),
         Some("detached") => render_detached(payload, &mut out),
+        Some("conflicts") => render_conflicts(payload, &mut out),
         Some("migrate") => render_migrate(payload, &mut out),
         Some("git-install-merge-driver") => render_merge_driver(payload, &mut out),
         Some("git-merge-driver") => {
@@ -314,6 +315,35 @@ fn render_detached(payload: &Value, out: &mut String) {
     let _ = writeln!(out, "  codedoc resolve <record> --to-line <line> --in-file <path>");
     let _ = writeln!(out, "or drop it:");
     let _ = writeln!(out, "  codedoc retract <record> --reason \"...\"");
+}
+
+fn render_conflicts(payload: &Value, out: &mut String) {
+    let empty = Vec::new();
+    let findings = payload["findings"].as_array().unwrap_or(&empty);
+    if findings.is_empty() {
+        let _ = writeln!(out, "no conflicting records");
+        return;
+    }
+    for finding in findings {
+        let _ = writeln!(
+            out,
+            "{}  {}",
+            finding["kind"].as_str().unwrap_or("").to_uppercase(),
+            finding["anchor"].as_str().unwrap_or("")
+        );
+        if let Some(score) = finding.get("similarity").and_then(Value::as_u64) {
+            let _ = writeln!(out, "  {score}% alike");
+        }
+        let _ = writeln!(out, "  {}", finding["left_claim"].as_str().unwrap_or(""));
+        let _ = writeln!(out, "  {}", finding["right_claim"].as_str().unwrap_or(""));
+        let _ = writeln!(out, "  {}", finding["describes"].as_str().unwrap_or(""));
+        let _ = writeln!(out);
+    }
+    let _ = writeln!(out, "{} to review", findings.len());
+    let _ = writeln!(out);
+    let _ = writeln!(out, "These are signals, not verdicts. If one record replaces another,");
+    let _ = writeln!(out, "supersede it so the link is recorded:");
+    let _ = writeln!(out, "  codedoc supersede <record> --claim \"...\"");
 }
 
 fn render_migrate(payload: &Value, out: &mut String) {

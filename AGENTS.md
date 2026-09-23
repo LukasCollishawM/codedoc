@@ -56,6 +56,7 @@ codedoc_context  →  agent reads, then changes code  →  codedoc_attach / code
 | `codedoc_retract` | when a record is no longer true at all |
 | `codedoc_list` | to survey what is recorded |
 | `codedoc_history` | to see what was believed before |
+| `codedoc_conflicts` | to find records that disagree, or duplicates that should have been supersedes |
 | `codedoc_stats` | to check ledger health and coverage |
 
 ## Attribution
@@ -83,6 +84,11 @@ system prompt is usually enough. The tool descriptions do the rest.
 **Expect volume, and let it happen.** Agents document compulsively. That is the
 premise, not a problem: the context packer ranks by kind and fits to a budget, and
 duplicate claims are collapsed on retrieval.
+
+**Volume has one real failure mode**, which is many agents recording almost-the-same
+claim instead of superseding the one already there. `codedoc_conflicts` surfaces
+those, along with declared contradictions and same-kind claims that disagree about
+how certain they are. Running it periodically is ledger hygiene.
 
 **The signal a record is good** is that it says something the code does not. "This
 function validates the token" is worthless — the code says that. "Validation must

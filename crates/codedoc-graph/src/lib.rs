@@ -1,5 +1,11 @@
 #![forbid(unsafe_code)]
 
+pub mod conflict;
+#[cfg(test)]
+pub(crate) mod tests_support;
+
+pub use conflict::{Conflict, Finding};
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use codedoc_core::RecordId;

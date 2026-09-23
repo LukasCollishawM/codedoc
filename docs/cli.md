@@ -109,6 +109,21 @@ detached counts, and sets the exit code accordingly.
 Lists anchors that could not be located. These are awaiting a decision, not errors —
 an anchor detaches rather than attaching to the wrong code.
 
+### `codedoc conflicts`
+
+Reports records that appear to disagree:
+
+- **declared** — a `contradicts` relation states outright that two records disagree.
+- **near_duplicate** — two active records on the same code say almost the same thing.
+  At volume this usually means one was meant to replace the other and was attached
+  instead of superseded. Exact duplicates are not reported; they are collapsed on
+  retrieval.
+- **opposite_assurance** — the same code carries both an `asserted` and a
+  `speculative` claim of the same kind.
+
+These are signals for a human or an agent to adjudicate, not verdicts. Exits `1`
+when anything is reported.
+
 ### `codedoc resolve <record> --to-symbol <path> | --to-line <n> [--in-file <path>]`
 
 Places a detached record explicitly.

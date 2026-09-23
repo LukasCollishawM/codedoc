@@ -169,6 +169,29 @@ pub fn history(root: &Path, reference: &str) -> Outcome {
     Ok(json!({"command": "history", "revisions": rows.len(), "chain": rows}))
 }
 
+pub fn conflicts(root: &Path) -> Result<(Value, i32), OpsError> {
+    let found = workspace(root)?;
+    let graph = Graph::across(&found)?;
+    let findings = graph.conflicts();
+    let rows: Vec<Value> = findings
+        .iter()
+        .map(|finding| {
+            json!({
+                "kind": finding.kind.as_str(),
+                "describes": finding.kind.describes(),
+                "left": finding.left.to_string(),
+                "right": finding.right.to_string(),
+                "anchor": finding.anchor,
+                "left_claim": finding.left_claim,
+                "right_claim": finding.right_claim,
+                "similarity": finding.similarity,
+            })
+        })
+        .collect();
+    let code = i32::from(!rows.is_empty());
+    Ok((json!({"command": "conflicts", "count": rows.len(), "findings": rows}), code))
+}
+
 pub fn stats(root: &Path) -> Outcome {
     let found = workspace(root)?;
     let graph = Graph::across(&found)?;
