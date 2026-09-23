@@ -2,14 +2,15 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
-use anyhow::{Context, Result};
 use codedoc_anchor::Anchor;
 use codedoc_core::RepoPath;
 use codedoc_lang::{Adapter, Registry};
 use codedoc_ledger::{
-    AnchorRole, Assurance, Author, Body, Kind, Ledger, Lifecycle, RecordContent, Role,
-    SCHEMA_VERSION, Timestamp,
+    AnchorRole, Assurance, Author, Body, Kind, Lifecycle, RecordContent, Role, SCHEMA_VERSION,
+    Scope, Timestamp,
 };
+
+use crate::{OpsError, Outcome, writable};
 use serde_json::{Value, json};
 use tree_sitter::Node;
 use walkdir::WalkDir;
@@ -26,13 +27,16 @@ struct Harvested {
     content: RecordContent,
 }
 
-pub fn run(
+pub fn import(
     root: &Path,
+    scope: Option<Scope>,
     paths: &[String],
     write: bool,
     limit: Option<usize>,
-) -> Result<(Value, i32)> {
-    let ledger = Ledger::open(root).context("opening the ledger")?;
+) -> Outcome {
+    let ledger = writable(root, scope)?;
+    let root = ledger.root().to_path_buf();
+    let root = root.as_path();
     let targets: Vec<String> = if paths.is_empty() { vec![".".to_owned()] } else { paths.to_vec() };
 
     let mut harvested = Vec::new();
@@ -87,13 +91,15 @@ pub fn run(
     let mut written = 0usize;
     if write && !harvested.is_empty() {
         let drafts: Vec<RecordContent> = harvested.into_iter().map(|item| item.content).collect();
-        let records = ledger.append_batch(drafts).context("writing imported records")?;
-        codedoc_index::Index::append_many(&ledger, &records).context("updating the index")?;
+        let records = ledger
+            .append_batch(drafts)
+            .map_err(|source| OpsError::Ledger { detail: source.to_string() })?;
+        codedoc_index::Index::append_many(&ledger, &records)
+            .map_err(|source| OpsError::Index { detail: source.to_string() })?;
         written = records.len();
     }
 
-    Ok((
-        json!({
+    Ok(json!({
             "command": "import",
             "files_scanned": files_scanned,
             "candidates": by_kind.values().sum::<usize>(),
@@ -101,9 +107,8 @@ pub fn run(
             "written": written,
             "dry_run": !write,
             "sample": sample,
-        }),
-        0,
-    ))
+            "scope": ledger.scope().as_str(),
+    }))
 }
 
 fn is_excluded(path: &Path) -> bool {

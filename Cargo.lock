@@ -342,6 +342,7 @@ dependencies = [
  "codedoc-lang",
  "codedoc-ledger",
  "codedoc-render",
+ "codedoc-verify",
  "lsp-server",
  "lsp-types",
  "serde",
@@ -385,6 +386,8 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror",
+ "tree-sitter",
+ "walkdir",
 ]
 
 [[package]]

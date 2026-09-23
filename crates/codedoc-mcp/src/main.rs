@@ -5,7 +5,8 @@ use std::path::PathBuf;
 use codedoc_ledger::{Assurance, Scope};
 use codedoc_ops::{
     AttachRequest, Attribution, Provenance, RelateRequest, Target, attach, conflicts, context,
-    detached, history, list, relate, resolve, retract, stats, supersede, verify_scoped,
+    detached, history, import, list, relate, render, resolve, retract, stats, supersede,
+    verify_scoped,
 };
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
@@ -98,6 +99,20 @@ pub struct FilterArgs {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct NoArgs {}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct RenderArgs {
+    pub format: Option<String>,
+    pub title: Option<String>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct ImportArgs {
+    pub paths: Option<Vec<String>>,
+    pub write: Option<bool>,
+    pub limit: Option<usize>,
+    pub scope: Option<String>,
+}
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct VerifyArgs {
@@ -318,6 +333,36 @@ impl Codedoc {
         Parameters(_args): Parameters<NoArgs>,
     ) -> Result<CallToolResult, McpError> {
         respond_coded(conflicts(&self.root))
+    }
+
+    #[tool(
+        description = "Project the ledger into a document: 'markdown' for an overview grouped by file, or 'mermaid' for the relation graph as a diagram. Use when asked to produce onboarding notes or architecture documentation, so that what you write is generated from verified anchors rather than from your reading of the code."
+    )]
+    async fn codedoc_render(
+        &self,
+        Parameters(args): Parameters<RenderArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        respond(render(
+            &self.root,
+            args.format.as_deref().unwrap_or("markdown"),
+            args.title.as_deref().unwrap_or("Repository knowledge"),
+        ))
+    }
+
+    #[tool(
+        description = "Bootstrap a ledger from comments the codebase already has, anchoring each to the construct it documents. Dry run unless write is true. Never modifies source. Use once when adopting codedoc on an existing repository, not routinely."
+    )]
+    async fn codedoc_import(
+        &self,
+        Parameters(args): Parameters<ImportArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        respond(import(
+            &self.root,
+            scope_of(&args.scope),
+            &args.paths.unwrap_or_default(),
+            args.write.unwrap_or(false),
+            args.limit,
+        ))
     }
 
     #[tool(
