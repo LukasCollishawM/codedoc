@@ -4,16 +4,20 @@ use std::fmt;
 use codedoc_anchor::{Anchor, Confidence as AnchorConfidence};
 use codedoc_core::{Canonical, CanonicalError, GitRev, LedgerHead, RecordId};
 use serde::{Deserialize, Serialize};
-use time::OffsetDateTime;
-use time::format_description::well_known::Rfc3339;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Timestamp(i64);
 
+const SECONDS_PER_DAY: i64 = 86_400;
+
 impl Timestamp {
     pub fn now() -> Self {
-        Timestamp(OffsetDateTime::now_utc().unix_timestamp())
+        let elapsed = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|span| span.as_secs() as i64)
+            .unwrap_or(0);
+        Timestamp(elapsed)
     }
 
     pub fn from_unix_seconds(seconds: i64) -> Self {
@@ -25,11 +29,28 @@ impl Timestamp {
     }
 
     pub fn to_rfc3339(self) -> String {
-        OffsetDateTime::from_unix_timestamp(self.0)
-            .ok()
-            .and_then(|moment| moment.format(&Rfc3339).ok())
-            .unwrap_or_else(|| self.0.to_string())
+        let days = self.0.div_euclid(SECONDS_PER_DAY);
+        let remainder = self.0.rem_euclid(SECONDS_PER_DAY);
+        let (year, month, day) = civil_from_days(days);
+        let hour = remainder / 3600;
+        let minute = (remainder % 3600) / 60;
+        let second = remainder % 60;
+        format!("{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}Z")
     }
+}
+
+fn civil_from_days(days: i64) -> (i64, u32, u32) {
+    let shifted = days + 719_468;
+    let era = shifted.div_euclid(146_097);
+    let day_of_era = shifted.rem_euclid(146_097);
+    let year_of_era =
+        (day_of_era - day_of_era / 1460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
+    let year = year_of_era + era * 400;
+    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
+    let month_position = (5 * day_of_year + 2) / 153;
+    let day = (day_of_year - (153 * month_position + 2) / 5 + 1) as u32;
+    let month = if month_position < 10 { month_position + 3 } else { month_position - 9 } as u32;
+    (if month <= 2 { year + 1 } else { year }, month, day)
 }
 
 impl fmt::Display for Timestamp {
@@ -430,6 +451,21 @@ mod tests {
             chain: None,
             unrecognised: BTreeMap::new(),
         }
+    }
+
+    #[test]
+    fn timestamps_render_as_rfc3339() {
+        assert_eq!(Timestamp::from_unix_seconds(0).to_rfc3339(), "1970-01-01T00:00:00Z");
+        assert_eq!(
+            Timestamp::from_unix_seconds(1_700_000_000).to_rfc3339(),
+            "2023-11-14T22:13:20Z"
+        );
+        assert_eq!(Timestamp::from_unix_seconds(951_782_400).to_rfc3339(), "2000-02-29T00:00:00Z");
+        assert_eq!(Timestamp::from_unix_seconds(-86_400).to_rfc3339(), "1969-12-31T00:00:00Z");
+        assert_eq!(
+            Timestamp::from_unix_seconds(4_102_444_800).to_rfc3339(),
+            "2100-01-01T00:00:00Z"
+        );
     }
 
     #[test]

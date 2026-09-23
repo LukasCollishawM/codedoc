@@ -42,7 +42,6 @@ rmcp = { version = "3", features = ["server", "transport-io", "macros"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std"] }
 proptest = "1"
 insta = { version = "1", features = ["json"] }
-time = { version = "0.3", features = ["formatting", "parsing", "macros"] }
 walkdir = "2"
 tempfile = "3"
 
