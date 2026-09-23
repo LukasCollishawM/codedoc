@@ -110,6 +110,14 @@ pub const CASES: &[Case] = &[
         after: "void Session::warm() {\n    int primer = 1;\n    (void)primer;\n}\n\nint Session::open() {\n    int handle = 7;\n    return handle;\n}\n",
         symbol: "cpp://Session/open",
     },
+    Case {
+        name: "cpp_deleting_an_overload_with_an_identical_twin_detaches",
+        language: "cpp",
+        path: "src/gate.cpp",
+        before: "int Gate::admit(int value) {\n    int scaled = value;\n    return scaled;\n}\n\nint Gate::admit(long value) {\n    int scaled = value;\n    return scaled;\n}\n",
+        after: "int Gate::admit(long value) {\n    int scaled = value;\n    return scaled;\n}\n",
+        symbol: "cpp://Gate/admit",
+    },
 ];
 
 pub fn outcome_for(case: &Case) -> Option<(String, String)> {
