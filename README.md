@@ -96,4 +96,4 @@ See `CLAUDE.md` for the architecture and the invariants, `CONTRIBUTING.md` befor
 
 ## Licence
 
-Code is `MIT OR Apache-2.0`. The specification and conformance vectors are `CC0-1.0`, because a format nobody else can implement is not a format.
+Code is `MIT OR Apache-2.0`. The specification and conformance vectors are `CC0-1.0`.
