@@ -19,6 +19,7 @@ The workspace must have a ledger (`codedoc init`), otherwise there is nothing to
 
 - **Hovers** render the records anchored to the construct under the cursor, grouped by kind.
 - **Code lenses** mark lines carrying records.
+- **Diagnostics** warn where a claim may no longer describe the code beneath it, carrying the drift percentage, and note where an anchor detached and is waiting for a decision.
 
 Both are resolved live against the current buffer rather than read from the cached ranges in the ledger, so a record follows the code as you edit rather than pointing at where it used to be.
 
@@ -29,6 +30,23 @@ Both are resolved live against the current buffer rather than read from the cach
 | `codedoc.serverPath` | `codedoc-lsp` | path to the server executable |
 | `codedoc.trace.server` | `off` | LSP message tracing |
 
+## Building and installing
+
+```bash
+cd editors/vscode
+npm install
+npx @vscode/vsce package --allow-missing-repository --skip-license
+code --install-extension codedoc-0.1.0.vsix
+```
+
+Or run it from source without packaging:
+
+```bash
+code --extensionDevelopmentPath=editors/vscode
+```
+
 ## Status
 
-Unpackaged. There is no marketplace listing yet; run it from source with `code --extensionDevelopmentPath=editors/vscode`.
+Not on the marketplace. The `.vsix` above installs locally and is what you want
+for trying it; publishing needs a publisher account and a decision about who owns
+it, which is not one to make quietly.

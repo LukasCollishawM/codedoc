@@ -133,8 +133,8 @@ across six languages, comment import, the full record lifecycle, relations, and 
 CLI, MCP and LSP surfaces. Canonical encoding is verified byte-identical on Linux,
 macOS and Windows in CI.
 
-Not done: no packaged VS Code extension (the LSP server it would wrap works);
-performance is measured at 50k LOC, not at the million-line scale the budgets target.
+Not done: the VS Code extension installs from a local `.vsix` but is not published
+to the marketplace.
 
 ## Documentation
 
