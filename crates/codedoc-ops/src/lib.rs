@@ -1,16 +1,20 @@
 #![forbid(unsafe_code)]
 
 mod author;
+mod import;
 mod lifecycle;
 mod query;
 mod record;
+mod repair;
 
 pub use author::Attribution;
+pub use import::import;
 pub use lifecycle::{Relocation, resolve, retract, supersede};
 pub use query::{
     conflicts, context, detached, history, list, render, stats, verify, verify_scoped,
 };
 pub use record::{AttachRequest, Provenance, RelateRequest, Target, attach, relate};
+pub use repair::repair;
 
 use std::path::Path;
 

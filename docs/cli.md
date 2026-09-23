@@ -169,6 +169,20 @@ the active set.
 Rebuilds the SQLite projection from the ledger. The index is derived state and is
 never committed; this is only needed if it is deleted or corrupted.
 
+### `codedoc repair [--write]`
+
+Rebuilds a broken hash chain. A record is orphaned when its `chain` names a record the
+ledger no longer holds, which does not happen through normal use — it means the ledger
+was edited outside codedoc, in practice by rewriting git history across it.
+
+Repair re-chains every record in timestamp order and remaps supersession links.
+**Record identities change**, because an identity covers the chain the record was
+written into, so this is a recovery tool rather than routine maintenance. Dry run
+unless `--write`; back up `.codedoc` first.
+
+The better answer is not to rewrite history across a ledger. Orphaning is detected,
+not prevented.
+
 ### `codedoc migrate [--write]`
 
 Reports the schema distribution of a ledger and applies any pending migrations.

@@ -21,6 +21,7 @@ pub fn human(payload: &Value) -> String {
         Some("retract") => render_retract(payload, &mut out),
         Some("detached") => render_detached(payload, &mut out),
         Some("conflicts") => render_conflicts(payload, &mut out),
+        Some("repair") => render_repair(payload, &mut out),
         Some("render") => {
             let _ = writeln!(out, "{}", text(payload, "output"));
         }
@@ -356,6 +357,28 @@ fn render_conflicts(payload: &Value, out: &mut String) {
     let _ = writeln!(out, "These are signals, not verdicts. If one record replaces another,");
     let _ = writeln!(out, "supersede it so the link is recorded:");
     let _ = writeln!(out, "  codedoc supersede <record> --claim \"...\"");
+}
+
+fn render_repair(payload: &Value, out: &mut String) {
+    let orphans = count(payload, "orphans");
+    if orphans == 0 {
+        let _ = writeln!(out, "{} records, chain intact", count(payload, "records"));
+        return;
+    }
+    let _ = writeln!(out, "{orphans} of {} records are orphaned", count(payload, "records"));
+    let _ = writeln!(out, "Their chain references records this ledger no longer holds, which");
+    let _ = writeln!(out, "means it was edited outside codedoc, usually by rewriting git history.");
+    let _ = writeln!(out);
+    if payload["dry_run"].as_bool().unwrap_or(true) {
+        let _ = writeln!(out, "Repair rebuilds the chain in timestamp order and remaps");
+        let _ = writeln!(out, "supersession links. Record identities WILL change, because an");
+        let _ = writeln!(out, "identity covers the chain it was written into.");
+        let _ = writeln!(out);
+        let _ = writeln!(out, "Commit or back up .codedoc first, then: codedoc repair --write");
+    } else {
+        let _ =
+            writeln!(out, "rewrote {} records; chain is now intact", count(payload, "rewritten"));
+    }
 }
 
 fn render_migrate(payload: &Value, out: &mut String) {

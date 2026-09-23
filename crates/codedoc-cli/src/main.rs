@@ -2,7 +2,6 @@
 
 mod git;
 mod gitops;
-mod import;
 mod migrate;
 mod render;
 
@@ -190,6 +189,11 @@ enum Command {
 
     Conflicts,
 
+    Repair {
+        #[arg(long)]
+        write: bool,
+    },
+
     Render {
         #[arg(default_value = "markdown")]
         format: String,
@@ -267,9 +271,15 @@ fn emit(rendered: &str) -> Emission {
 }
 
 fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
+    let scope = match cli.scope.as_deref() {
+        Some(named) => Some(
+            Scope::parse(named).ok_or_else(|| anyhow!("scope must be shared, local or global"))?,
+        ),
+        None => None,
+    };
     match &cli.command {
         Command::Init { scope } => command_init(&cli.root, scope),
-        Command::Attach(args) => command_attach(&cli.root, args),
+        Command::Attach(args) => command_attach(&cli.root, scope, args),
         Command::Verify { files, since } => {
             Ok(ops::verify_scoped(&cli.root, files, since.as_deref())?)
         }
@@ -286,7 +296,7 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
         Command::Supersede { record, claim, detail, kind } => Ok((
             ops::supersede(
                 &cli.root,
-                None,
+                scope,
                 record,
                 claim.as_deref(),
                 detail.as_deref(),
@@ -297,7 +307,7 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
         Command::Resolve { record, to_symbol, to_line, in_file } => Ok((
             ops::resolve(
                 &cli.root,
-                None,
+                scope,
                 record,
                 &ops::Target {
                     file: in_file.clone().unwrap_or_default(),
@@ -308,11 +318,12 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
             0,
         )),
         Command::Retract { record, reason } => {
-            Ok((ops::retract(&cli.root, None, record, reason.as_deref())?, 0))
+            Ok((ops::retract(&cli.root, scope, record, reason.as_deref())?, 0))
         }
-        Command::Relate(args) => command_relate(&cli.root, args),
+        Command::Relate(args) => command_relate(&cli.root, scope, args),
         Command::Detached => command_detached(&cli.root),
         Command::Conflicts => Ok(ops::conflicts(&cli.root)?),
+        Command::Repair { write } => Ok((ops::repair(&cli.root, scope, *write)?, 0)),
         Command::Render { format, title, out } => {
             let payload = ops::render(&cli.root, format, title)?;
             if let Some(path) = out {
@@ -326,7 +337,9 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
         Command::Git(GitCommand::MergeDriver { base, ours, theirs }) => {
             gitops::merge_driver(base, ours, theirs)
         }
-        Command::Import { paths, write, limit } => import::run(&cli.root, paths, *write, *limit),
+        Command::Import { paths, write, limit } => {
+            Ok((ops::import(&cli.root, scope, paths, *write, *limit)?, 0))
+        }
     }
 }
 
@@ -349,7 +362,7 @@ fn command_init(root: &Path, scope: &str) -> Result<(Value, i32)> {
     ))
 }
 
-fn command_attach(root: &Path, args: &AttachArgs) -> Result<(Value, i32)> {
+fn command_attach(root: &Path, scope: Option<Scope>, args: &AttachArgs) -> Result<(Value, i32)> {
     let attribution = match args.author {
         AuthorKind::Human => ops::Attribution::human(&args.identity),
         AuthorKind::Agent => {
@@ -373,7 +386,7 @@ fn command_attach(root: &Path, args: &AttachArgs) -> Result<(Value, i32)> {
         evidence: args.evidence.iter().map(|item| parse_evidence(item)).collect(),
         revision: git::head_revision(root),
     };
-    Ok((ops::attach(root, None, &request, &attribution, provenance)?, 0))
+    Ok((ops::attach(root, scope, &request, &attribution, provenance)?, 0))
 }
 
 fn parse_target(raw: &str) -> ops::Target {
@@ -390,7 +403,7 @@ fn parse_target(raw: &str) -> ops::Target {
     }
 }
 
-fn command_relate(root: &Path, args: &RelateArgs) -> Result<(Value, i32)> {
+fn command_relate(root: &Path, scope: Option<Scope>, args: &RelateArgs) -> Result<(Value, i32)> {
     let attribution = match args.author {
         AuthorKind::Agent => ops::Attribution::agent(&args.identity, "unrecorded"),
         AuthorKind::Analyzer | AuthorKind::Runtime => ops::Attribution::analyzer(&args.identity),
@@ -404,7 +417,7 @@ fn command_relate(root: &Path, args: &RelateArgs) -> Result<(Value, i32)> {
         detail: args.detail.clone(),
     };
     let provenance = ops::Provenance { revision: git::head_revision(root), ..Default::default() };
-    Ok((ops::relate(root, None, &request, &attribution, provenance)?, 0))
+    Ok((ops::relate(root, scope, &request, &attribution, provenance)?, 0))
 }
 
 fn parse_evidence(raw: &str) -> Evidence {
