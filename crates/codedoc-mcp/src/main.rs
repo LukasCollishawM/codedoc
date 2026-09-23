@@ -81,6 +81,7 @@ pub struct RelateArgs {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct RecordArgs {
     pub record: String,
+    pub scope: Option<String>,
     pub claim: Option<String>,
     pub detail: Option<String>,
     pub reason: Option<String>,
@@ -251,7 +252,7 @@ impl Codedoc {
             symbol: args.to_symbol,
             line: args.to_line,
         };
-        respond(resolve(&self.root, None, &args.record, &relocation))
+        respond(resolve(&self.root, scope_of(&args.scope), &args.record, &relocation))
     }
 
     #[tool(
@@ -263,7 +264,7 @@ impl Codedoc {
     ) -> Result<CallToolResult, McpError> {
         respond(supersede(
             &self.root,
-            None,
+            scope_of(&args.scope),
             &args.record,
             args.claim.as_deref(),
             args.detail.as_deref(),
@@ -278,7 +279,7 @@ impl Codedoc {
         &self,
         Parameters(args): Parameters<RecordArgs>,
     ) -> Result<CallToolResult, McpError> {
-        respond(retract(&self.root, None, &args.record, args.reason.as_deref()))
+        respond(retract(&self.root, scope_of(&args.scope), &args.record, args.reason.as_deref()))
     }
 
     #[tool(description = "List active records, optionally filtered by file or symbol.")]

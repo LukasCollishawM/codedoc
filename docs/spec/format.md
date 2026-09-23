@@ -68,6 +68,16 @@ Fingerprints are computed bottom-up, so that a subtree's digest depends only on 
 
 **Symbol path.** `language://Segment/Segment`, built from the names of enclosing declarations, outermost first. The language component MUST be lowercase alphanumeric. Segments MUST NOT be empty.
 
+Generic parameters and qualifying prefixes MUST NOT appear in a segment, so that renaming a lifetime or moving a type between modules does not move an anchor. A language MAY declare that its declaration names are *qualified*, in which case an out-of-line definition such as `Foo::bar` contributes both segments; otherwise only the terminal name is used.
+
+**Symbol cardinality and ordinal.** A symbol path does not necessarily identify a unique declaration — an overload set is the common case. An anchor MUST therefore record how many declarations shared its symbol path when it was captured, and which of them it was, in document order.
+
+This is not bookkeeping. Without it, deleting one member of an overload set leaves exactly one declaration bearing that symbol, and a resolver that trusts the symbol will attach the deleted member's documentation to its surviving sibling, at high confidence. See section 4.
+
+Implementations reading a record written before these members existed MUST treat the cardinality as 1 and the ordinal as 0.
+
+**Shape histogram.** An anchor records a count of node kinds in its subtree, used both to rank candidates at rung 6 and to measure drift. It excludes ignorable nodes.
+
 ## 4. Resolution
 
 An implementation MUST attempt the rungs in order and MUST stop at the first rung yielding exactly one candidate.
@@ -76,10 +86,10 @@ An implementation MUST attempt the rungs in order and MUST stop at the first run
 | --- | --- | --- |
 | 1 | content fingerprint and node kind match | exact |
 | 2 | structural fingerprint, node kind and symbol path match | exact |
-| 3 | symbol path identifies exactly one declaration, and the node path descends to a node of the recorded kind | high |
+| 3 | the symbol path identifies the same number of declarations as when the anchor was captured, the recorded ordinal selects one, and the node path descends to a node of the recorded kind | high |
 | 4 | preceding and following context fingerprints and node kind match | medium |
 | 5 | migration through recorded version-control history | medium |
-| 6 | shape similarity within the same symbol, above the floor and ahead of the runner-up by the margin | low |
+| 6 | shape similarity within the same symbol, above the floor and ahead of the runner-up by the margin, and only when symbol cardinality still matches | low |
 
 A rung yielding more than one candidate MUST NOT select among them. It MUST continue to the next rung, because a later rung may carry information that distinguishes them. If no rung yields exactly one candidate, the anchor MUST be reported as detached, citing the earliest rung at which candidates were ambiguous.
 
@@ -89,7 +99,17 @@ Record kinds `invariant`, `security`, `precondition` and `postcondition` require
 
 **An implementation MUST NOT resolve an anchor onto a node it cannot distinguish from another candidate.** This is the central safety property of the format: documentation attached to the wrong construct is worse than documentation reported as lost.
 
-## 5. Records
+The cardinality condition on rungs 3 and 6 exists to serve that property. A symbol shared by several declarations identifies none of them, and a count that has changed means the symbol no longer refers to what it referred to.
+
+## 5. Staleness
+
+Resolution answers where a claim's code went. It does not answer whether the claim is still true, and an implementation MUST NOT present the two as the same thing.
+
+Conforming implementations SHOULD compute **drift**: the distance between the shape histogram recorded with the anchor and the shape of the node it resolved to, as a percentage. A construct that resolved perfectly but whose drift exceeds an implementation-defined threshold SHOULD be reported as stale rather than current, because a claim about a body that has since been rewritten may simply be false.
+
+Drift MUST be insensitive to identifier and literal text, so that renaming does not register as change.
+
+## 6. Records
 
 A record is an immutable, content-addressed assertion. Its identifier is the record digest of its canonical bytes, computed over every member except the identifier itself.
 
@@ -105,7 +125,7 @@ Extending the vocabulary is a schema change. Discriminants MUST NOT be renumbere
 
 Records are never modified. A revised belief is a new record whose `parent` names the record it supersedes. A retraction is a record of kind `tombstone` whose `parent` names its target. A record named as the parent of a non-tombstone record is superseded; a record named as the parent of a tombstone is retracted. Neither appears in the active set.
 
-## 6. Ledger
+## 7. Ledger
 
 Records are stored as canonical JSON, one per line, terminated by `0x0A`, in files under `.codedoc/ledger/` named by the first two hexadecimal characters of the record identifier with a `.jsonl` extension.
 
@@ -115,9 +135,23 @@ A record whose `chain` names an identifier not present in the ledger is **orphan
 
 A record referenced by no other record's `chain` is a **tip**. Multiple tips are permitted and indicate a merge.
 
-Derived state — indexes, caches, projections — MUST be reconstructible from the ledger alone and MUST NOT be committed.
+Derived state — indexes, caches, projections — MUST be reconstructible from the ledger alone and MUST NOT be committed. An implementation that versions its derived state MUST rebuild rather than fail when that version does not match.
 
-## 7. Threat model
+## 8. Scopes
+
+A repository MAY carry more than one ledger, and an implementation SHOULD support at least:
+
+| scope | location | visibility |
+| --- | --- | --- |
+| shared | `.codedoc/` in the working tree | committed, shared with everyone who clones |
+| local | inside the git directory | present only in this clone, untracked by construction |
+| global | outside the repository, keyed by its canonical path | present only on this machine |
+
+The local and global scopes exist so that codedoc can be used on a repository the user does not own or does not wish to modify. An implementation offering them **MUST NOT write anything to the working tree for those scopes**, including ignore files: a scope that announces itself in `git status` has failed at its only distinguishing purpose.
+
+Reads MUST merge every scope present, deduplicating by record identifier. Writes MUST target exactly one.
+
+## 9. Threat model
 
 A cloned repository's ledger is untrusted input, as is every source file presented to a parser. Conforming implementations MUST NOT panic or abort on malformed input, MUST NOT size an allocation from an untrusted length, MUST confine path-valued members to the repository root, and MUST NOT allow record content to reach an executed context.
 
