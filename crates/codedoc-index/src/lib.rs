@@ -20,7 +20,8 @@ CREATE TABLE records (
     created INTEGER NOT NULL,
     lifecycle TEXT NOT NULL,
     parent TEXT,
-    chain TEXT
+    chain TEXT,
+    canonical TEXT NOT NULL
 ) STRICT;
 CREATE TABLE anchors (
     record_id TEXT NOT NULL REFERENCES records(id),
@@ -239,6 +240,77 @@ impl Index {
         Ok(rows.filter_map(Result::ok).collect())
     }
 
+    fn decode_rows(
+        &self,
+        sql: &str,
+        bind: &[&dyn rusqlite::ToSql],
+    ) -> Result<Vec<Record>, IndexError> {
+        let mut statement = self.connection.prepare(sql)?;
+        let rows = statement.query_map(bind, |row| row.get::<_, String>(0))?;
+        let mut records = Vec::new();
+        for line in rows.filter_map(Result::ok) {
+            if let Ok(record) = Record::decode_line(line.as_bytes()) {
+                records.push(record);
+            }
+        }
+        Ok(records)
+    }
+
+    pub fn active_in_file(&self, file: &str) -> Result<Vec<Record>, IndexError> {
+        self.decode_rows(
+            "SELECT DISTINCT r.canonical FROM records r
+             JOIN anchors a ON a.record_id = r.id
+             WHERE a.file = ?1 AND r.kind != 'tombstone'
+               AND r.id NOT IN (SELECT parent FROM records WHERE parent IS NOT NULL)
+             ORDER BY r.canonical",
+            &[&file],
+        )
+    }
+
+    pub fn active_covering_line(&self, file: &str, line: u32) -> Result<Vec<Record>, IndexError> {
+        self.decode_rows(
+            "SELECT DISTINCT r.canonical FROM records r
+             JOIN anchors a ON a.record_id = r.id
+             WHERE a.file = ?1 AND a.start_line <= ?2 AND a.end_line >= ?2
+               AND r.kind != 'tombstone'
+               AND r.id NOT IN (SELECT parent FROM records WHERE parent IS NOT NULL)
+             ORDER BY r.canonical",
+            &[&file, &line],
+        )
+    }
+
+    pub fn active_for_symbol(&self, symbol: &str) -> Result<Vec<Record>, IndexError> {
+        self.decode_rows(
+            "SELECT DISTINCT r.canonical FROM records r
+             JOIN anchors a ON a.record_id = r.id
+             WHERE a.symbol = ?1 AND r.kind != 'tombstone'
+               AND r.id NOT IN (SELECT parent FROM records WHERE parent IS NOT NULL)
+             ORDER BY r.canonical",
+            &[&symbol],
+        )
+    }
+
+    pub fn active_relations_touching(&self, symbols: &[String]) -> Result<Vec<Record>, IndexError> {
+        let mut collected: Vec<Record> = Vec::new();
+        for symbol in symbols {
+            let found = self.decode_rows(
+                "SELECT DISTINCT r.canonical FROM records r
+                 JOIN anchors a ON a.record_id = r.id
+                 WHERE a.symbol = ?1 AND r.kind LIKE 'relation.%'
+                   AND r.id NOT IN (SELECT parent FROM records WHERE parent IS NOT NULL)
+                 ORDER BY r.canonical",
+                &[symbol],
+            )?;
+            for record in found {
+                let known = collected.iter().any(|existing| existing.id() == record.id());
+                if !known {
+                    collected.push(record);
+                }
+            }
+        }
+        Ok(collected)
+    }
+
     pub fn files(&self) -> Result<Vec<String>, IndexError> {
         let mut statement =
             self.connection.prepare("SELECT DISTINCT file FROM anchors ORDER BY file")?;
@@ -258,8 +330,8 @@ fn project(connection: &Connection, record: &Record) -> Result<(), IndexError> {
 
     connection.execute(
         "INSERT INTO records (id, kind, claim, detail, assurance, author, created, lifecycle,
-                              parent, chain)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                              parent, chain, canonical)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
         params![
             record.id().to_string(),
             kind,
@@ -271,6 +343,14 @@ fn project(connection: &Connection, record: &Record) -> Result<(), IndexError> {
             lifecycle,
             content.parent.map(|parent| parent.to_string()),
             content.chain.map(|chain| chain.to_string()),
+            String::from_utf8(record.encode_line().map_err(|source| IndexError::Projection {
+                record: record.id().to_string(),
+                detail: source.to_string(),
+            })?)
+            .map_err(|source| IndexError::Projection {
+                record: record.id().to_string(),
+                detail: source.to_string(),
+            })?,
         ],
     )?;
 

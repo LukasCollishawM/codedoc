@@ -2,6 +2,7 @@
 
 mod git;
 mod import;
+mod lifecycle;
 mod render;
 
 use std::collections::BTreeMap;
@@ -122,6 +123,41 @@ enum Command {
 
     Kinds,
 
+    Supersede {
+        record: String,
+
+        #[arg(long)]
+        claim: Option<String>,
+
+        #[arg(long)]
+        detail: Option<String>,
+
+        #[arg(long)]
+        kind: Option<String>,
+    },
+
+    Resolve {
+        record: String,
+
+        #[arg(long = "to-symbol", conflicts_with = "to_line")]
+        to_symbol: Option<String>,
+
+        #[arg(long = "to-line", conflicts_with = "to_symbol")]
+        to_line: Option<u32>,
+
+        #[arg(long = "in-file")]
+        in_file: Option<String>,
+    },
+
+    Retract {
+        record: String,
+
+        #[arg(long)]
+        reason: Option<String>,
+    },
+
+    Detached,
+
     Import {
         paths: Vec<String>,
 
@@ -192,6 +228,26 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
         Command::History { record } => command_history(&cli.root, record),
         Command::Stats => command_stats(&cli.root),
         Command::Kinds => Ok((json!({"command": "kinds", "kinds": Kind::vocabulary()}), 0)),
+        Command::Supersede { record, claim, detail, kind } => lifecycle::supersede(
+            &cli.root,
+            record,
+            claim.as_deref(),
+            detail.as_deref(),
+            kind.as_deref(),
+        ),
+        Command::Resolve { record, to_symbol, to_line, in_file } => lifecycle::resolve(
+            &cli.root,
+            record,
+            &lifecycle::Relocation {
+                symbol: to_symbol.as_deref(),
+                line: *to_line,
+                file: in_file.as_deref(),
+            },
+        ),
+        Command::Retract { record, reason } => {
+            lifecycle::retract(&cli.root, record, reason.as_deref())
+        }
+        Command::Detached => command_detached(&cli.root),
         Command::Import { paths, write, limit } => import::run(&cli.root, paths, *write, *limit),
     }
 }
@@ -341,8 +397,11 @@ fn command_context(
     depth: u8,
     budget: Option<usize>,
 ) -> Result<(Value, i32)> {
-    let ledger = Ledger::open(root).context("opening the ledger")?;
-    let graph = Graph::load(&ledger).context("loading the knowledge graph")?;
+    let ledger = Ledger::discover(root).context("opening the ledger")?;
+    let index = match Index::open(ledger.root()) {
+        Ok(index) => index,
+        Err(_) => Index::rebuild(&ledger).context("building the index")?,
+    };
 
     let (file, line) = match target.rsplit_once(':') {
         Some((path, number)) if number.parse::<u32>().is_ok() => {
@@ -352,6 +411,23 @@ fn command_context(
     };
     let normalised = RepoPath::parse(&file).map(|path| path.as_str().to_owned()).unwrap_or(file);
 
+    let mut records = match (symbol, line) {
+        (Some(wanted), _) => index.active_for_symbol(wanted),
+        (None, Some(wanted)) => index.active_covering_line(&normalised, wanted),
+        (None, None) => index.active_in_file(&normalised),
+    }
+    .context("querying the index")?;
+
+    if depth > 0 {
+        let symbols: Vec<String> = records
+            .iter()
+            .flat_map(|record| record.content().anchors.iter())
+            .filter_map(|entry| entry.anchor.symbol.as_ref().map(ToString::to_string))
+            .collect();
+        records.extend(index.active_relations_touching(&symbols).context("querying relations")?);
+    }
+
+    let graph = Graph::from_records(records);
     let mut pack = assemble(
         &graph,
         Target { file: normalised, line, symbol: symbol.map(str::to_owned) },
@@ -430,6 +506,29 @@ fn command_history(root: &Path, record: &str) -> Result<(Value, i32)> {
         })
         .collect();
     Ok((json!({"command": "history", "revisions": rows.len(), "chain": rows}), 0))
+}
+
+fn command_detached(root: &Path) -> Result<(Value, i32)> {
+    let ledger = Ledger::discover(root).context("opening the ledger")?;
+    let report = Verifier::new(ledger.root()).run(&ledger).context("verifying anchors")?;
+    let rows: Vec<Value> = report
+        .findings
+        .iter()
+        .filter(|finding| finding.status == codedoc_verify::Status::Detached)
+        .map(|finding| {
+            json!({
+                "record": finding.record.to_string(),
+                "kind": finding.kind,
+                "claim": finding.claim,
+                "file": finding.file,
+                "symbol": finding.symbol,
+                "recorded_range": finding.recorded_range.to_string(),
+                "resolution": serde_json::to_value(&finding.resolution).unwrap_or(Value::Null),
+            })
+        })
+        .collect();
+    let code = i32::from(!rows.is_empty()) * 2;
+    Ok((json!({"command": "detached", "count": rows.len(), "records": rows}), code))
 }
 
 fn command_stats(root: &Path) -> Result<(Value, i32)> {

@@ -5,7 +5,7 @@ use codedoc_lang::Adapter;
 use serde::{Deserialize, Serialize};
 use tree_sitter::{Node, Tree};
 
-use crate::anchor::{Anchor, NodePath, SourceRange, symbol_path_of};
+use crate::anchor::{Anchor, NodePath, SourceRange};
 use crate::fingerprint;
 
 pub const SIMILARITY_FLOOR: f64 = 0.75;
@@ -160,36 +160,8 @@ impl<'tree, 'adapter> FileIndex<'tree, 'adapter> {
         let root = tree.root_node();
         let digests = fingerprint::compute_all(root, adapter, source);
         let mut candidates = Vec::new();
-        let mut cursor = root.walk();
-        let mut descending = true;
-        loop {
-            if descending {
-                let node = cursor.node();
-                if node.is_named() && !adapter.is_ignorable(node.kind()) {
-                    candidates.push(Candidate {
-                        node,
-                        kind: node.kind().to_owned(),
-                        content: fingerprint::content_of(node, &digests),
-                        structural: fingerprint::structural_of(node, &digests),
-                        preceding: fingerprint::preceding_context_with(node, adapter, &digests),
-                        following: fingerprint::following_context_with(node, adapter, &digests),
-                        symbol: symbol_path_of(node, adapter, source).map(|path| path.to_string()),
-                        declares: adapter.declares_symbol(node.kind()),
-                    });
-                }
-                if cursor.goto_first_child() {
-                    continue;
-                }
-                descending = false;
-            }
-            if cursor.goto_next_sibling() {
-                descending = true;
-                continue;
-            }
-            if !cursor.goto_parent() {
-                break;
-            }
-        }
+        let mut segments: Vec<String> = Vec::new();
+        collect(root, adapter, source, &digests, &mut segments, &mut candidates);
 
         let mut by_content: HashMap<ContentFingerprint, Vec<usize>> = HashMap::new();
         let mut by_structural: HashMap<StructuralFingerprint, Vec<usize>> = HashMap::new();
@@ -356,6 +328,54 @@ impl<'tree, 'adapter> FileIndex<'tree, 'adapter> {
 
     pub fn root(&self) -> Node<'tree> {
         self.root
+    }
+}
+
+fn collect<'tree>(
+    node: Node<'tree>,
+    adapter: &Adapter,
+    source: &str,
+    digests: &fingerprint::Digests,
+    segments: &mut Vec<String>,
+    out: &mut Vec<Candidate<'tree>>,
+) {
+    if adapter.is_ignorable(node.kind()) {
+        return;
+    }
+    let declares = adapter.declares_symbol(node.kind());
+    let named_here =
+        declares.then(|| adapter.declaration_name(node, source)).flatten().map(str::to_owned);
+    if let Some(name) = &named_here {
+        segments.push(name.clone());
+    }
+
+    if node.is_named() {
+        let symbol =
+            (!segments.is_empty()).then(|| format!("{}://{}", adapter.name(), segments.join("/")));
+        out.push(Candidate {
+            node,
+            kind: node.kind().to_owned(),
+            content: fingerprint::content_of(node, digests),
+            structural: fingerprint::structural_of(node, digests),
+            preceding: fingerprint::preceding_context_with(node, adapter, digests),
+            following: fingerprint::following_context_with(node, adapter, digests),
+            symbol,
+            declares,
+        });
+    }
+
+    let mut cursor = node.walk();
+    if cursor.goto_first_child() {
+        loop {
+            collect(cursor.node(), adapter, source, digests, segments, out);
+            if !cursor.goto_next_sibling() {
+                break;
+            }
+        }
+    }
+
+    if named_here.is_some() {
+        segments.pop();
     }
 }
 

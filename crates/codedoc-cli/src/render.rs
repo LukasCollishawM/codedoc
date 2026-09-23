@@ -15,6 +15,10 @@ pub fn human(payload: &Value) -> String {
         Some("stats") => render_stats(payload, &mut out),
         Some("kinds") => render_kinds(payload, &mut out),
         Some("import") => render_import(payload, &mut out),
+        Some("supersede") => render_supersede(payload, &mut out),
+        Some("resolve") => render_resolve(payload, &mut out),
+        Some("retract") => render_retract(payload, &mut out),
+        Some("detached") => render_detached(payload, &mut out),
         _ => {
             let _ = writeln!(out, "{payload}");
         }
@@ -224,6 +228,62 @@ fn render_stats(payload: &Value, out: &mut String) {
         "integrity {}",
         if payload["integrity_intact"].as_bool().unwrap_or(false) { "intact" } else { "BROKEN" }
     );
+}
+
+fn render_supersede(payload: &Value, out: &mut String) {
+    let _ = writeln!(out, "recorded {}", &text(payload, "record")[..16]);
+    let _ = writeln!(out, "  supersedes {}", &text(payload, "supersedes")[..16]);
+    let _ = writeln!(out, "  anchored at {}", text(payload, "range"));
+    let _ = writeln!(out, "  the superseded record remains readable via `codedoc history`");
+}
+
+fn render_resolve(payload: &Value, out: &mut String) {
+    let _ = writeln!(out, "reattached {}", &text(payload, "readopts")[..16]);
+    let _ = writeln!(out, "  as {}", &text(payload, "record")[..16]);
+    let _ = writeln!(out, "  {} {}", text(payload, "file"), text(payload, "range"));
+    if let Some(symbol) = payload.get("symbol").and_then(Value::as_str) {
+        let _ = writeln!(out, "  {symbol}");
+    }
+}
+
+fn render_retract(payload: &Value, out: &mut String) {
+    let _ = writeln!(out, "retracted {}", &text(payload, "retracts")[..16]);
+    let _ = writeln!(out, "  was: {}", text(payload, "was"));
+    let _ = writeln!(out, "  the claim stays in history; it leaves the active set");
+}
+
+fn render_detached(payload: &Value, out: &mut String) {
+    let empty = Vec::new();
+    let records = payload["records"].as_array().unwrap_or(&empty);
+    if records.is_empty() {
+        let _ = writeln!(out, "no detached anchors");
+        return;
+    }
+    for record in records {
+        let _ = writeln!(
+            out,
+            "{}  {}",
+            &record["record"].as_str().unwrap_or("")[..12],
+            record["file"].as_str().unwrap_or("")
+        );
+        if let Some(symbol) = record.get("symbol").and_then(Value::as_str) {
+            let _ = writeln!(out, "  was {symbol}");
+        }
+        let _ = writeln!(
+            out,
+            "  {} :: {}",
+            record["kind"].as_str().unwrap_or(""),
+            record["claim"].as_str().unwrap_or("")
+        );
+        let _ = writeln!(out);
+    }
+    let _ = writeln!(out, "{} detached", records.len());
+    let _ = writeln!(out);
+    let _ = writeln!(out, "place one explicitly:");
+    let _ = writeln!(out, "  codedoc resolve <record> --to-symbol <symbol>");
+    let _ = writeln!(out, "  codedoc resolve <record> --to-line <line> --in-file <path>");
+    let _ = writeln!(out, "or drop it:");
+    let _ = writeln!(out, "  codedoc retract <record> --reason \"...\"");
 }
 
 fn render_import(payload: &Value, out: &mut String) {
