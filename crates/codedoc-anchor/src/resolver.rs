@@ -365,7 +365,7 @@ fn collect<'tree>(
     }
     let declares = adapter.declares_symbol(node.kind());
     let named_here =
-        declares.then(|| adapter.declaration_name(node, source)).flatten().map(str::to_owned);
+        declares.then(|| adapter.declaration_name(node, source)).flatten().map(|name| name.into_owned());
     if let Some(name) = &named_here {
         segments.push(name.clone());
     }

@@ -42,7 +42,7 @@ fn file() -> RepoPath {
 fn find_function<'tree>(root: Node<'tree>, source: &str, name: &str) -> Option<Node<'tree>> {
     let mut cursor = root.walk();
     root.named_children(&mut cursor).find(|node| {
-        node.kind() == "function_item" && rust().declaration_name(*node, source) == Some(name)
+        node.kind() == "function_item" && rust().declaration_name(*node, source).as_deref() == Some(name)
     })
 }
 

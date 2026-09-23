@@ -82,6 +82,33 @@
       "before": "fn alpha() {\n    prepare();\n    commit();\n}\n\nfn beta() {\n    prepare();\n    commit();\n}\n\nfn gamma() {\n    prepare();\n    commit();\n}\n",
       "after": "fn beta() {\n    prepare();\n    commit();\n}\n\nfn gamma() {\n    prepare();\n    commit();\n}\n",
       "expect": { "outcome": "detached", "detail": "no_candidate" }
+    },
+    {
+      "name": "cpp_reformatting_holds_by_content_identity",
+      "language": "cpp",
+      "path": "src/session.cpp",
+      "symbol": "cpp://Session/open",
+      "before": "int Session::open(){int handle=7;return handle;}\n",
+      "after": "int Session::open() {\n    int handle = 7;\n    return handle;\n}\n",
+      "expect": { "outcome": "located", "detail": "content_identity" }
+    },
+    {
+      "name": "cpp_local_rename_holds_by_structural_identity",
+      "language": "cpp",
+      "path": "src/session.cpp",
+      "symbol": "cpp://Session/open",
+      "before": "int Session::open() {\n    int handle = 7;\n    return handle;\n}\n",
+      "after": "int Session::open() {\n    int descriptor = 7;\n    return descriptor;\n}\n",
+      "expect": { "outcome": "located", "detail": "structural_identity" }
+    },
+    {
+      "name": "cpp_insertion_above_does_not_shift_the_anchor",
+      "language": "cpp",
+      "path": "src/session.cpp",
+      "symbol": "cpp://Session/open",
+      "before": "int Session::open() {\n    int handle = 7;\n    return handle;\n}\n",
+      "after": "void Session::warm() {\n    int primer = 1;\n    (void)primer;\n}\n\nint Session::open() {\n    int handle = 7;\n    return handle;\n}\n",
+      "expect": { "outcome": "located", "detail": "content_identity" }
     }
   ]
 }
