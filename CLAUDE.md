@@ -207,7 +207,7 @@ Measured, not aspirational. Two corpora, both release builds. The small one is t
 | --- | --- | --- | --- |
 | `import --write` | 1.5s | 20.7s | — |
 | `reindex` | — | 2.9s | 60s |
-| `verify` | 3.0s | 30.0s | 60s |
+| `verify` | 3.0s | 7.7s | 60s |
 | `context` (depth 2) | 74ms | 33ms | 100ms |
 
 Everything is inside budget at a million lines, but only after the scale test found something a smaller corpus could not. `context` was **1.98s** at 1M LOC while passing comfortably at 50k, because relation lookup ran one query per symbol, used a `LIKE 'relation.%'` that the kind index cannot serve, and an unindexed `NOT IN` subquery — a cost invisible until a file carried enough claims for the per-symbol loop to matter. One query with a bound `IN` list, a range predicate the index can use, and an index on `parent` took it to 33ms.

@@ -70,3 +70,21 @@ fn growing_a_body_slightly_stays_under_the_threshold() {
          on the function"
     );
 }
+
+#[test]
+fn findings_are_ordered_independently_of_how_work_was_scheduled() {
+    let statuses = [
+        codedoc_verify::Status::Detached,
+        codedoc_verify::Status::Stale,
+        codedoc_verify::Status::Migrated,
+        codedoc_verify::Status::Fresh,
+    ];
+    for pair in statuses.windows(2) {
+        let [worse, better] = pair else { continue };
+        assert!(
+            worse > better,
+            "verification runs files in parallel and sorts afterwards, so the ordering \
+             must be total and must put what needs attention first"
+        );
+    }
+}

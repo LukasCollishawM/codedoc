@@ -11,6 +11,7 @@ use codedoc_core::{GitRev, RecordId, RepoPath};
 use codedoc_graph::Graph;
 use codedoc_lang::Registry;
 use codedoc_ledger::{Kind, Ledger, LedgerError, Verification, Workspace};
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -169,23 +170,28 @@ impl Verifier {
             }
         }
 
-        let mut findings = Vec::new();
-        for (file, entries) in pending {
-            let resolutions = self.resolve_file(&file, &entries);
-            for (item, (resolution, drift)) in entries.into_iter().zip(resolutions) {
-                findings.push(Finding {
-                    record: item.record,
-                    drift,
-                    kind: item.kind,
-                    claim: item.claim,
-                    file: file.clone(),
-                    symbol: item.anchor.symbol.as_ref().map(ToString::to_string),
-                    status: classify(&resolution, drift),
-                    recorded_range: item.anchor.range,
-                    resolution,
-                });
-            }
-        }
+        let work: Vec<(String, Vec<Pending>)> = pending.into_iter().collect();
+        let mut findings: Vec<Finding> = work
+            .into_par_iter()
+            .flat_map(|(file, entries)| {
+                let resolutions = self.resolve_file(&file, &entries);
+                entries
+                    .into_iter()
+                    .zip(resolutions)
+                    .map(|(item, (resolution, drift))| Finding {
+                        record: item.record,
+                        drift,
+                        kind: item.kind,
+                        claim: item.claim,
+                        file: file.clone(),
+                        symbol: item.anchor.symbol.as_ref().map(ToString::to_string),
+                        status: classify(&resolution, drift),
+                        recorded_range: item.anchor.range,
+                        resolution,
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect();
 
         findings.sort_by(|left, right| {
             right

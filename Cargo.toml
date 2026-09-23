@@ -45,6 +45,7 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std"] }
 proptest = "1"
 insta = { version = "1", features = ["json"] }
 walkdir = "2"
+rayon = "1"
 tempfile = "3"
 
 [profile.release]

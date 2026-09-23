@@ -34,6 +34,7 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 - **The specification covers what the implementation does.** Symbol cardinality, drift-based staleness, scopes, and the rule that generic parameters never appear in a symbol path were all implemented before being written down, which inverts the rule this project states for itself. `docs/spec/format.md` now binds them, including the requirement that a local or global scope writes nothing to the working tree.
 
+- **Verification runs files in parallel**: 30s to 7.7s at 1.09M lines on 32 cores. Per-file resolution shares nothing, and findings are sorted after collection, so output is byte-identical across runs.
 - **Verification can be scoped to what you changed.** `codedoc verify <files>` or `--since <rev>` answers from the index instead of the whole ledger: 67ms against 30s at 1.09M lines. A scoped run skips the whole-ledger integrity scan and reports that it did, rather than implying it passed.
 - **Context retrieval is 60x faster at scale.** Relation lookup issued one query per symbol, with a `LIKE` the kind index cannot serve and an unindexed subquery. At 1.09M LOC and 27,420 records that cost 1.98s against a 100ms budget, while passing comfortably at 50k. A single bound query, an index-usable range predicate and an index on `parent` bring it to 33ms.
 
