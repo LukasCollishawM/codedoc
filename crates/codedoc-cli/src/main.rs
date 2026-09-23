@@ -137,22 +137,43 @@ fn main() -> ExitCode {
     let cli = Cli::parse();
     match dispatch(&cli) {
         Ok((value, code)) => {
-            if cli.json {
-                println!("{}", serde_json::to_string_pretty(&value).unwrap_or_default());
+            let rendered = if cli.json {
+                serde_json::to_string_pretty(&value).unwrap_or_default()
             } else {
-                render::human(&value);
+                render::human(&value)
+            };
+            match emit(&rendered) {
+                Emission::Written => ExitCode::from(code as u8),
+                Emission::ConsumerClosed => ExitCode::SUCCESS,
             }
-            ExitCode::from(code as u8)
         }
         Err(failure) => {
             if cli.json {
                 let payload = json!({"error": failure.to_string()});
-                println!("{}", serde_json::to_string_pretty(&payload).unwrap_or_default());
+                let _ = emit(&serde_json::to_string_pretty(&payload).unwrap_or_default());
             } else {
                 eprintln!("codedoc: {failure:#}");
             }
             ExitCode::from(4u8)
         }
+    }
+}
+
+enum Emission {
+    Written,
+    ConsumerClosed,
+}
+
+fn emit(rendered: &str) -> Emission {
+    use std::io::Write;
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+    match handle.write_all(rendered.as_bytes()).and_then(|()| handle.flush()) {
+        Ok(()) => Emission::Written,
+        Err(failure) if failure.kind() == std::io::ErrorKind::BrokenPipe => {
+            Emission::ConsumerClosed
+        }
+        Err(_) => Emission::Written,
     }
 }
 
