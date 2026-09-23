@@ -39,6 +39,7 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Changed
 
+- **Anchor survival measured on three external corpora**: ripgrep (Rust, 400 commits, 98.2%), httpx (Python, 300 commits, 92.8%) and this repository (97.9%). Zero suspicious reattachments in all three, and every detachment inspected corresponds to code genuinely deleted or renamed.
 - **Symbol cardinality is counted per declaration kind.** Counting per symbol alone detached every record on a Rust type whenever an `impl` block was added or replaced by a derive, because a type and its impls share one symbol path. Found by replaying ripgrep, where `#[derive(Default)]` replacing hand-written impls detached records on enums that had not moved. Survival on ripgrep rose from 97.5% to 98.2%, and the overload invariant is untouched: an overload set shares a kind as well as a symbol.
 - **The replay harness reports why anchors detached**, not just how many. Over this repository's own history that turned "5 detached" into five constructs that were genuinely deleted, which is a different fact entirely.
 
