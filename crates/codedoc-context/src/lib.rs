@@ -185,7 +185,7 @@ impl ContextPack {
             &mut self.rationale,
             &mut self.other,
         ] {
-            section.sort_by(|left, right| right.trust.cmp(&left.trust));
+            section.sort_by_key(|claim| std::cmp::Reverse(claim.trust));
         }
     }
 
