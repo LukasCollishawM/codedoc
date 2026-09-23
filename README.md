@@ -84,9 +84,11 @@ that it could not be placed, so the two are not traded off against each other:
 anchor survival is a quality metric to improve, and false attachment is a hard zero
 enforced by a property test.
 
-Replayed over this repository's own history — 45 commits including a crate extraction,
-a module moved between crates and several renames — 229 anchors survived at 97.8%
-with nothing landing on the wrong symbol.
+Replayed over 400 commits of [ripgrep](https://github.com/BurntSushi/ripgrep), a
+codebase we did not write: 1,073 anchors, **98.2% survived**, nothing landed on the
+wrong symbol, and all 19 detachments were checked by hand and correspond to code that
+was genuinely deleted or renamed. Every anchor either found its code or correctly
+said it was gone.
 
 ```
 $ codedoc verify
