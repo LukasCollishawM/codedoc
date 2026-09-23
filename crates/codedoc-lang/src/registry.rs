@@ -75,6 +75,14 @@ impl Adapter {
         node: Node<'tree>,
         source: &'tree str,
     ) -> Option<&'tree str> {
+        self.raw_declaration_name(node, source).map(base_name)
+    }
+
+    fn raw_declaration_name<'tree>(
+        &self,
+        node: Node<'tree>,
+        source: &'tree str,
+    ) -> Option<&'tree str> {
         let declaration =
             self.declarations.iter().find(|candidate| candidate.node_kind == node.kind())?;
         for field in declaration.name_fields {
@@ -202,6 +210,11 @@ const ADAPTERS: &[Adapter] = &[
     },
 ];
 
+fn base_name(raw: &str) -> &str {
+    let truncated = raw.split(['<', '(', ' ']).next().unwrap_or(raw);
+    truncated.rsplit("::").next().unwrap_or(truncated).trim()
+}
+
 pub struct Registry;
 
 impl Registry {
@@ -272,6 +285,24 @@ mod tests {
         let tree = adapter.parse(source).unwrap();
         let class = tree.root_node().child(0).unwrap();
         assert_eq!(adapter.declaration_name(class, source), Some("Ledger"));
+    }
+
+    #[test]
+    fn generic_parameters_do_not_leak_into_symbol_names() {
+        let adapter = Registry::by_name("rust").unwrap();
+        let source = "impl<'a, T> Cache<'a, T> { fn get(&self) {} }";
+        let tree = adapter.parse(source).unwrap();
+        let block = tree.root_node().child(0).unwrap();
+        assert_eq!(adapter.declaration_name(block, source), Some("Cache"));
+    }
+
+    #[test]
+    fn qualified_impl_targets_reduce_to_their_base_name() {
+        let adapter = Registry::by_name("rust").unwrap();
+        let source = "impl inner::Thing { fn go(&self) {} }";
+        let tree = adapter.parse(source).unwrap();
+        let block = tree.root_node().child(0).unwrap();
+        assert_eq!(adapter.declaration_name(block, source), Some("Thing"));
     }
 
     #[test]

@@ -115,13 +115,25 @@ The kind vocabulary is **closed and versioned**. Extending it is a schema change
 
 The ledger is committed text, not binary. Reviewability in a PR diff and greppability without tooling beat encoding efficiency; the SQLite projection carries query performance, so the ledger does not have to. Sharding by hash prefix plus append-only semantics makes merges a union operation — ship the driver via `codedoc git install-merge-driver` and never make a user hand-resolve a conflict in an append-only log.
 
+## Adoption
+
+codedoc must be addable to a codebase on day 40,000, not day one. A tool that only works if adopted before the first commit has no users. This is a design constraint with teeth, and several parts of the system exist only to satisfy it.
+
+**Bootstrapping is `codedoc import`.** It reads the comments a repository already has, determines which construct each documents, anchors it there, and classifies it by marker — `TODO` to `warning`, `SAFETY:` to `security`, "because…" to `rationale`. It is dry-run by default and requires `--write`. It is **additive and never edits source**: whether a comment is later deleted is the adopting team's decision, and a tool that rewrites source files on first contact does not get a second chance.
+
+**The zero-comments rule is this repository's dogfooding standard, not a precondition of using codedoc.** Nothing in the tool requires it, `cargo xtask lint-comments` scans only our own crates, and a codebase can hold records and comments side by side forever. If that ever reads as a requirement, adoption dies; say so explicitly wherever the rule appears.
+
+**Partial coverage is the normal state.** Most of a mature repository will have no records. `verify` reports only on anchors that exist and must never fail because coverage is low.
+
+**Bulk paths must not be quadratic.** `Ledger::append` resolves the head by reading every record, so loops over it are O(n²); bulk work goes through `append_batch`, which resolves the head once. `Index::append` adds a single record rather than rebuilding the projection. Assume every operation will one day meet a repository with a hundred thousand records.
+
 ## Code standards
 
 Written for a repository whose entire purpose is the claim that code should carry no prose.
 
 ### No comments. None.
 
-No `//`, no `/* */`, anywhere under `crates/**/src`. This is the thesis, enforced by `cargo xtask lint-comments` in CI.
+No `//`, no `/* */`, anywhere under `crates/**/src`. This is the thesis, enforced by `cargo xtask lint-comments` in CI. It binds this repository only — see **Adoption** — and the lint's failure output prints the `codedoc attach` command that replaces the comment, because a rule that only rejects is gatekeeping.
 
 Explanation goes in the ledger. Until the ledger can hold it, it goes in `docs/decisions/`. The arc is deliberate: `///` doc comments are permitted **only on `pub` items**, and only until `codedoc render rustdoc` can generate them from the ledger — at which point they become build artifacts and the sources lose them too. The day this repository's public API documentation is emitted from its own ledger is the day the product is real.
 
@@ -173,7 +185,17 @@ Behaviour that the specification mandates is tested from `conformance/` vectors 
 
 ### Performance budgets
 
-Stated numbers, so regressions are detectable rather than merely felt: full index of a 1M-LOC repository under 60s; incremental verify of a single file under 50ms, because it runs on every keystroke behind the LSP; context retrieval under 100ms at depth 2. A change that blows a budget is reverted, or the budget is renegotiated explicitly — never left to drift.
+Measured, not aspirational. Current figures come from a release build over the `rmcp` 3.4.1 source — 65 files, ~50k LOC, 2095 imported records:
+
+| operation | measured | budget |
+| --- | --- | --- |
+| `import --write` | 1.5s | 5s |
+| `verify` (2095 anchors) | 6.4s | 5s |
+| `context` | 230ms | 100ms |
+
+Two of those are over budget, deliberately recorded rather than quietly restated. `verify` costs a full Merkle pass per file with records; the fix is caching digests keyed by file content hash. `context` loads and parses the entire ledger through `Graph::load` when it should answer from the SQLite projection — the index exists and the read path does not use it, which is the most glaring architectural gap in the current tree.
+
+**Always measure release builds.** Debug figures for this workload are five to twenty times worse and will send you optimising the wrong thing; an early `verify` reading of two minutes was mostly `-O0`.
 
 ## Open source
 
@@ -213,41 +235,60 @@ The README is a product surface, not a formality — this idea is unfamiliar eno
 
 ## Commands
 
-The workspace does not exist yet. These are the contract it will be scaffolded to satisfy; keep this section true as it lands.
+`just` is a convenience; `cargo` and `cargo xtask` are the real interface and work without it.
 
 ```bash
-just build                  # cargo build --workspace --all-targets
-just test                   # cargo nextest run --workspace
-just lint                   # clippy -D warnings + fmt --check
-                            #   + cargo xtask lint-comments + cargo deny check
-just check                  # lint + test + replay, i.e. what CI runs
+cargo build --workspace --all-targets
+cargo test --workspace
+cargo clippy --workspace --all-targets -- -D warnings
+cargo fmt --all --check
+cargo run -p xtask -- lint-comments          # the no-comments gate
+cargo run -p xtask -- vectors                # regenerate conformance vectors
+cargo run --release -p xtask -- replay --commits 200
 
-cargo nextest run -p codedoc-anchor resolver::exact_match     # one test
-cargo nextest run -p codedoc-anchor -- --nocapture            # one crate, with output
-cargo insta review                                            # triage snapshot diffs
-cargo xtask replay --corpus corpora/ --commits 1000           # anchor survival harness
-cargo xtask lint-comments                                     # the no-comments gate
+cargo test -p codedoc-anchor --test resolver_invariant       # the I2 property test
+cargo test -p codedoc-core --test conformance                # encoding vectors
+cargo test -p codedoc-index --test rebuildable               # I1
+cargo test -p codedoc-anchor resolver -- --nocapture         # one module, with output
+```
 
-cargo run -p codedoc-cli -- verify --json
-cargo run -p codedoc-cli -- context src/auth.rs:83 --depth 2
-cargo run -p codedoc-mcp                                      # stdio MCP server
+The binaries, which must be built `--release` for any measurement:
+
+```bash
+codedoc init
+codedoc import src/ [--write]                # adoption path; dry-run by default
+codedoc attach <file> --symbol <s> --kind invariant --claim "..."
+codedoc verify [--json]                      # 0 clean, 1 stale, 2 detached, 3 integrity
+codedoc context <file>[:line] [--symbol s] [--depth n] [--budget n]
+codedoc list | history <record> | stats | kinds | reindex
+
+codedoc-mcp [root]                           # stdio MCP server
+codedoc-lsp                                  # stdio LSP server
 ```
 
 ## Dependencies
 
 Curated deliberately; do not introduce alternatives without a decision record.
 
-`tree-sitter` + grammars · `blake3` · `serde` + `serde_json` · `rusqlite` (bundled) · `gix` · `clap` · `tower-lsp` · `thiserror` · `miette` · `tokio` · `rayon` · `proptest` · `insta` · `cargo-nextest` · `cargo-deny` · `cargo-semver-checks` · `cargo-fuzz`.
+`tree-sitter` + six grammars · `blake3` · `serde` + `serde_json` · `rusqlite` (bundled) · `clap` · `anyhow` · `thiserror` · `rmcp` · `tokio` · `schemars` · `lsp-server` + `lsp-types` · `time` · `walkdir` · `proptest` · `tempfile` · `cargo-deny`.
 
-`gix` over `git2`, and `rusqlite` bundled, for the same reason: a static single binary with no system dependencies, because agents will install this into arbitrary environments.
+`rusqlite` is bundled so the binary carries no system dependencies; agents install this into arbitrary environments.
+
+Three of these differ from the list this file carried before any code existed, and the reasons are worth keeping:
+
+**`rmcp` rather than a hand-rolled JSON-RPC loop.** The transport is trivial, but MCP is a moving specification and lifecycle is where hand-rolled servers rot. The hand-written version this replaced already hardcoded the protocol version instead of negotiating it, dropped `notifications/initialized`, and returned the wrong error code for an unknown tool. The MCP surface is a product surface, not a convenience.
+
+**`lsp-server` + `lsp-types` rather than `tower-lsp`.** `tower-lsp` 0.20 has not shipped since 2023. `lsp-server` is rust-analyzer's, maintained, and synchronous, which suits work that is CPU-bound anyway.
+
+**No `gix`.** Reading `HEAD` for provenance is a few lines of file reading, and the replay harness shells out to `git`. A full git library earns its place when rung 5 (history migration) is implemented, not before.
 
 ## Gates
 
 Correctness properties, not feature counts. All tracks proceed concurrently; these gate merges.
 
-- **G1** Canonical encoding byte-identical across Linux, macOS, and Windows.
-- **G2** Zero false reattachments across the replay corpus. Hard.
-- **G3** Ledger verifies from genesis; index rebuilds byte-identically from it.
-- **G4** Context retrieval within budget on a 1M-LOC repository.
+- **G1** Canonical encoding byte-identical across Linux, macOS, and Windows. Vectors in `conformance/encoding/`, run on a three-OS matrix.
+- **G2** Zero false reattachments. **The hard zero is carried by the property test**, which has ground truth by construction: for any tree and any edit script, resolution is correct or `Detached`. Replay over real history cannot label outcomes automatically, so it measures survival and *flags* confident rungs landing on a different symbol for human inspection. Do not claim replay proves the invariant; it evidences it.
+- **G3** Ledger verifies from genesis; index rebuilds byte-identically from it. **Met** — asserted by `crates/codedoc-index/tests/rebuildable.rs`.
+- **G4** Context retrieval within budget on a 1M-LOC repository. Not met; see the budgets table.
 - **G5** **Dogfood.** This repository contains zero comments, carries its own architecture in its own ledger, and `codedoc verify` runs green in its own CI. The project is not real until it is its own first user.
 - **G6** **Independence.** A second implementation, written in another language against `docs/spec/` alone and never reading the Rust, passes `conformance/`. Until that happens this is a tool with a data directory; afterwards it is a format.
