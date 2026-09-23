@@ -152,6 +152,11 @@ A claim appearing here is not necessarily wrong. It means the code it describes 
 or changed enough to be worth re-reading before merge, which is the moment that
 knowledge is most worth having and least likely to be looked up.
 
+`.github/workflows/codedoc-review.yml` in this repository runs it on every pull
+request and posts the result as a single comment, updated in place rather than
+appended to on each push. Copy it into your own repository; it needs
+`pull-requests: write`.
+
 ### `codedoc conflicts`
 
 Reports records that appear to disagree:
