@@ -88,8 +88,10 @@ $ codedoc verify
 1493 unchanged   270 migrated   196 stale   136 detached
 ```
 
-*Unchanged* and *migrated* held. *Stale* means the code moved enough to be worth a
-look. *Detached* means codedoc will not guess, and is asking.
+*Unchanged* and *migrated* held. *Stale* means the code changed enough to be worth a
+look — including the case where a function keeps its name and signature but its body
+is rewritten underneath a claim, which resolves perfectly and is still flagged.
+*Detached* means codedoc will not guess, and is asking.
 
 Records are immutable. Revising one writes a superseding record; retracting writes
 a tombstone. Nothing is edited and nothing is deleted, so "what did we believe about

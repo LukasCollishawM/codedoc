@@ -118,6 +118,12 @@ Record counts by kind, relation count, ledger integrity, and which scopes are pr
 Re-resolves every anchor against the working tree. Reports fresh, migrated, stale and
 detached counts, and sets the exit code accordingly.
 
+A record is **stale** either because its anchor only resolved through a weak signal,
+or because the code it points at has *drifted*: the shape of the construct changed
+enough that a claim about the old one may simply be false of the new one. A function
+whose body is rewritten but whose name and signature survive resolves perfectly and
+is still reported stale, with the drift percentage in `--json`.
+
 ### `codedoc detached`
 
 Lists anchors that could not be located. These are awaiting a decision, not errors —

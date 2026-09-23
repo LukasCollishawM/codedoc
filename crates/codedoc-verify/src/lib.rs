@@ -48,6 +48,8 @@ impl Status {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Finding {
     pub record: RecordId,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub drift: Option<u32>,
     pub kind: String,
     pub claim: String,
     pub file: String,
@@ -138,14 +140,15 @@ impl Verifier {
         let mut findings = Vec::new();
         for (file, entries) in pending {
             let resolutions = self.resolve_file(&file, &entries);
-            for (item, resolution) in entries.into_iter().zip(resolutions) {
+            for (item, (resolution, drift)) in entries.into_iter().zip(resolutions) {
                 findings.push(Finding {
                     record: item.record,
+                    drift,
                     kind: item.kind,
                     claim: item.claim,
                     file: file.clone(),
                     symbol: item.anchor.symbol.as_ref().map(ToString::to_string),
-                    status: classify(&resolution),
+                    status: classify(&resolution, drift),
                     recorded_range: item.anchor.range,
                     resolution,
                 });
@@ -170,7 +173,7 @@ impl Verifier {
 }
 
 impl Verifier {
-    fn resolve_file(&self, file: &str, entries: &[Pending]) -> Vec<Resolution> {
+    fn resolve_file(&self, file: &str, entries: &[Pending]) -> Vec<(Resolution, Option<u32>)> {
         let Some(first) = entries.first() else {
             return Vec::new();
         };
@@ -183,8 +186,12 @@ impl Verifier {
         }
     }
 
-    fn resolve_after_rename(&self, file: &str, entries: &[Pending]) -> Vec<Resolution> {
-        let detached = vec![Resolution::Detached(DetachReason::FileMissing); entries.len()];
+    fn resolve_after_rename(
+        &self,
+        file: &str,
+        entries: &[Pending],
+    ) -> Vec<(Resolution, Option<u32>)> {
+        let detached = vec![(Resolution::Detached(DetachReason::FileMissing), None); entries.len()];
         let Some(revision) = entries.iter().find_map(|item| item.revision.clone()) else {
             return detached;
         };
@@ -206,12 +213,18 @@ impl Verifier {
         source: &str,
         entries: &[Pending],
         migrated: bool,
-    ) -> Vec<Resolution> {
+    ) -> Vec<(Resolution, Option<u32>)> {
         let Ok(adapter) = Registry::for_path(path) else {
-            return vec![Resolution::Detached(DetachReason::LanguageUnsupported); entries.len()];
+            return vec![
+                (Resolution::Detached(DetachReason::LanguageUnsupported), None);
+                entries.len()
+            ];
         };
         let Ok(tree) = adapter.parse(source) else {
-            return vec![Resolution::Detached(DetachReason::LanguageUnsupported); entries.len()];
+            return vec![
+                (Resolution::Detached(DetachReason::LanguageUnsupported), None);
+                entries.len()
+            ];
         };
 
         let index = FileIndex::build(adapter, source, &tree);
@@ -225,22 +238,66 @@ impl Verifier {
                     index.resolve_after_migration(&item.anchor)
                 } else {
                     index.resolve(&item.anchor)
-                };
-                resolution.require(required)
+                }
+                .require(required);
+                let drift = self.drift_of(&item.anchor, &resolution, adapter, &tree);
+                (resolution, drift)
             })
             .collect()
     }
+
+    fn drift_of(
+        &self,
+        anchor: &Anchor,
+        resolution: &Resolution,
+        adapter: &codedoc_lang::Adapter,
+        tree: &codedoc_lang::Tree,
+    ) -> Option<u32> {
+        let located = resolution.located()?;
+        let node = located.node_path().descend(tree.root_node())?;
+        let current = codedoc_anchor::fingerprint::shape_histogram(node, adapter);
+        Some(drift_between(&anchor.shape, &current))
+    }
 }
 
-fn classify(resolution: &Resolution) -> Status {
-    match resolution.located() {
-        None => Status::Detached,
-        Some(located) => match located.rung() {
-            Rung::ContentIdentity => Status::Fresh,
-            Rung::StructuralIdentity | Rung::SymbolAndNodePath => Status::Migrated,
-            Rung::ContextBracket | Rung::GitMigration => Status::Stale,
-            Rung::Similarity => Status::Detached,
-            _ => Status::Detached,
-        },
+pub const DRIFT_STALE_THRESHOLD: u32 = 25;
+
+pub fn drift_between(
+    recorded: &std::collections::BTreeMap<String, u32>,
+    current: &std::collections::BTreeMap<String, u32>,
+) -> u32 {
+    if recorded.is_empty() && current.is_empty() {
+        return 0;
+    }
+    let mut shared = 0u32;
+    let mut union = 0u32;
+    let kinds: std::collections::BTreeSet<&String> =
+        recorded.keys().chain(current.keys()).collect();
+    for kind in kinds {
+        let left = recorded.get(kind).copied().unwrap_or(0);
+        let right = current.get(kind).copied().unwrap_or(0);
+        shared += left.min(right);
+        union += left.max(right);
+    }
+    if union == 0 {
+        return 0;
+    }
+    100 - ((f64::from(shared) / f64::from(union)) * 100.0).round() as u32
+}
+
+fn classify(resolution: &Resolution, drift: Option<u32>) -> Status {
+    let Some(located) = resolution.located() else {
+        return Status::Detached;
+    };
+    let positional = match located.rung() {
+        Rung::ContentIdentity => Status::Fresh,
+        Rung::StructuralIdentity | Rung::SymbolAndNodePath => Status::Migrated,
+        Rung::ContextBracket | Rung::GitMigration => Status::Stale,
+        Rung::Similarity => Status::Detached,
+        _ => Status::Detached,
+    };
+    match drift {
+        Some(amount) if amount >= DRIFT_STALE_THRESHOLD => positional.max(Status::Stale),
+        _ => positional,
     }
 }
