@@ -269,7 +269,11 @@ impl<'tree, 'adapter> FileIndex<'tree, 'adapter> {
         let declarations: Vec<usize> = positions
             .iter()
             .copied()
-            .filter(|position| self.candidates[*position].declares)
+            .filter(|position| {
+                let candidate = &self.candidates[*position];
+                candidate.declares
+                    && (anchor.symbol_kind.is_empty() || candidate.kind == anchor.symbol_kind)
+            })
             .collect();
 
         if declarations.len() as u32 != anchor.symbol_cardinality {
@@ -294,8 +298,14 @@ impl<'tree, 'adapter> FileIndex<'tree, 'adapter> {
     fn by_similarity(&self, anchor: &Anchor) -> Option<Resolution> {
         let symbol = anchor.symbol.as_ref().map(ToString::to_string)?;
         let positions = self.by_symbol.get(&symbol)?;
-        let declarations =
-            positions.iter().filter(|position| self.candidates[**position].declares).count();
+        let declarations = positions
+            .iter()
+            .filter(|position| {
+                let candidate = &self.candidates[**position];
+                candidate.declares
+                    && (anchor.symbol_kind.is_empty() || candidate.kind == anchor.symbol_kind)
+            })
+            .count();
         if declarations as u32 != anchor.symbol_cardinality {
             return None;
         }

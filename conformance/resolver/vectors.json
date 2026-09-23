@@ -150,7 +150,7 @@
       "language": "cpp",
       "path": "src/session.cpp",
       "symbol": "cpp://Session/open",
-      "symbol_cardinality": 2,
+      "symbol_cardinality": 1,
       "drift": 0,
       "before": "class Session {\n    int open();\n};\n\nint Session::open() {\n    int handle = 7;\n    return handle;\n}\n",
       "after": "class Session {\n    int open();\n};\n\nint Session::open() {\n    int descriptor = 7;\n    return descriptor;\n}\n",

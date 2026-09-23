@@ -123,12 +123,12 @@ impl fmt::Display for NodePath {
 
 #[derive(Debug, Clone, Default)]
 pub struct SymbolTable {
-    declarations: BTreeMap<String, Vec<usize>>,
+    declarations: BTreeMap<(String, String), Vec<usize>>,
 }
 
 impl SymbolTable {
     pub fn build(root: Node<'_>, adapter: &Adapter, source: &str) -> Self {
-        let mut declarations: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+        let mut declarations: BTreeMap<(String, String), Vec<usize>> = BTreeMap::new();
         let mut cursor = root.walk();
         let mut descending = true;
         loop {
@@ -137,7 +137,10 @@ impl SymbolTable {
                 if adapter.declares_symbol(node.kind())
                     && let Some(path) = symbol_path_of(node, adapter, source)
                 {
-                    declarations.entry(path.to_string()).or_default().push(node.id());
+                    declarations
+                        .entry((path.to_string(), node.kind().to_owned()))
+                        .or_default()
+                        .push(node.id());
                 }
                 if cursor.goto_first_child() {
                     continue;
@@ -155,14 +158,18 @@ impl SymbolTable {
         SymbolTable { declarations }
     }
 
-    pub fn cardinality(&self, symbol: &str) -> u32 {
-        self.declarations.get(symbol).map(|found| found.len() as u32).unwrap_or(0)
+    pub fn cardinality(&self, symbol: &str, kind: &str) -> u32 {
+        self.declarations
+            .get(&(symbol.to_owned(), kind.to_owned()))
+            .map(|found| found.len() as u32)
+            .unwrap_or(0)
     }
 
-    pub fn ordinal_of(&self, symbol: &str, node: Node<'_>) -> u32 {
+    pub fn ordinal_of(&self, symbol: &str, kind: &str, node: Node<'_>) -> u32 {
+        let key = (symbol.to_owned(), kind.to_owned());
         let mut current = Some(node);
         while let Some(candidate) = current {
-            if let Some(found) = self.declarations.get(symbol)
+            if let Some(found) = self.declarations.get(&key)
                 && let Some(position) =
                     found.iter().position(|identity| *identity == candidate.id())
             {
@@ -171,6 +178,19 @@ impl SymbolTable {
             current = candidate.parent();
         }
         0
+    }
+
+    pub fn owning_kind(&self, symbol: &str, node: Node<'_>) -> Option<String> {
+        let mut current = Some(node);
+        while let Some(candidate) = current {
+            for ((named, kind), members) in &self.declarations {
+                if named == symbol && members.contains(&candidate.id()) {
+                    return Some(kind.clone());
+                }
+            }
+            current = candidate.parent();
+        }
+        None
     }
 }
 
@@ -186,6 +206,8 @@ pub struct Anchor {
     pub preceding: ContextFingerprint,
     pub following: ContextFingerprint,
     pub shape: BTreeMap<String, u32>,
+    #[serde(default)]
+    pub symbol_kind: String,
     #[serde(default = "one_declaration")]
     pub symbol_cardinality: u32,
     #[serde(default)]
@@ -214,6 +236,7 @@ impl Anchor {
     ) -> Self {
         let symbol = symbol_path_of(node, adapter, source);
         let rendered = symbol.as_ref().map(ToString::to_string).unwrap_or_default();
+        let owning = symbols.owning_kind(&rendered, node).unwrap_or_default();
         let symbol_root = symbol.as_ref().and_then(|_| enclosing_declaration(node, adapter));
         Anchor {
             file,
@@ -226,8 +249,9 @@ impl Anchor {
             preceding: fingerprint::preceding_context_with(node, adapter, digests),
             following: fingerprint::following_context_with(node, adapter, digests),
             shape: fingerprint::shape_histogram(node, adapter),
-            symbol_cardinality: symbols.cardinality(&rendered),
-            symbol_ordinal: symbols.ordinal_of(&rendered, node),
+            symbol_kind: owning.clone(),
+            symbol_cardinality: symbols.cardinality(&rendered, &owning),
+            symbol_ordinal: symbols.ordinal_of(&rendered, &owning, node),
             range: SourceRange::of(node),
         }
     }
