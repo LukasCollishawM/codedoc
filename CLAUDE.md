@@ -208,15 +208,17 @@ Measured, not aspirational, and on the large corpus only — a figure from a sma
 
 | operation | 1.09M LOC | budget |
 | --- | --- | --- |
-| `import --write` | 27s | — |
-| `reindex` | 2.4s | 60s |
-| `verify` | 3.8s | 60s |
-| `doctor` | 5.1s | 60s |
-| `conflicts` | 0.6s | 60s |
-| `coverage` | 0.8s | 60s |
-| `context` (depth 2) | 45ms | 100ms |
-| `brief` | 46ms | 100ms |
-| `search` | 68ms | 100ms |
+| `import --write` | 28s | — |
+| `doctor` | 5.0s | 60s |
+| `verify` | 3.6s | 60s |
+| `reindex` | 2.1s | 60s |
+| `coverage` | 0.73s | 60s |
+| `conflicts` | 0.59s | 60s |
+| `list` | 0.36s | 60s |
+| `evidence` | 0.27s | 60s |
+| `search` | 54ms | 100ms |
+| `context` (depth 2) | 40ms | 100ms |
+| `brief` | 38ms | 100ms |
 
 Everything is inside budget at a million lines, but only after the scale test found something a smaller corpus could not. `context` was **1.98s** at 1M LOC while passing comfortably at 50k, because relation lookup ran one query per symbol, used a `LIKE 'relation.%'` that the kind index cannot serve, and an unindexed `NOT IN` subquery — a cost invisible until a file carried enough claims for the per-symbol loop to matter. One query with a bound `IN` list, a range predicate the index can use, and an index on `parent` took it to 33ms.
 
