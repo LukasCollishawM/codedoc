@@ -30,16 +30,27 @@ pub struct Digests {
 
 pub fn compute_all(root: Node<'_>, adapter: &Adapter, source: &str) -> Digests {
     let mut digests = Digests::default();
-    memoise(root, adapter, source, &mut digests);
+    let mut order: Vec<Node<'_>> = Vec::new();
+    let mut pending = vec![root];
+    while let Some(node) = pending.pop() {
+        order.push(node);
+        let mut cursor = node.walk();
+        if cursor.goto_first_child() {
+            loop {
+                pending.push(cursor.node());
+                if !cursor.goto_next_sibling() {
+                    break;
+                }
+            }
+        }
+    }
+    for node in order.into_iter().rev() {
+        memoise(node, adapter, source, &mut digests);
+    }
     digests
 }
 
-fn memoise(
-    node: Node<'_>,
-    adapter: &Adapter,
-    source: &str,
-    out: &mut Digests,
-) -> (ContentFingerprint, StructuralFingerprint) {
+fn memoise(node: Node<'_>, adapter: &Adapter, source: &str, out: &mut Digests) {
     let mut structural_payload = Vec::new();
     structural_payload.extend_from_slice(node.kind().as_bytes());
     structural_payload.push(b'(');
@@ -62,14 +73,17 @@ fn memoise(
                 }
                 continue;
             }
-            let (child_content, child_structural) = memoise(child, adapter, source, out);
-            content_payload.extend_from_slice(child_content.digest().bytes());
+            if let Some(child_content) = out.content.get(&child.id()) {
+                content_payload.extend_from_slice(child_content.digest().bytes());
+            }
             if child.is_named() {
                 if let Some(field) = cursor.field_name() {
                     structural_payload.extend_from_slice(field.as_bytes());
                     structural_payload.push(b':');
                 }
-                structural_payload.extend_from_slice(child_structural.digest().bytes());
+                if let Some(child_structural) = out.structural.get(&child.id()) {
+                    structural_payload.extend_from_slice(child_structural.digest().bytes());
+                }
             }
             if !cursor.goto_next_sibling() {
                 break;
@@ -78,11 +92,8 @@ fn memoise(
     }
     structural_payload.push(b')');
 
-    let content = ContentFingerprint::of(&content_payload);
-    let structural = StructuralFingerprint::of(&structural_payload);
-    out.content.insert(node.id(), content);
-    out.structural.insert(node.id(), structural);
-    (content, structural)
+    out.content.insert(node.id(), ContentFingerprint::of(&content_payload));
+    out.structural.insert(node.id(), StructuralFingerprint::of(&structural_payload));
 }
 
 pub fn context_siblings(node: Node<'_>, adapter: &Adapter) -> u32 {
@@ -171,19 +182,18 @@ fn context_from_digests(
 
 pub fn shape_histogram(node: Node<'_>, adapter: &Adapter) -> BTreeMap<String, u32> {
     let mut histogram = BTreeMap::new();
-    accumulate_shape(node, adapter, &mut histogram);
+    let mut pending = vec![node];
+    while let Some(current) = pending.pop() {
+        if adapter.is_ignorable(current.kind()) {
+            continue;
+        }
+        *histogram.entry(current.kind().to_owned()).or_insert(0) += 1;
+        let mut cursor = current.walk();
+        for child in current.named_children(&mut cursor) {
+            pending.push(child);
+        }
+    }
     histogram
-}
-
-fn accumulate_shape(node: Node<'_>, adapter: &Adapter, histogram: &mut BTreeMap<String, u32>) {
-    if adapter.is_ignorable(node.kind()) {
-        return;
-    }
-    *histogram.entry(node.kind().to_owned()).or_insert(0) += 1;
-    let mut cursor = node.walk();
-    for child in node.named_children(&mut cursor) {
-        accumulate_shape(child, adapter, histogram);
-    }
 }
 
 fn previous_named_sibling<'tree>(node: Node<'tree>, adapter: &Adapter) -> Option<Node<'tree>> {

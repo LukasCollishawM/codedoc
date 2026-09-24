@@ -288,33 +288,40 @@ fn harvest_file(
 }
 
 fn collect_comment_blocks<'tree>(
-    node: Node<'tree>,
+    root: Node<'tree>,
     adapter: &Adapter,
     blocks: &mut Vec<Vec<Node<'tree>>>,
 ) {
-    let mut cursor = node.walk();
-    let mut pending: Vec<Node<'tree>> = Vec::new();
+    let mut stack = vec![root];
+    while let Some(node) = stack.pop() {
+        let mut pending: Vec<Node<'tree>> = Vec::new();
+        let mut descend: Vec<Node<'tree>> = Vec::new();
+        let mut cursor = node.walk();
 
-    for child in node.named_children(&mut cursor) {
-        if adapter.is_ignorable(child.kind()) {
-            let contiguous = pending.last().is_none_or(|previous| {
-                child.start_position().row.saturating_sub(previous.end_position().row) <= 1
-            });
-            if contiguous {
-                pending.push(child);
-            } else {
-                blocks.push(std::mem::take(&mut pending));
-                pending.push(child);
+        for child in node.named_children(&mut cursor) {
+            if adapter.is_ignorable(child.kind()) {
+                let contiguous = pending.last().is_none_or(|previous| {
+                    child.start_position().row.saturating_sub(previous.end_position().row) <= 1
+                });
+                if contiguous {
+                    pending.push(child);
+                } else {
+                    blocks.push(std::mem::take(&mut pending));
+                    pending.push(child);
+                }
+                continue;
             }
-            continue;
+            if !pending.is_empty() {
+                blocks.push(std::mem::take(&mut pending));
+            }
+            descend.push(child);
         }
         if !pending.is_empty() {
-            blocks.push(std::mem::take(&mut pending));
+            blocks.push(pending);
         }
-        collect_comment_blocks(child, adapter, blocks);
-    }
-    if !pending.is_empty() {
-        blocks.push(pending);
+        for child in descend.into_iter().rev() {
+            stack.push(child);
+        }
     }
 }
 

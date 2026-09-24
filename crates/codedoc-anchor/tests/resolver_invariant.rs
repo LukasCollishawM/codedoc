@@ -393,3 +393,31 @@ fn every_candidate_offered_for_adjudication_is_a_different_thing_to_choose() {
     );
     assert!(names.len() > 1, "the fixture must offer a choice at all: {names:?}");
 }
+
+#[test]
+fn deeply_nested_source_does_not_exhaust_the_stack() {
+    let adapter = Registry::for_path(&RepoPath::parse("lib.rs").unwrap()).unwrap();
+    let depth = 600;
+    let mut source = String::from("fn deep() -> u32 {\n");
+    for _ in 0..depth {
+        source.push_str("if true {\n");
+    }
+    source.push_str("1\n");
+    for _ in 0..depth {
+        source.push_str("}\n");
+    }
+    source.push_str("}\n");
+
+    let tree = adapter.parse(&source).unwrap();
+    let node = codedoc_anchor::locate::by_symbol(&tree, &source, adapter, "rust://deep").unwrap();
+    let anchor = Anchor::capture(RepoPath::parse("lib.rs").unwrap(), adapter, &source, node);
+
+    let outcome = codedoc_anchor::FileIndex::build(adapter, &source, &tree).resolve(&anchor);
+    assert!(
+        outcome.located().is_some(),
+        "a source file is untrusted input and the threat model forbids aborting on it. \
+         Every walk here is an explicit stack for that reason: fingerprints, the shape \
+         histogram and candidate collection each used to recurse once per level of \
+         nesting, and a file like this ended the process outright"
+    );
+}

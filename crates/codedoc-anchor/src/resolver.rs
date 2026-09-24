@@ -442,53 +442,73 @@ impl<'tree, 'adapter> FileIndex<'tree, 'adapter> {
     }
 }
 
+enum Step<'tree> {
+    Visit(Node<'tree>),
+    Leave,
+}
+
 fn collect<'tree>(
-    node: Node<'tree>,
+    root: Node<'tree>,
     adapter: &Adapter,
     source: &str,
     digests: &fingerprint::Digests,
     segments: &mut Vec<String>,
     out: &mut Vec<Candidate<'tree>>,
 ) {
-    if adapter.is_ignorable(node.kind()) {
-        return;
-    }
-    let declares = adapter.declares_symbol(node.kind());
-    let named_here = declares
-        .then(|| adapter.declaration_name(node, source))
-        .flatten()
-        .map(|name| name.into_owned());
-    if let Some(name) = &named_here {
-        segments.push(name.clone());
-    }
+    let mut stack = vec![Step::Visit(root)];
+    while let Some(step) = stack.pop() {
+        let node = match step {
+            Step::Leave => {
+                segments.pop();
+                continue;
+            }
+            Step::Visit(node) => node,
+        };
 
-    if node.is_named() {
-        let symbol =
-            (!segments.is_empty()).then(|| format!("{}://{}", adapter.name(), segments.join("/")));
-        out.push(Candidate {
-            node,
-            kind: node.kind().to_owned(),
-            content: fingerprint::content_of(node, digests),
-            structural: fingerprint::structural_of(node, digests),
-            preceding: fingerprint::preceding_context_with(node, adapter, digests),
-            following: fingerprint::following_context_with(node, adapter, digests),
-            symbol,
-            declares,
-        });
-    }
+        if adapter.is_ignorable(node.kind()) {
+            continue;
+        }
+        let declares = adapter.declares_symbol(node.kind());
+        let named_here = declares
+            .then(|| adapter.declaration_name(node, source))
+            .flatten()
+            .map(|name| name.into_owned());
+        if let Some(name) = &named_here {
+            segments.push(name.clone());
+        }
 
-    let mut cursor = node.walk();
-    if cursor.goto_first_child() {
-        loop {
-            collect(cursor.node(), adapter, source, digests, segments, out);
-            if !cursor.goto_next_sibling() {
-                break;
+        if node.is_named() {
+            let symbol = (!segments.is_empty())
+                .then(|| format!("{}://{}", adapter.name(), segments.join("/")));
+            out.push(Candidate {
+                node,
+                kind: node.kind().to_owned(),
+                content: fingerprint::content_of(node, digests),
+                structural: fingerprint::structural_of(node, digests),
+                preceding: fingerprint::preceding_context_with(node, adapter, digests),
+                following: fingerprint::following_context_with(node, adapter, digests),
+                symbol,
+                declares,
+            });
+        }
+
+        if named_here.is_some() {
+            stack.push(Step::Leave);
+        }
+
+        let mut children = Vec::new();
+        let mut cursor = node.walk();
+        if cursor.goto_first_child() {
+            loop {
+                children.push(cursor.node());
+                if !cursor.goto_next_sibling() {
+                    break;
+                }
             }
         }
-    }
-
-    if named_here.is_some() {
-        segments.pop();
+        for child in children.into_iter().rev() {
+            stack.push(Step::Visit(child));
+        }
     }
 }
 
