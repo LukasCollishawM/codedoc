@@ -115,12 +115,12 @@ pub fn import(
             let Ok(adapter) = Registry::for_path(&repo_path) else {
                 continue;
             };
-            if fs::read_to_string(path).is_err() {
+            let Ok(source) = fs::read_to_string(path) else {
                 files_unreadable += 1;
                 continue;
-            }
+            };
             files_scanned += 1;
-            harvested.extend(harvest_file(&repo_path, adapter, path, revision.clone()));
+            harvested.extend(harvest_file(&repo_path, adapter, &source, revision.clone()));
             if limit.is_some_and(|cap| harvested.len() >= cap) {
                 break;
             }
@@ -202,12 +202,10 @@ fn is_excluded(path: &Path) -> bool {
 fn harvest_file(
     repo_path: &RepoPath,
     adapter: &Adapter,
-    disk: &Path,
+    source: &str,
     revision: Option<codedoc_core::GitRev>,
 ) -> Vec<Harvested> {
-    let Ok(source) = fs::read_to_string(disk) else {
-        return Vec::new();
-    };
+    let source = source.to_owned();
     let Ok(tree) = adapter.parse(&source) else {
         return Vec::new();
     };
