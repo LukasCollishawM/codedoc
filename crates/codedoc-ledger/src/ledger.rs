@@ -36,7 +36,10 @@ pub enum LedgerError {
     #[error("record {record} could not be encoded: {source}")]
     Encoding { record: String, source: CanonicalError },
 
-    #[error("the {scope} scope is not available at {root}")]
+    #[error(
+        "the {scope} scope is not available here. It lives inside the git directory, so \
+         it needs {root} to be a git repository"
+    )]
     ScopeUnavailable { scope: &'static str, root: String },
 }
 

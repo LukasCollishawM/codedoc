@@ -443,3 +443,30 @@ fn superseding_with_nothing_does_not_erase_what_was_there() {
         "the original survives a refused supersede: {listing}"
     );
 }
+
+#[test]
+fn naming_a_directory_says_so_rather_than_reporting_a_read_failure() {
+    let root = project("pub fn compute(d: &[u8]) -> u32 {\n    d.len() as u32\n}\n");
+
+    let request = codedoc_ops::AttachRequest {
+        target: codedoc_ops::Target::file("src"),
+        kind: "decision".to_owned(),
+        claim: "A claim aimed at a directory rather than a file.".to_owned(),
+        detail: None,
+    };
+    let refused = codedoc_ops::attach(
+        root.path(),
+        None,
+        &request,
+        &codedoc_ops::Attribution::human("tester"),
+        codedoc_ops::Provenance::default(),
+    )
+    .expect_err("a directory is not a file");
+
+    let message = refused.to_string();
+    assert!(
+        message.contains("is a directory"),
+        "reading a directory as a file reports 'access is denied' on Windows and 'is a \
+         directory' elsewhere, and neither tells the caller what to do: {message}"
+    );
+}

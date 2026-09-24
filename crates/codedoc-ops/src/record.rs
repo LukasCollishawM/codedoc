@@ -49,6 +49,9 @@ pub(crate) fn capture_from(
     let target = &target;
     let path = RepoPath::parse(&target.file)
         .map_err(|source| OpsError::Language { detail: source.to_string() })?;
+    if root.join(path.as_str()).is_dir() {
+        return Err(OpsError::NotAFile { path: target.file.clone() });
+    }
     let source = fs::read_to_string(root.join(path.as_str())).map_err(|source| {
         OpsError::Unreadable { path: target.file.clone(), detail: source.to_string() }
     })?;

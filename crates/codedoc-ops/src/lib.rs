@@ -44,6 +44,12 @@ pub enum OpsError {
     )]
     NoLedger { root: String },
 
+    #[error(
+        "{path} is a directory. A claim is about a file, or about a construct inside one; \
+         name the file it belongs to"
+    )]
+    NotAFile { path: String },
+
     #[error("{found} is not a date; use YYYY-MM-DD or an RFC 3339 instant")]
     MomentUnreadable { found: String },
 
