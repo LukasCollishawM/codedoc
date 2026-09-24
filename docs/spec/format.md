@@ -146,7 +146,7 @@ Required members: `schema`, `kind`, `anchors`, `body`, `assurance`, `author`, `c
 
 `kind` is drawn from a closed vocabulary: `explanation`, `rationale`, `invariant`, `precondition`, `postcondition`, `security`, `performance`, `assumption`, `workaround`, `specification`, `known_failure_mode`, `ownership`, `decision`, `warning`, `tombstone`, and `relation.<verb>` where verb is one of `must_execute_after`, `guarded_by`, `constrained_by`, `invalidates`, `tested_by`, `derived_from`, `contradicts`, `supersedes`, `owns`.
 
-Extending the vocabulary is a schema change. Discriminants MUST NOT be renumbered or reused.
+Extending the vocabulary is a schema change. Discriminants MUST NOT be renumbered or reused. `conformance/vocabulary/wire.json` freezes the wire string of every closed vocabulary in this format — record kinds, relation verbs, assurance, lifecycle, anchor roles, author kinds, evidence forms, anchor subjects, resolver rungs and confidence levels. An entry may be added to that file; an entry already in it MUST continue to encode and decode as written, because a ledger cannot be regenerated from the code and a renamed discriminant strands every record that used it.
 
 `assurance` is `asserted`, `inferred` or `speculative`, and is orthogonal to `author`, which is `human`, `agent`, `analyzer` or `runtime`. Implementations MUST keep them distinguishable at query time.
 

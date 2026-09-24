@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "description": "The wire strings of every closed vocabulary in the format. A discriminant is part of the encoding, so renaming one makes every record already written with it unreadable. These are frozen: an entry may be added, never renamed or removed.",
+  "kinds": [
+    "explanation",
+    "rationale",
+    "invariant",
+    "precondition",
+    "postcondition",
+    "security",
+    "performance",
+    "assumption",
+    "workaround",
+    "specification",
+    "known_failure_mode",
+    "ownership",
+    "decision",
+    "warning",
+    "tombstone"
+  ],
+  "relation_verbs": [
+    "must_execute_after",
+    "guarded_by",
+    "constrained_by",
+    "invalidates",
+    "tested_by",
+    "derived_from",
+    "contradicts",
+    "supersedes",
+    "owns"
+  ],
+  "assurance": [
+    "asserted",
+    "inferred",
+    "speculative"
+  ],
+  "lifecycle": [
+    "active",
+    "superseded",
+    "tombstoned"
+  ],
+  "roles": [
+    "subject",
+    "object"
+  ],
+  "authors": [
+    "human",
+    "agent",
+    "analyzer",
+    "runtime"
+  ],
+  "evidence": [
+    "git_revision",
+    "test",
+    "document",
+    "record",
+    "url"
+  ],
+  "subjects": [
+    "construct",
+    "file"
+  ],
+  "rungs": [
+    "file_identity",
+    "content_identity",
+    "structural_identity",
+    "symbol_and_node_path",
+    "context_bracket",
+    "git_migration",
+    "similarity"
+  ],
+  "confidence": [
+    "low",
+    "medium",
+    "high",
+    "exact"
+  ]
+}
