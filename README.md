@@ -166,7 +166,10 @@ claims about the file as a whole, resolved by path.
 Two known adapter gaps, each with a test that fails when closed
 (`cargo test --workspace -- --ignored`): C# file-scoped namespaces contribute nothing
 to a symbol path, and TypeScript `const`-bound arrow functions are not treated as
-declarations. Neither can misattach a claim; both narrow what is trackable.
+declarations. Neither can misattach a claim. Both narrow what is trackable: a claim on
+an unnameable construct is matched by its content alone, so it survives edits elsewhere
+in the file and is lost when that construct changes. Across three repositories, counting
+only constructs the adapter could not name: got 7%, click 3%, gorilla/mux 0%.
 
 ## Status
 
