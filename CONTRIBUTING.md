@@ -23,7 +23,7 @@ If you are mid-change and not ready to write records, put the prose in your PR d
 Every rule in `CLAUDE.md` is a mechanical check. This is deliberate: strict standards policed by human taste turn into gatekeeping, and a reviewer should never be the first to tell you something is disallowed. Run the checks before you push and review becomes a conversation about the design instead of the lint.
 
 ```bash
-just check        # exactly what CI runs: lint + test + replay
+just check        # exactly what CI runs: lint, test, replay, cargo-deny, doctor
 just lint         # clippy -D warnings, fmt, no-comments, docs, prose, cargo-deny
 just test         # cargo nextest run --workspace
 ```

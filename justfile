@@ -18,9 +18,14 @@ replay commits="200":
 
 check: lint test
     cargo run --quiet --release -p xtask -- replay --commits 200
+    cargo deny check
+    cargo build --release --bin codedoc
+    ./target/release/codedoc doctor
 
 install:
     cargo install --path crates/codedoc-cli
+    cargo install --path crates/codedoc-mcp
+    cargo install --path crates/codedoc-lsp
 
 bench root:
     cargo build --release -p codedoc-cli

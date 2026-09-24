@@ -26,9 +26,13 @@ Requires Rust 1.85+ and a C toolchain (for the tree-sitter grammars).
 ```bash
 git clone https://github.com/LukasCollishawM/codedoc
 cd codedoc
-cargo build --release
-cargo install --path crates/codedoc-cli
+cargo install --path crates/codedoc-cli   # the codedoc command
+cargo install --path crates/codedoc-mcp   # the MCP server your agent runs
+cargo install --path crates/codedoc-lsp   # optional: hovers and diagnostics in an editor
 ```
+
+The second one matters: the MCP configuration below runs `codedoc-mcp`, which is a
+separate binary from `codedoc`.
 
 ## Point your agent at it
 
