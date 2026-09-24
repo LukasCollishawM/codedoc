@@ -85,11 +85,11 @@ anchor survival is a quality metric to improve, and false attachment is a hard z
 enforced by a property test.
 
 Replayed over 400 commits of [ripgrep](https://github.com/BurntSushi/ripgrep), a
-codebase we did not write: 1,073 anchors, **98.1% survived**, nothing landed on the
+codebase we did not write: 1,100 anchors, **98.2% survived**, nothing landed on the
 wrong symbol, and all 20 detachments were checked by hand and correspond to code that
 was genuinely deleted, renamed, or whose name came to be shared by a construct that
-had not existed before. Every anchor either found its code or correctly said it was
-gone.
+had not existed before. Twenty-seven of the survivors followed a file across a git
+rename. Every anchor either found its code or correctly said it was gone.
 
 ```
 $ codedoc verify

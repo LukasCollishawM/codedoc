@@ -7,8 +7,15 @@ use codedoc_lang::Registry;
 
 const DETACHMENT_LISTING: usize = 200;
 
+struct Journey {
+    from: String,
+    to: String,
+}
+
 #[derive(Default)]
 struct Tally {
+    deleted_files: usize,
+    renamed_files: usize,
     anchors: usize,
     by_rung: BTreeMap<&'static str, usize>,
     detached: usize,
@@ -48,18 +55,25 @@ pub fn run(arguments: &[String]) -> ExitCode {
         return ExitCode::SUCCESS;
     }
 
-    let files = changed_files(&repository, oldest, newest);
+    let (files, deleted) = changed_files(&repository, oldest, newest);
     if files.is_empty() {
         println!("replay: no supported source files changed across {} commits", commits.len());
         return ExitCode::SUCCESS;
     }
+    let renamed = files.iter().filter(|journey| journey.from != journey.to).count();
 
-    let mut tally = Tally::default();
-    for file in &files {
-        replay_file(&repository, oldest, newest, file, &mut tally);
+    let mut tally = Tally { deleted_files: deleted, renamed_files: renamed, ..Default::default() };
+    for journey in &files {
+        replay_file(&repository, oldest, newest, journey, &mut tally);
     }
 
     println!("replay: {} commits, {} files", commits.len(), files.len());
+    if tally.renamed_files > 0 || tally.deleted_files > 0 {
+        println!(
+            "  {:<18} {} renamed (replayed across the rename), {} deleted (not replayed)",
+            "files moved", tally.renamed_files, tally.deleted_files
+        );
+    }
     println!("  {:<18} {}", "anchors captured", tally.anchors);
     println!("  {:<18} {} ({:.1}%)", "survived", tally.located(), tally.survival() * 100.0);
     for (rung, count) in &tally.by_rung {
@@ -99,15 +113,17 @@ pub fn run(arguments: &[String]) -> ExitCode {
     ExitCode::from(1)
 }
 
-fn replay_file(repository: &str, oldest: &str, newest: &str, file: &str, tally: &mut Tally) {
-    let Ok(path) = RepoPath::parse(file) else {
+fn replay_file(repository: &str, oldest: &str, newest: &str, journey: &Journey, tally: &mut Tally) {
+    let (Ok(path), Ok(arrival)) = (RepoPath::parse(&journey.from), RepoPath::parse(&journey.to))
+    else {
         return;
     };
-    let Ok(adapter) = Registry::for_path(&path) else {
+    let Ok(adapter) = Registry::for_path(&arrival) else {
         return;
     };
+    let migrated = journey.from != journey.to;
     let (Some(before), Some(after)) =
-        (show(repository, oldest, file), show(repository, newest, file))
+        (show(repository, oldest, &journey.from), show(repository, newest, &journey.to))
     else {
         return;
     };
@@ -128,7 +144,13 @@ fn replay_file(repository: &str, oldest: &str, newest: &str, file: &str, tally: 
         let expected = anchor.symbol.as_ref().map(ToString::to_string);
         tally.anchors += 1;
 
-        match resolver.resolve(&anchor, &after, &new_tree) {
+        let outcome = if migrated {
+            codedoc_anchor::FileIndex::build(adapter, &after, &new_tree)
+                .resolve_after_migration(&anchor)
+        } else {
+            resolver.resolve(&anchor, &after, &new_tree)
+        };
+        match outcome {
             Resolution::Detached(reason) => {
                 tally.detached += 1;
                 let named = match reason {
@@ -141,7 +163,8 @@ fn replay_file(repository: &str, oldest: &str, newest: &str, file: &str, tally: 
                 };
                 *tally.reasons.entry(named).or_insert(0) += 1;
                 tally.detached_detail.push(format!(
-                    "{named:<16} {file}: {}",
+                    "{named:<16} {}: {}",
+                    journey.to,
                     expected.clone().unwrap_or_else(|| "<anonymous>".to_owned())
                 ));
             }
@@ -163,7 +186,8 @@ fn replay_file(repository: &str, oldest: &str, newest: &str, file: &str, tally: 
                     .map(|path| path.to_string());
                 if landed.is_some() && landed != expected {
                     tally.suspicious.push(format!(
-                        "{file}: {} resolved onto {} at {rung}",
+                        "{}: {} resolved onto {} at {rung}",
+                        journey.to,
                         expected.unwrap_or_else(|| "<anonymous>".to_owned()),
                         landed.unwrap_or_default()
                     ));
@@ -206,12 +230,40 @@ fn revision_span(repository: &str, span: usize) -> Option<Vec<String>> {
     (!commits.is_empty()).then_some(commits)
 }
 
-fn changed_files(repository: &str, oldest: &str, newest: &str) -> Vec<String> {
-    let Some(raw) = git(repository, &["diff", "--name-only", oldest, newest]) else {
-        return Vec::new();
+fn supported(name: &str) -> bool {
+    RepoPath::parse(name).is_ok_and(|path| Registry::for_path(&path).is_ok())
+}
+
+fn changed_files(repository: &str, oldest: &str, newest: &str) -> (Vec<Journey>, usize) {
+    let Some(raw) = git(repository, &["diff", "--name-status", "--find-renames", oldest, newest])
+    else {
+        return (Vec::new(), 0);
     };
-    raw.lines()
-        .map(str::to_owned)
-        .filter(|name| RepoPath::parse(name).is_ok_and(|path| Registry::for_path(&path).is_ok()))
-        .collect()
+    let mut journeys = Vec::new();
+    let mut deleted = 0usize;
+    for line in raw.lines() {
+        let mut parts = line.split('\t');
+        let Some(status) = parts.next() else { continue };
+        let Some(first) = parts.next() else { continue };
+        if status.starts_with('R') {
+            let Some(second) = parts.next() else { continue };
+            if supported(first) && supported(second) {
+                journeys.push(Journey { from: first.to_owned(), to: second.to_owned() });
+            }
+            continue;
+        }
+        if status.starts_with('D') {
+            if supported(first) {
+                deleted += 1;
+            }
+            continue;
+        }
+        if status.starts_with('A') {
+            continue;
+        }
+        if supported(first) {
+            journeys.push(Journey { from: first.to_owned(), to: first.to_owned() });
+        }
+    }
+    (journeys, deleted)
 }
