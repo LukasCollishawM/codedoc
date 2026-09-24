@@ -131,6 +131,9 @@ enum Command {
 
         #[arg(long)]
         budget: Option<usize>,
+
+        #[arg(long)]
+        as_of: Option<String>,
     },
 
     Reindex,
@@ -141,6 +144,9 @@ enum Command {
 
         #[arg(long)]
         symbol: Option<String>,
+
+        #[arg(long)]
+        as_of: Option<String>,
     },
 
     Search {
@@ -343,12 +349,12 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
         Command::Verify { files, since } => {
             Ok(ops::verify_scoped(&cli.root, files, since.as_deref())?)
         }
-        Command::Context { target, symbol, depth, budget } => {
-            command_context(&cli.root, target, symbol.as_deref(), *depth, *budget)
+        Command::Context { target, symbol, depth, budget, as_of } => {
+            command_context(&cli.root, target, symbol.as_deref(), *depth, *budget, as_of.as_deref())
         }
         Command::Reindex => command_reindex(&cli.root),
-        Command::List { file, symbol } => {
-            command_list(&cli.root, scope, file.as_deref(), symbol.as_deref())
+        Command::List { file, symbol, as_of } => {
+            command_list(&cli.root, scope, file.as_deref(), symbol.as_deref(), as_of.as_deref())
         }
         Command::Search { query, kind, file, limit } => Ok((
             ops::search(
@@ -534,6 +540,7 @@ fn command_context(
     symbol: Option<&str>,
     depth: u8,
     budget: Option<usize>,
+    as_of: Option<&str>,
 ) -> Result<(Value, i32)> {
     let (file, line) = match target.rsplit_once(':') {
         Some((path, number)) if number.parse::<u32>().is_ok() => {
@@ -541,7 +548,7 @@ fn command_context(
         }
         _ => (target.to_owned(), None),
     };
-    Ok((ops::context(root, &file, line, symbol, depth, budget)?, 0))
+    Ok((ops::context(root, &file, line, symbol, depth, budget, as_of)?, 0))
 }
 
 fn command_reindex(root: &Path) -> Result<(Value, i32)> {
@@ -563,8 +570,9 @@ fn command_list(
     scope: Option<Scope>,
     file: Option<&str>,
     symbol: Option<&str>,
+    as_of: Option<&str>,
 ) -> Result<(Value, i32)> {
-    Ok((ops::list(root, scope, file, symbol)?, 0))
+    Ok((ops::list(root, scope, file, symbol, as_of)?, 0))
 }
 
 fn command_history(root: &Path, record: &str) -> Result<(Value, i32)> {

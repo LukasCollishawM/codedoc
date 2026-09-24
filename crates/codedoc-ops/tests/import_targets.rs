@@ -162,9 +162,16 @@ fn a_file_claim_reaches_an_agent_asking_about_a_symbol_inside_that_file() {
     )]);
     codedoc_ops::import(workspace.path(), None, &["src".to_owned()], true, None).unwrap();
 
-    let pack =
-        codedoc_ops::context(workspace.path(), "src/lib.rs", None, Some("rust://compute"), 0, None)
-            .unwrap();
+    let pack = codedoc_ops::context(
+        workspace.path(),
+        "src/lib.rs",
+        None,
+        Some("rust://compute"),
+        0,
+        None,
+        None,
+    )
+    .unwrap();
     let rendered = pack.to_string();
     assert!(
         rendered.contains("little-endian"),

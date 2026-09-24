@@ -19,6 +19,7 @@ pub fn context(
     symbol: Option<&str>,
     depth: u8,
     budget: Option<usize>,
+    as_of: Option<&str>,
 ) -> Outcome {
     let found = workspace(root)?;
     let normalised = RepoPath::parse(file)
@@ -62,7 +63,7 @@ pub fn context(
     records.sort_by_key(|record| record.id().to_string());
     records.dedup_by_key(|record| record.id().to_string());
 
-    let graph = Graph::from_records(records);
+    let graph = at_moment(Graph::from_records(records), as_of)?;
     let mut pack = codedoc_context::assemble(
         &graph,
         ContextTarget { file: normalised, line, symbol: symbol.map(str::to_owned) },
@@ -76,6 +77,7 @@ pub fn context(
 
     Ok(json!({
         "command": "context",
+        "as_of": as_of,
         "pack": serde_json::to_value(&pack).unwrap_or(Value::Null),
         "claims": pack.claim_count(),
         "empty": pack.is_empty(),
@@ -156,6 +158,15 @@ pub fn brief(
         "empty": pack.is_empty(),
         "scopes": found.scopes().iter().map(|scope| scope.as_str()).collect::<Vec<_>>(),
     }))
+}
+
+fn at_moment(graph: Graph, as_of: Option<&str>) -> Result<Graph, OpsError> {
+    let Some(text) = as_of else {
+        return Ok(graph);
+    };
+    let moment = codedoc_ledger::Timestamp::parse(text)
+        .ok_or_else(|| OpsError::MomentUnreadable { found: text.to_owned() })?;
+    Ok(graph.as_of(moment))
 }
 
 fn is_file_scoped(record: &codedoc_ledger::Record) -> bool {
@@ -287,9 +298,10 @@ pub fn list(
     scope: Option<Scope>,
     file: Option<&str>,
     symbol: Option<&str>,
+    as_of: Option<&str>,
 ) -> Outcome {
     let found = workspace_in(root, scope)?;
-    let graph = Graph::across(&found)?;
+    let graph = at_moment(Graph::across(&found)?, as_of)?;
     let records = match (file, symbol) {
         (_, Some(wanted)) => graph.for_symbol(wanted),
         (Some(wanted), None) => graph.in_file(wanted),
@@ -313,6 +325,7 @@ pub fn list(
     Ok(json!({
         "command": "list",
         "count": rows.len(),
+        "as_of": as_of,
         "scopes": found.scopes().iter().map(|entry| entry.as_str()).collect::<Vec<_>>(),
         "records": rows,
     }))

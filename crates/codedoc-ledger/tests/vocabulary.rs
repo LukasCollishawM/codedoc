@@ -80,3 +80,25 @@ fn the_smaller_vocabularies_are_unchanged() {
         [Role::Subject, Role::Object].into_iter().map(|value| value.as_str().to_owned()).collect();
     assert_eq!(roles, expected(&document, "roles"), "{WHY}");
 }
+
+#[test]
+fn a_timestamp_round_trips_through_the_text_people_type() {
+    use codedoc_ledger::Timestamp;
+
+    for seconds in [0i64, 1, 86_399, 86_400, 1_700_000_000, 2_000_000_000, -86_400] {
+        let moment = Timestamp::from_unix_seconds(seconds);
+        let rendered = moment.to_rfc3339();
+        let parsed =
+            Timestamp::parse(&rendered).unwrap_or_else(|| panic!("{rendered} did not parse back"));
+        assert_eq!(parsed.unix_seconds(), seconds, "{rendered}");
+    }
+
+    assert_eq!(
+        Timestamp::parse("2026-03-01").map(Timestamp::to_rfc3339).as_deref(),
+        Some("2026-03-01T00:00:00Z"),
+        "a bare date is what someone asking what was believed in March will type"
+    );
+    for rejected in ["", "yesterday", "2026-13-01", "2026-03-32", "2026-03-01T25:00:00Z"] {
+        assert!(Timestamp::parse(rejected).is_none(), "{rejected} should not parse");
+    }
+}

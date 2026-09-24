@@ -28,6 +28,27 @@ impl Timestamp {
         self.0
     }
 
+    pub fn parse(text: &str) -> Option<Self> {
+        let trimmed = text.trim().trim_end_matches('Z');
+        let (date, time) = trimmed.split_once('T').unwrap_or((trimmed, "00:00:00"));
+        let mut parts = date.split('-');
+        let year: i64 = parts.next()?.parse().ok()?;
+        let month: u32 = parts.next()?.parse().ok()?;
+        let day: u32 = parts.next()?.parse().ok()?;
+        if parts.next().is_some() || !(1..=12).contains(&month) || !(1..=31).contains(&day) {
+            return None;
+        }
+        let mut clock = time.split(':');
+        let hour: i64 = clock.next().unwrap_or("0").parse().ok()?;
+        let minute: i64 = clock.next().unwrap_or("0").parse().ok()?;
+        let second: i64 = clock.next().unwrap_or("0").parse().ok()?;
+        if hour > 23 || minute > 59 || second > 60 {
+            return None;
+        }
+        let days = days_from_civil(year, month, day);
+        Some(Timestamp(days * SECONDS_PER_DAY + hour * 3600 + minute * 60 + second))
+    }
+
     pub fn to_rfc3339(self) -> String {
         let days = self.0.div_euclid(SECONDS_PER_DAY);
         let remainder = self.0.rem_euclid(SECONDS_PER_DAY);
@@ -37,6 +58,16 @@ impl Timestamp {
         let second = remainder % 60;
         format!("{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}Z")
     }
+}
+
+fn days_from_civil(year: i64, month: u32, day: u32) -> i64 {
+    let year = if month <= 2 { year - 1 } else { year };
+    let era = if year >= 0 { year } else { year - 399 }.div_euclid(400);
+    let year_of_era = year - era * 400;
+    let shifted = if month > 2 { month - 3 } else { month + 9 } as i64;
+    let day_of_year = (153 * shifted + 2) / 5 + day as i64 - 1;
+    let day_of_era = year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year;
+    era * 146_097 + day_of_era - 719_468
 }
 
 fn civil_from_days(days: i64) -> (i64, u32, u32) {

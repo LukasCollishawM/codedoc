@@ -91,7 +91,7 @@ fn an_affirmation_keeps_the_claim_and_records_who_checked_it() {
     );
     assert_eq!(chain[1]["claim"], chain[0]["claim"], "an affirmation does not reword the claim");
 
-    let listed = codedoc_ops::list(root.path(), None, None, None).unwrap();
+    let listed = codedoc_ops::list(root.path(), None, None, None, None).unwrap();
     assert_eq!(listed["count"], 1, "the superseded original leaves the active set: {listed}");
 }
 
@@ -289,4 +289,60 @@ fn a_claim_on_a_file_is_never_called_a_restatement_of_a_name_it_has_no_symbol_fo
     )
     .unwrap();
     assert_eq!(written["restates_the_symbol"], false, "{written}");
+}
+
+#[test]
+fn a_moment_before_anything_was_recorded_reports_that_nothing_was_known() {
+    let root = project(
+        "pub fn compute(d: &[u8]) -> u32 {
+    d.len() as u32
+}
+",
+    );
+    let first = attach(root.path(), "Callers pass at most one frame.");
+    codedoc_ops::supersede(
+        root.path(),
+        None,
+        &first,
+        Some("Callers pass exactly one frame, never a partial one."),
+        None,
+        None,
+    )
+    .unwrap();
+
+    let now = codedoc_ops::list(root.path(), None, None, None, None).unwrap();
+    assert_eq!(now["count"], 1, "{now}");
+    assert!(now.to_string().contains("never a partial one"), "{now}");
+
+    let before = codedoc_ops::list(root.path(), None, None, None, Some("2000-01-01")).unwrap();
+    assert_eq!(
+        before["count"], 0,
+        "the README promises that what was believed at some past moment is a query          rather than an archaeology exercise, so the moment has to reach the graph:          {before}"
+    );
+    assert_eq!(before["as_of"], "2000-01-01", "the answer says what it was asked");
+
+    let context = codedoc_ops::context(
+        root.path(),
+        "src/lib.rs",
+        None,
+        Some("rust://compute"),
+        0,
+        None,
+        Some("2000-01-01"),
+    )
+    .unwrap();
+    assert_eq!(context["claims"], 0, "{context}");
+}
+
+#[test]
+fn a_date_nobody_can_parse_is_refused_rather_than_read_as_the_epoch() {
+    let root = project("pub fn compute(d: &[u8]) -> u32 {\n    d.len() as u32\n}\n");
+    attach(root.path(), "Callers pass at most one frame.");
+
+    let refused = codedoc_ops::list(root.path(), None, None, None, Some("last Tuesday"));
+    assert!(
+        refused.is_err(),
+        "falling back to the epoch would answer 'nothing was known' for a question \
+         the caller mistyped, which is a lie rather than an error"
+    );
 }

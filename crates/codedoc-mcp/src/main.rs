@@ -59,6 +59,8 @@ pub struct LocationArgs {
     pub symbol: Option<String>,
     pub depth: Option<u8>,
     pub budget: Option<usize>,
+    /// A date such as 2026-03-01, to see what was believed as of then rather than now.
+    pub as_of: Option<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -103,6 +105,8 @@ pub struct RecordArgs {
 pub struct FilterArgs {
     pub file: Option<String>,
     pub symbol: Option<String>,
+    /// A date such as 2026-03-01, to see what was recorded as of then.
+    pub as_of: Option<String>,
     /// Restrict to one ledger: `local`, `shared` or `global`. Omit to read across all.
     pub scope: Option<String>,
 }
@@ -251,6 +255,7 @@ impl Codedoc {
             args.symbol.as_deref(),
             args.depth.unwrap_or(codedoc_context::DEFAULT_DEPTH),
             args.budget,
+            args.as_of.as_deref(),
         ))
     }
 
@@ -434,6 +439,7 @@ impl Codedoc {
             scope_of(&args.scope),
             args.file.as_deref(),
             args.symbol.as_deref(),
+            args.as_of.as_deref(),
         ))
     }
 

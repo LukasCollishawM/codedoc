@@ -42,6 +42,9 @@ pub enum OpsError {
     )]
     NoLedger { root: String },
 
+    #[error("{found} is not a date; use YYYY-MM-DD or an RFC 3339 instant")]
+    MomentUnreadable { found: String },
+
     #[error("name at least one file, or --since a revision")]
     TargetUnnamed,
 

@@ -154,6 +154,18 @@ caps the assembled size by dropping the least trustworthy first.
 
 Active records.
 
+### `codedoc list [--file <path>] [--symbol <path>] [--as-of <date>]`
+
+Active records, optionally narrowed.
+
+`--as-of` answers what was recorded as of a moment rather than now: pass `2026-03-01`
+or a full RFC 3339 instant. Records written later are excluded and revisions made later
+are undone, so a claim that has since been superseded comes back in the wording it had
+then. `codedoc context` takes the same argument.
+
+A date that cannot be parsed is refused rather than read as the epoch, which would
+answer "nothing was known" to a question that was only mistyped.
+
 ### `codedoc history <record|symbol>`
 
 What was believed before, and when it changed.
