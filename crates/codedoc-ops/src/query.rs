@@ -307,7 +307,10 @@ pub fn history(root: &Path, reference: &str) -> Outcome {
             let restates_its_parent = position
                 .checked_sub(1)
                 .and_then(|previous| chain.get(previous))
-                .is_some_and(|parent| parent.content().body == entry.content().body);
+                .is_some_and(|parent| {
+                    parent.content().body == entry.content().body
+                        && parent.content().evidence == entry.content().evidence
+                });
             json!({
                 "record": entry.id().to_string(),
                 "kind": entry.kind().as_str(),

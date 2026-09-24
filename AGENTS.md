@@ -60,6 +60,7 @@ codedoc_context  →  agent reads, then changes code  →  codedoc_attach / code
 | `codedoc_list` | to survey what is recorded |
 | `codedoc_history` | to see what was believed before |
 | `codedoc_conflicts` | to find records that disagree, or duplicates that should have been supersedes |
+| `codedoc_evidence` | to find claims whose cited support has since been deleted or retracted |
 | `codedoc_review` | after finishing a change, to report what you may have invalidated |
 | `codedoc_coverage` | to find where knowledge is missing, not as a number to maximise |
 | `codedoc_render` | when asked for onboarding notes or architecture docs |
@@ -141,6 +142,12 @@ handler, and pinning it to whichever one you happened to be reading makes it inv
 from the others. Call `codedoc_attach` with a `file` and no `symbol` or `line` and the
 claim is recorded against the file itself. It then reaches anyone asking about any
 symbol in that file, and it goes stale when the file is substantially rewritten.
+
+**Cite what convinced you.** `evidence` takes `test:<name>`, `doc:<path>`,
+`record:<id>`, `git:<rev>` or a URL, and it is the difference between a claim someone
+can check and a claim they have to take on faith. `codedoc_evidence` later reports
+citations that stopped resolving, so a claim leaning on a deleted document or a
+retracted record surfaces instead of quietly keeping its authority.
 
 **Relations are underused.** If an agent only ever calls `codedoc_attach`, it is
 using half the system. Ordering constraints, guard relationships, and "changing this

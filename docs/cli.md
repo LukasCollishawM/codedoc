@@ -222,6 +222,22 @@ request and posts the result as a single comment, updated in place rather than
 appended to on each push. Copy it into your own repository; it needs
 `pull-requests: write`.
 
+### `codedoc evidence`
+
+Checks that the support records cite still exists.
+
+```bash
+codedoc evidence
+```
+
+A claim citing a document that was deleted, a record that was retracted, a revision no
+longer in the repository or a test that is gone still reads as well evidenced. That is
+worse than citing nothing, because the citation lends an authority nothing is holding
+up any more. Exit code 2 when anything is broken.
+
+URLs are recorded and never checked. Fetching one would mean codedoc making a network
+request out of someone's repository, which it does not do.
+
 ### `codedoc conflicts`
 
 Reports records that appear to disagree:

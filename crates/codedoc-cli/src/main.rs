@@ -217,6 +217,8 @@ enum Command {
 
     Conflicts,
 
+    Evidence,
+
     Coverage {
         paths: Vec<String>,
 
@@ -389,6 +391,7 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
         Command::Relate(args) => command_relate(&cli.root, scope, args),
         Command::Detached => command_detached(&cli.root),
         Command::Conflicts => Ok(ops::conflicts(&cli.root)?),
+        Command::Evidence => Ok(ops::evidence(&cli.root)?),
         Command::Coverage { paths, limit } => Ok((ops::coverage(&cli.root, paths, *limit)?, 0)),
         Command::Review { base, out } => {
             let (payload, code) = ops::review(&cli.root, base)?;

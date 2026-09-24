@@ -2,6 +2,7 @@
 
 mod author;
 mod coverage;
+mod evidence;
 mod import;
 mod lifecycle;
 mod query;
@@ -11,6 +12,7 @@ mod revision;
 
 pub use author::Attribution;
 pub use coverage::coverage;
+pub use evidence::evidence;
 pub use import::import;
 pub use lifecycle::{Relocation, affirm, resolve, retract, supersede};
 pub use query::{

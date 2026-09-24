@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use codedoc_ledger::{Assurance, Scope};
 use codedoc_ops::{
     AttachRequest, Attribution, Provenance, RelateRequest, Target, affirm, attach, conflicts,
-    context, coverage, detached, history, import, list, relate, render, resolve, retract, review,
-    search, stats, supersede, verify_scoped,
+    context, coverage, detached, evidence, history, import, list, relate, render, resolve, retract,
+    review, search, stats, supersede, verify_scoped,
 };
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
@@ -378,6 +378,16 @@ impl Codedoc {
         Parameters(args): Parameters<RecordArgs>,
     ) -> Result<CallToolResult, McpError> {
         respond(history(&self.root, &args.record))
+    }
+
+    #[tool(
+        description = "Check that the evidence records cite still exists: a cited document that was deleted, a cited record that was retracted, a git revision no longer in the repository, a named test that is gone. A claim citing support that has evaporated still reads as well evidenced, which is worse than citing nothing. URLs are recorded but never fetched, because codedoc makes no network requests."
+    )]
+    async fn codedoc_evidence(
+        &self,
+        Parameters(_args): Parameters<NoArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        respond(evidence(&self.root).map(|(payload, _)| payload))
     }
 
     #[tool(
