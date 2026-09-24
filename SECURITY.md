@@ -20,7 +20,9 @@ Properties that must hold across all three:
 - **No execution.** No record content reaches a shell, an interpreter, a SQL statement other than as a bound parameter, or a rendered context that executes it. Records are data in every projection, including the editor ones.
 - **No unsafe code.** `#![forbid(unsafe_code)]` in every crate, so memory-safety findings are confined to dependencies and auditable through `cargo deny`.
 
-Fuzz targets for the canonical decoder, the ledger reader and anchor capture live in [`fuzz/`](fuzz/). They require a nightly toolchain, so they are run deliberately rather than on every CI run:
+The first two of these are checked on **every** CI run by property tests that put several thousand generated inputs — arbitrary bytes, arbitrary text, JSON-shaped noise, and a declared length far beyond the input — through the canonical decoder and the record decoder, and require that anything which decodes re-encodes to itself. Path confinement is asserted directly, including the Windows forms. None of this replaces fuzzing; it replaces fuzzing nobody runs.
+
+Fuzz targets for the canonical decoder, the ledger reader and anchor capture live in [`fuzz/`](fuzz/). They search far deeper, require a nightly toolchain, and so are run deliberately rather than on every CI run:
 
 ```bash
 cargo fuzz run canonical_decoder
