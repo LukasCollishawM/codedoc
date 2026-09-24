@@ -82,6 +82,13 @@ pub enum OpsError {
     )]
     PathMissing { path: String },
 
+    #[error(
+        "a record needs a claim. An empty one is indistinguishable from no record at all \
+         everywhere it is read, and it cannot be superseded by something better because \
+         nobody can tell what it said"
+    )]
+    EmptyClaim,
+
     #[error("unknown record kind {found}; the vocabulary is {vocabulary}")]
     UnknownKind { found: String, vocabulary: String },
 

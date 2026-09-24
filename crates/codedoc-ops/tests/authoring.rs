@@ -396,3 +396,50 @@ fn records_can_be_listed_by_who_wrote_them() {
         codedoc_ops::list(root.path(), None, None, None, None, Some("nobody"), None).unwrap();
     assert_eq!(nobody["count"], 0, "{nobody}");
 }
+
+#[test]
+fn a_record_cannot_be_written_with_nothing_to_say() {
+    let root = project(
+        "pub fn compute(d: &[u8]) -> u32 {
+    d.len() as u32
+}
+",
+    );
+
+    let request = codedoc_ops::AttachRequest {
+        target: codedoc_ops::Target::symbol("src/lib.rs", "rust://compute"),
+        kind: "invariant".to_owned(),
+        claim: "   ".to_owned(),
+        detail: None,
+    };
+    let refused = codedoc_ops::attach(
+        root.path(),
+        None,
+        &request,
+        &codedoc_ops::Attribution::human("tester"),
+        codedoc_ops::Provenance::default(),
+    )
+    .expect_err("import refuses a five character comment; attach accepted nothing at all");
+    assert!(refused.to_string().contains("needs a claim"), "{refused}");
+}
+
+#[test]
+fn superseding_with_nothing_does_not_erase_what_was_there() {
+    let root = project(
+        "pub fn compute(d: &[u8]) -> u32 {
+    d.len() as u32
+}
+",
+    );
+    let written = attach(root.path(), "The length is the whole answer.");
+
+    let refused = codedoc_ops::supersede(root.path(), None, &written, Some(""), None, None)
+        .expect_err("replacing a claim with an empty one destroys it");
+    assert!(refused.to_string().contains("needs a claim"), "{refused}");
+
+    let listing = codedoc_ops::list(root.path(), None, None, None, None, None, None).unwrap();
+    assert_eq!(
+        listing["records"][0]["claim"], "The length is the whole answer.",
+        "the original survives a refused supersede: {listing}"
+    );
+}

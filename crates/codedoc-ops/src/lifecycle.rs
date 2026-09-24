@@ -159,8 +159,11 @@ pub fn supersede(
         })?,
         None => original.kind(),
     };
+    if claim.is_some_and(|given| given.trim().is_empty()) {
+        return Err(OpsError::EmptyClaim);
+    }
     let body = Body {
-        claim: claim.unwrap_or(&original.content().body.claim).to_owned(),
+        claim: claim.map(str::trim).unwrap_or(&original.content().body.claim).to_owned(),
         detail: detail.map(str::to_owned).or_else(|| original.content().body.detail.clone()),
     };
 

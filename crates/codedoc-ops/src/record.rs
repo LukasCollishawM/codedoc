@@ -182,7 +182,10 @@ pub fn attach(
 ) -> Outcome {
     let Provenance { assurance, evidence, revision } = provenance;
     let target = &request.target;
-    let claim = request.claim.as_str();
+    let claim = request.claim.trim();
+    if claim.is_empty() {
+        return Err(OpsError::EmptyClaim);
+    }
     let detail = request.detail.as_deref();
     let kind = Kind::parse(&request.kind).ok_or_else(|| OpsError::UnknownKind {
         found: request.kind.clone(),
