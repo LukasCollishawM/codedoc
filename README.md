@@ -128,10 +128,13 @@ Records may also relate two constructs rather than describe one: *must execute a
 
 ## Anchor survival
 
-Replayed over the history of seven codebases — zod, gson, ripgrep, httpx, cobra, fmt
-and this repository — **5,371 anchors, zero resolved onto the wrong symbol.** Survival
-ranges from 99.6% to 82.9%. Detachments were checked against the final revision rather
-than sampled, and name code that is genuinely absent.
+Replayed over the history of fourteen codebases — among them zod, ripgrep, httpx,
+cobra, fmt, gin, traefik and this repository — **11,778 anchors, zero resolved onto the
+wrong symbol.** Survival ranges from 100.0% to 82.9%. Detachments were checked against
+the final revision rather than sampled, and name code that is genuinely absent. Five
+results were flagged for inspection, all on one corpus and all one adapter defect; each
+had resolved onto the declaration it was captured from, and it was the symbol path that
+moved under it.
 
 The spread tracks the corpora rather than the adapters: one deleted nineteen files over
 the window, another declares dozens of identically named test macros per file, and a
