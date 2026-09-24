@@ -10,7 +10,7 @@ use std::process::ExitCode;
 use anyhow::{Context, Result, anyhow};
 use clap::{Parser, Subcommand, ValueEnum};
 use codedoc_index::Index;
-use codedoc_ledger::{Assurance, Evidence, Kind, Ledger, Scope};
+use codedoc_ledger::{Evidence, Kind, Ledger, Scope};
 use codedoc_ops as ops;
 use serde_json::{Value, json};
 
@@ -400,7 +400,7 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
                     scope,
                     record,
                     &attribution,
-                    assurance.as_deref().and_then(Assurance::parse),
+                    ops::parse_assurance(assurance.as_deref())?,
                 )?,
                 0,
             ))
@@ -501,7 +501,7 @@ fn command_attach(root: &Path, scope: Option<Scope>, args: &AttachArgs) -> Resul
         detail: args.detail.clone(),
     };
     let provenance = ops::Provenance {
-        assurance: Assurance::parse(&args.assurance),
+        assurance: ops::parse_assurance(Some(&args.assurance))?,
         evidence: args.evidence.iter().map(|item| parse_evidence(item)).collect(),
         revision: ops::head_revision(root),
     };

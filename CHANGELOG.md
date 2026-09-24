@@ -8,6 +8,8 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Fixed
 
+- **An unrecognised `--assurance` was silently ignored, recording the author's default.** `--assurance speculatve` produced a record claiming `asserted`, the strongest of the three, because the value was parsed into an `Option` and a `None` means take the default. Both the CLI and the MCP server now refuse it with the vocabulary, the way an unknown record kind already was. A typo that downgrades a claim is a nuisance; one that silently upgrades it makes the corpus lie about how far it should be trusted.
+
 - **`--author runtime` recorded an analyzer.** The `Author` vocabulary has had `Runtime` from the start, the renderer printed it and `list --author` could filter on it; the one path that writes records mapped it onto `analyzer` because `Attribution` had no constructor for it. A profiler and a linter are not the same witness, and nothing downstream could tell them apart after the fact. Found by `codedoc gaps`, which put `command_attach` near the top on the strength of two corrective commits.
 
 ### Added

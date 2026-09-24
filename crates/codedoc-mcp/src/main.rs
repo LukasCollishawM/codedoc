@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use codedoc_ledger::{Assurance, Scope};
+use codedoc_ledger::Scope;
 use codedoc_ops::{
     AttachRequest, Attribution, Provenance, RelateRequest, Target, affirm, attach, brief,
     conflicts, context, coverage, detached, evidence, gaps, health, history, import, initialise,
@@ -338,7 +338,10 @@ impl Codedoc {
             detail: args.detail,
         };
         let provenance = Provenance {
-            assurance: args.assurance.as_deref().and_then(Assurance::parse),
+            assurance: match codedoc_ops::parse_assurance(args.assurance.as_deref()) {
+                Ok(parsed) => parsed,
+                Err(refused) => return Err(McpError::invalid_params(refused.to_string(), None)),
+            },
             ..Provenance::default()
         };
         respond(attach(

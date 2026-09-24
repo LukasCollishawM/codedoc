@@ -13,7 +13,7 @@ mod repair;
 mod revision;
 mod setup;
 
-pub use author::Attribution;
+pub use author::{Attribution, parse_assurance};
 pub use coverage::coverage;
 pub use evidence::evidence;
 pub use gaps::gaps;
@@ -71,6 +71,12 @@ pub enum OpsError {
 
     #[error("unknown record kind {found}; the vocabulary is {vocabulary}")]
     UnknownKind { found: String, vocabulary: String },
+
+    #[error(
+        "unknown assurance {found}; expected one of {vocabulary}. Ignoring it would \
+         record whatever the author's default is, which is a confidence nobody chose"
+    )]
+    UnknownAssurance { found: String, vocabulary: String },
 
     #[error("{found} is not a relation verb; expected one of {vocabulary}")]
     UnknownVerb { found: String, vocabulary: String },
