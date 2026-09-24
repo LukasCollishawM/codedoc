@@ -48,6 +48,7 @@ codedoc_context  →  agent reads, then changes code  →  codedoc_attach / code
 | --- | --- |
 | `codedoc_init` | when another tool says no ledger was found |
 | `codedoc_search` | when you don't yet know which file holds what you need |
+| `codedoc_brief` | before starting work that touches several files |
 | `codedoc_context` | before touching unfamiliar code, once you know the file or symbol |
 | `codedoc_attach` | after working something out that the source doesn't say |
 | `codedoc_attach` without `symbol` or `line` | when what you worked out is true of the whole file, not one declaration |
@@ -124,6 +125,12 @@ function validates the token" is worthless — the code says that. "Validation m
 precede tenant resolution, because resolving a tenant from an unvalidated token
 allows tenant confusion across trust boundaries" is the thing that dies in a commit
 message otherwise.
+
+**Start a task with `codedoc_brief`, finish it with `codedoc_review`.** Given the
+files the work will touch — or a revision to take everything changed since — a brief
+returns what is already known about that change as one answer, with the budget spent
+across the whole set rather than a few claims from each file. `codedoc_context` is the
+sharper tool once you are at one location and know where.
 
 **`codedoc_attach` tells you when you are repeating yourself.** Its result carries a
 `similar` list: existing claims on the same code that yours largely restates. It still

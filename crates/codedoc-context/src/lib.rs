@@ -16,6 +16,10 @@ pub struct Claim {
     pub detail: Option<String>,
     pub assurance: String,
     pub author: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub symbol: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub evidence: Vec<String>,
     pub trust: u32,
@@ -68,6 +72,10 @@ impl Claim {
             detail: content.body.detail.clone(),
             assurance: content.assurance.as_str().to_owned(),
             author: describe_author(record),
+            file: record.subject().map(|anchor| anchor.file.as_str().to_owned()),
+            symbol: record
+                .subject()
+                .and_then(|anchor| anchor.symbol.as_ref().map(ToString::to_string)),
             evidence: content
                 .evidence
                 .iter()
@@ -141,6 +149,16 @@ impl ContextPack {
             + self.rationale.len()
             + self.failure_modes.len()
             + self.other.len()
+    }
+
+    pub fn absorb(&mut self, other: ContextPack) {
+        self.invariants.extend(other.invariants);
+        self.security.extend(other.security);
+        self.rationale.extend(other.rationale);
+        self.failure_modes.extend(other.failure_modes);
+        self.other.extend(other.other);
+        self.relations.extend(other.relations);
+        self.truncated |= other.truncated;
     }
 
     pub fn deduplicate(&mut self) {

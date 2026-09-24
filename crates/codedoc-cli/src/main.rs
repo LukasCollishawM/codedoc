@@ -221,6 +221,19 @@ enum Command {
 
     Doctor,
 
+    Brief {
+        files: Vec<String>,
+
+        #[arg(long)]
+        since: Option<String>,
+
+        #[arg(long, default_value_t = 0)]
+        depth: u8,
+
+        #[arg(long)]
+        budget: Option<usize>,
+    },
+
     Coverage {
         paths: Vec<String>,
 
@@ -402,6 +415,9 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
         Command::Conflicts => Ok(ops::conflicts(&cli.root)?),
         Command::Evidence => Ok(ops::evidence(&cli.root)?),
         Command::Doctor => Ok(ops::doctor(&cli.root)?),
+        Command::Brief { files, since, depth, budget } => {
+            Ok((ops::brief(&cli.root, files, since.as_deref(), *depth, *budget)?, 0))
+        }
         Command::Coverage { paths, limit } => Ok((ops::coverage(&cli.root, paths, *limit)?, 0)),
         Command::Review { base, out } => {
             let (payload, code) = ops::review(&cli.root, base)?;

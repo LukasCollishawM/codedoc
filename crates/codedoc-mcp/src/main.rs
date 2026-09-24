@@ -4,9 +4,9 @@ use std::path::PathBuf;
 
 use codedoc_ledger::{Assurance, Scope};
 use codedoc_ops::{
-    AttachRequest, Attribution, Provenance, RelateRequest, Target, affirm, attach, conflicts,
-    context, coverage, detached, evidence, health, history, import, initialise, list, relate,
-    render, resolve, retract, review, search, stats, supersede, verify_scoped,
+    AttachRequest, Attribution, Provenance, RelateRequest, Target, affirm, attach, brief,
+    conflicts, context, coverage, detached, evidence, health, history, import, initialise, list,
+    relate, render, resolve, retract, review, search, stats, supersede, verify_scoped,
 };
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
@@ -125,6 +125,18 @@ pub struct InitArgs {
     /// `shared` puts it in `.codedoc/` to be committed. `global` keeps it outside the
     /// repository entirely. Defaults to `local`.
     pub scope: Option<String>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct BriefArgs {
+    /// Repository-relative paths the work will touch.
+    pub files: Option<Vec<String>>,
+    /// A git revision; every file changed since it is included.
+    pub since: Option<String>,
+    /// Follow relations this many hops. Defaults to 0.
+    pub depth: Option<u8>,
+    /// Approximate character budget, spent across the whole set rather than per file.
+    pub budget: Option<usize>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -374,6 +386,22 @@ impl Codedoc {
         let scope =
             args.scope.as_deref().map_or(Some(Scope::Local), Scope::parse).unwrap_or(Scope::Local);
         respond(initialise(&self.root, scope))
+    }
+
+    #[tool(
+        description = "Everything recorded about a set of files, as one answer, before you start changing them. Give the files the work will touch, or a revision to take everything changed since. The budget is spent across the whole set, so what you get back is the most important knowledge about the change rather than the top few claims from each file separately. Use codedoc_context instead when you are working at one location and know where."
+    )]
+    async fn codedoc_brief(
+        &self,
+        Parameters(args): Parameters<BriefArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        respond(brief(
+            &self.root,
+            &args.files.unwrap_or_default(),
+            args.since.as_deref(),
+            args.depth.unwrap_or(0),
+            args.budget,
+        ))
     }
 
     #[tool(

@@ -83,6 +83,81 @@ pub fn context(
     }))
 }
 
+pub fn brief(
+    root: &Path,
+    files: &[String],
+    since: Option<&str>,
+    depth: u8,
+    budget: Option<usize>,
+) -> Outcome {
+    let found = workspace(root)?;
+    let mut targets: Vec<String> = files
+        .iter()
+        .map(|name| {
+            RepoPath::parse(name)
+                .map(|path| path.as_str().to_owned())
+                .unwrap_or_else(|_| name.clone())
+        })
+        .collect();
+    if let Some(revision) = since {
+        let changed =
+            codedoc_verify::history::changed_since(found.root(), revision).ok_or_else(|| {
+                OpsError::Ledger { detail: format!("could not read what changed since {revision}") }
+            })?;
+        targets.extend(changed);
+    }
+    targets.sort();
+    targets.dedup();
+
+    if targets.is_empty() {
+        return Err(OpsError::TargetUnnamed);
+    }
+
+    let mut records = Vec::new();
+    for ledger in found.ledgers() {
+        let index = Index::current(ledger)
+            .map_err(|source| OpsError::Index { detail: source.to_string() })?;
+        for file in &targets {
+            records.extend(
+                index
+                    .active_in_file(file)
+                    .map_err(|source| OpsError::Index { detail: source.to_string() })?,
+            );
+        }
+    }
+    records.sort_by_key(|record| record.id().to_string());
+    records.dedup_by_key(|record| record.id().to_string());
+    let graph = Graph::from_records(records);
+
+    let mut pack: Option<codedoc_context::ContextPack> = None;
+    for file in &targets {
+        let assembled = codedoc_context::assemble(
+            &graph,
+            ContextTarget { file: file.clone(), line: None, symbol: None },
+            depth,
+        );
+        match pack.as_mut() {
+            Some(collected) => collected.absorb(assembled),
+            None => pack = Some(assembled),
+        }
+    }
+    let mut pack = pack.expect("targets is not empty");
+    pack.deduplicate();
+    pack.rank();
+    if let Some(limit) = budget {
+        pack.fit_within(limit);
+    }
+
+    Ok(json!({
+        "command": "brief",
+        "files": targets,
+        "pack": serde_json::to_value(&pack).unwrap_or(Value::Null),
+        "claims": pack.claim_count(),
+        "empty": pack.is_empty(),
+        "scopes": found.scopes().iter().map(|scope| scope.as_str()).collect::<Vec<_>>(),
+    }))
+}
+
 fn is_file_scoped(record: &codedoc_ledger::Record) -> bool {
     record
         .content()

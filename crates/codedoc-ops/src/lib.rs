@@ -19,7 +19,7 @@ pub use health::{doctor, health};
 pub use import::import;
 pub use lifecycle::{Relocation, affirm, resolve, retract, supersede};
 pub use query::{
-    conflicts, context, detached, history, list, render, review, search, stats, verify,
+    brief, conflicts, context, detached, history, list, render, review, search, stats, verify,
     verify_scoped,
 };
 pub use record::{AttachRequest, Provenance, RelateRequest, Target, attach, relate};
@@ -41,6 +41,9 @@ pub enum OpsError {
          shared` to commit it"
     )]
     NoLedger { root: String },
+
+    #[error("name at least one file, or --since a revision")]
+    TargetUnnamed,
 
     #[error("{detail}")]
     Ledger { detail: String },

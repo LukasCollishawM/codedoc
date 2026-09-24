@@ -237,6 +237,26 @@ request and posts the result as a single comment, updated in place rather than
 appended to on each push. Copy it into your own repository; it needs
 `pull-requests: write`.
 
+### `codedoc brief <files...> [--since <rev>]`
+
+Everything recorded about a set of files, as one answer, before you change them.
+
+```bash
+codedoc brief src/auth.rs src/tenancy.rs --budget 4000
+codedoc brief --since main --depth 1
+```
+
+This is the counterpart to `codedoc review`: a brief is what you should know before
+starting, a review is what you may have invalidated after finishing.
+
+`--budget` is spent **across the whole set**, not per file. Asking for context on six
+files separately returns the top claims from each and six times the intended size; a
+brief returns what matters most about the change. `--depth` follows relations that many
+hops. Each claim names the file and symbol it belongs to, which a single-file context
+pack does not need to.
+
+Naming no files and no revision is refused rather than answered with the whole ledger.
+
 ### `codedoc doctor`
 
 One answer to whether the recorded knowledge in a repository is in good order.
