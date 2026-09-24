@@ -18,4 +18,4 @@ Records are canonical JSON, one per line, under `.codedoc/ledger/`, sharded by t
 
 ## Consequences
 
-Sharding means file order carries no meaning, so sequence is expressed by the `chain` member and reconstructed by following references. That is what makes a merge a union operation and the merge driver tractable. Everything derived must be reconstructible from the ledger alone (I1).
+Sharding means file order carries no meaning, so sequence is expressed by the `chain` member and reconstructed by following references. That is what makes a merge a union operation and the merge driver tractable. Everything derived must be reconstructible from the ledger alone.

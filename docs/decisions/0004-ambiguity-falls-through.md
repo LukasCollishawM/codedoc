@@ -4,7 +4,7 @@ Status: Accepted
 
 ## Context
 
-The first resolver treated multiple candidates at any rung as immediate detachment, reasoning that selecting among equals violates the never-guess invariant (I2).
+The first resolver treated multiple candidates at any rung as immediate detachment, reasoning that selecting among equals violates the rule that an anchor never resolves onto a node the resolver cannot distinguish from another candidate.
 
 Measured against a real corpus of 2095 records imported from the `rmcp` source, this detached 602 anchors: 29 percent of the corpus.
 
@@ -14,7 +14,7 @@ A rung yielding more than one candidate neither selects nor terminates. It falls
 
 ## Rationale
 
-The original reasoning conflated two things. I2 forbids *selecting* among indistinguishable candidates; it says nothing about continuing to look. Later rungs carry strictly more information: content identity cannot separate two textually identical functions, but the symbol path can. Terminating early discarded that information and produced detachments the evidence did not warrant.
+The original reasoning conflated two things. The rule forbids *selecting* among indistinguishable candidates; it says nothing about continuing to look. Later rungs carry strictly more information: content identity cannot separate two textually identical functions, but the symbol path can. Terminating early discarded that information and produced detachments the evidence did not warrant.
 
 On the same corpus, falling through reduced detachment from 602 to 121 while never selecting among equals.
 

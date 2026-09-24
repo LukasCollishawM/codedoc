@@ -21,8 +21,7 @@ codedoc is that somewhere.
 
 ## What it looks like
 
-An agent working on your code finds something non-obvious and records it. It does
-this through MCP, so this is a tool call rather than a command it types:
+An agent working on your code finds something non-obvious and records it:
 
 ```
 codedoc_attach {
@@ -64,11 +63,8 @@ that function. It calls `codedoc_context` before reading the code, and gets back
 }
 ```
 
-Every one of those tools has a command-line equivalent with the same JSON under
-`--json`, for agents that shell out rather than speak MCP, and for you when you want
-to look. [docs/cli.md](docs/cli.md) covers those.
-
-That is the whole idea. The rest of this page is how it survives the code changing.
+Every tool has a command-line equivalent that emits the same JSON under `--json`,
+documented in [docs/cli.md](docs/cli.md).
 
 ## Install
 

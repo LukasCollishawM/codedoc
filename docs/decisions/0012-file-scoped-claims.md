@@ -28,7 +28,8 @@ is exactly what a newcomer, human or agent, needs first.
 **Anchoring to the first real declaration in the file.** Resolvable, but it makes a
 claim about the module look like a claim about one function, and it moves when that
 function is deleted. It trades an unresolvable record for a confidently wrong one,
-which I2 exists to prevent.
+and a claim attached to the wrong construct is the outcome this project treats as
+worse than a claim reported as lost.
 
 ## Decision
 

@@ -176,7 +176,9 @@ Do not add a trait with one implementation. Do not add indirection for a second 
 
 ### Documentation is part of the change, not a follow-up
 
-A change that alters behaviour and leaves the documentation describing the old behaviour is incomplete, and it is incomplete in the worst way: the repository now asserts something false, with authority. Update the docs in the same commit as the code.
+**Read `notes/WRITING.md` before editing any prose file in this repository.** It is untracked, it is binding, and it is strict: no temporal framing, no narration of the document by itself, no rhetorical beats, no slogans, no aphorisms, terms defined at first use, transcripts verbatim. Every rule in it was broken here first and the fix reverted into it. The final section is a checklist to run against the diff.
+
+A change that alters behaviour and leaves the documentation describing the old behaviour is incomplete, and it is incomplete in the worst way: the repository asserts something false, with authority. Update the docs in the same commit as the code.
 
 What has to stay true, and who it is for:
 
