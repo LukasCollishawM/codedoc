@@ -695,10 +695,21 @@ fn render_merge_driver(payload: &Value, out: &mut String) {
 fn render_import(payload: &Value, out: &mut String) {
     let _ = writeln!(
         out,
-        "scanned {} files, found {} documentable comments",
+        "scanned {} file{}, found {} documentable comment{}",
         count(payload, "files_scanned"),
-        count(payload, "candidates")
+        if count(payload, "files_scanned") == 1 { "" } else { "s" },
+        count(payload, "candidates"),
+        if count(payload, "candidates") == 1 { "" } else { "s" }
     );
+    let unreadable = count(payload, "files_unreadable");
+    if unreadable > 0 {
+        let _ = writeln!(
+            out,
+            "  {unreadable} file{} could not be read as UTF-8 and {} skipped",
+            if unreadable == 1 { "" } else { "s" },
+            if unreadable == 1 { "was" } else { "were" }
+        );
+    }
     if let Some(kinds) = payload["by_kind"].as_object() {
         for (kind, number) in kinds {
             let _ = writeln!(out, "  {:<22} {}", kind, number.as_u64().unwrap_or(0));

@@ -130,3 +130,27 @@ fn a_shebang_is_not_a_claim() {
         "and the real comment beneath it survives: {claims:?}"
     );
 }
+
+#[test]
+fn a_file_that_is_not_utf8_is_reported_rather_than_counted_as_scanned() {
+    let root = tempfile::tempdir().expect("a temporary directory");
+    fs::create_dir_all(root.path().join("src")).unwrap();
+    fs::write(
+        root.path().join("src/legacy.rs"),
+        [b"// caf".as_slice(), &[0xe9], b" is latin-1 here\npub fn compute() {}\n".as_slice()]
+            .concat(),
+    )
+    .unwrap();
+    Ledger::initialise(root.path()).unwrap();
+
+    let report = codedoc_ops::import(root.path(), None, &["src".to_owned()], false, None).unwrap();
+    assert_eq!(
+        report["files_scanned"], 0,
+        "a file that could not be read was not scanned: {report}"
+    );
+    assert_eq!(
+        report["files_unreadable"], 1,
+        "and saying nothing leaves the user reading 'found 0 comments' as an answer \
+         about their code: {report}"
+    );
+}

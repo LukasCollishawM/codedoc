@@ -98,6 +98,7 @@ pub fn import(
     let revision = crate::revision::head_revision(root);
     let mut harvested = Vec::new();
     let mut files_scanned = 0usize;
+    let mut files_unreadable = 0usize;
 
     for target in &targets {
         for entry in WalkDir::new(root.join(target)).into_iter().filter_map(Result::ok) {
@@ -114,6 +115,10 @@ pub fn import(
             let Ok(adapter) = Registry::for_path(&repo_path) else {
                 continue;
             };
+            if fs::read_to_string(path).is_err() {
+                files_unreadable += 1;
+                continue;
+            }
             files_scanned += 1;
             harvested.extend(harvest_file(&repo_path, adapter, path, revision.clone()));
             if limit.is_some_and(|cap| harvested.len() >= cap) {
@@ -172,6 +177,7 @@ pub fn import(
     Ok(json!({
             "command": "import",
             "files_scanned": files_scanned,
+            "files_unreadable": files_unreadable,
             "candidates": by_kind.values().sum::<usize>(),
             "by_kind": by_kind,
             "written": written,
