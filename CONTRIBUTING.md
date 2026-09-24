@@ -30,6 +30,19 @@ just test         # cargo nextest run --workspace
 
 If a reviewer asks for something no check enforces, that is a gap — either the check gets built or the request is only a suggestion. Say so; it is a fair thing to say.
 
+## Known gaps are ignored tests
+
+```bash
+cargo test --workspace -- --ignored
+```
+
+Where something is known to be wrong and not yet fixed, the repository holds a test
+asserting the behaviour it should have, marked `#[ignore]` with the reason, next to a
+live test asserting the gap is still there. Running the ignored set tells you what is
+broken and what fixing it would have to make true; the live one fails the day the gap
+closes and tells you to delete both. A known gap that lives only in prose is one
+nobody finds and nobody can check.
+
 ## The invariants are not negotiable
 
 `CLAUDE.md` states four. One deserves repeating here because it is the most likely to be argued with in a PR:
