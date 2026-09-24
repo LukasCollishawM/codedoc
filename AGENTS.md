@@ -1,8 +1,8 @@
 # codedoc for agents
 
-codedoc is designed to be used by an agent, not read about by one. This page is for
-the human deciding whether it is working, and for anyone tuning how their agent uses
-it. Your agent does not need to read this — the MCP server tells it what it needs at
+codedoc is intended to be called by an agent rather than read by one. This page is for
+the human evaluating whether it is working, and for anyone tuning how an agent uses it.
+An agent does not need to read it: the MCP server sends the relevant instructions at
 `initialize`.
 
 ## What the server tells your agent
@@ -141,17 +141,17 @@ false by getting old — that is what `codedoc verify` is for.
 non-obvious about this code, record it with codedoc rather than a comment"* to your
 system prompt is usually enough. The tool descriptions do the rest.
 
-**Expect volume, and let it happen.** Agents document compulsively. That is the
-premise, not a problem: the context packer ranks by kind and fits to a budget, and
+**Expect a high volume of records.** This is the intended behaviour rather than a
+problem to suppress: the context packer ranks by kind and fits results to a budget, and
 duplicate claims are collapsed on retrieval.
 
-**Volume has one real failure mode**, which is many agents recording almost-the-same
-claim instead of superseding the one already there. `codedoc_conflicts` surfaces
+**Volume has one significant failure mode:** several agents recording near-identical
+claims instead of superseding the one already present. `codedoc_conflicts` surfaces
 those, along with declared contradictions and same-kind claims that disagree about
 how certain they are. Running it periodically is ledger hygiene.
 
-**The signal a record is good** is that it says something the code does not. "This
-function validates the token" is worthless — the code says that. "Validation must
+**A record is useful when it states something the code does not.** "This function
+validates the token" adds nothing, because the code already says so. "Validation must
 precede tenant resolution, because resolving a tenant from an unvalidated token
 allows tenant confusion across trust boundaries" is the thing that dies in a commit
 message otherwise.
