@@ -277,6 +277,7 @@ pub fn review(root: &Path, base: &str) -> Result<(Value, i32), OpsError> {
     let findings: Vec<codedoc_verify::Finding> =
         serde_json::from_value(payload["findings"].clone()).unwrap_or_default();
 
+    let review_graph = Graph::across(&found)?;
     let mut stale = Vec::new();
     let mut detached = Vec::new();
     let mut unchanged = 0usize;
@@ -287,7 +288,10 @@ pub fn review(root: &Path, base: &str) -> Result<(Value, i32), OpsError> {
                 stale.push((finding.file.clone(), symbol, finding.claim.clone(), finding.drift))
             }
             codedoc_verify::Status::Detached => {
-                detached.push((finding.file.clone(), symbol, finding.claim.clone()))
+                let hint = suggestions_for(found.root(), finding, &review_graph).first().and_then(
+                    |value| value.get("symbol").and_then(|name| name.as_str()).map(str::to_owned),
+                );
+                detached.push((finding.file.clone(), symbol, finding.claim.clone(), hint))
             }
             _ => unchanged += 1,
         }

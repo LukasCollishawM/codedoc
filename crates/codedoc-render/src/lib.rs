@@ -214,7 +214,7 @@ pub struct ReviewInput<'a> {
     pub base: &'a str,
     pub files: &'a [String],
     pub stale: Vec<(String, String, String, Option<u32>)>,
-    pub detached: Vec<(String, String, String)>,
+    pub detached: Vec<(String, String, String, Option<String>)>,
     pub unchanged: usize,
     pub touched_declarations: usize,
     pub undocumented_declarations: usize,
@@ -251,12 +251,13 @@ pub fn review_markdown(input: &ReviewInput<'_>) -> String {
             "**The code these described could not be found.** codedoc will not guess \
              which construct replaced it.\n\n",
         );
-        for (file, symbol, claim) in &input.detached {
-            out.push_str(&format!(
-                "- `{file}` — `{symbol}`
-  > {claim}
-"
-            ));
+        for (file, symbol, claim, suggestion) in &input.detached {
+            out.push_str(&format!("- `{file}` — `{symbol}`\n  > {claim}\n"));
+            if let Some(candidate) = suggestion {
+                out.push_str(&format!(
+                    "  <sub>possibly now `{candidate}` — confirm with `codedoc resolve`</sub>\n"
+                ));
+            }
         }
         out.push('\n');
     }

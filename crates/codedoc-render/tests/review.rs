@@ -35,11 +35,29 @@ fn detached_claims_say_that_codedoc_refused_to_guess() {
         "src/auth.rs".to_owned(),
         "rust://validate".to_owned(),
         "Validation precedes resolution.".to_owned(),
+        None,
     )];
     let rendered = review_markdown(&given);
     assert!(rendered.contains("could not be found"));
     assert!(rendered.contains("will not guess"));
     assert!(rendered.contains("rust://validate"));
+}
+
+#[test]
+fn a_detached_claim_offers_its_best_candidate() {
+    let mut given = input("origin/main");
+    given.detached = vec![(
+        "src/auth.rs".to_owned(),
+        "rust://parse_header".to_owned(),
+        "Whitespace-only headers count as empty.".to_owned(),
+        Some("rust://parse_headers".to_owned()),
+    )];
+    let rendered = review_markdown(&given);
+    assert!(rendered.contains("possibly now `rust://parse_headers`"));
+    assert!(
+        rendered.contains("confirm with"),
+        "a suggestion must read as something to confirm, not something already done"
+    );
 }
 
 #[test]
