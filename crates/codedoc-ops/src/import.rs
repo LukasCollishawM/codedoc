@@ -231,10 +231,20 @@ fn collect_comment_blocks<'tree>(
 }
 
 fn first_declaration_row(root: Node<'_>, adapter: &Adapter) -> Option<usize> {
-    let mut cursor = root.walk();
-    root.named_children(&mut cursor)
-        .find(|child| adapter.declares_symbol(child.kind()))
-        .map(|child| child.start_position().row)
+    let mut earliest: Option<usize> = None;
+    let mut pending = vec![root];
+    while let Some(node) = pending.pop() {
+        let mut cursor = node.walk();
+        for child in node.named_children(&mut cursor) {
+            if adapter.declares_symbol(child.kind()) {
+                let row = child.start_position().row;
+                earliest = Some(earliest.map_or(row, |seen: usize| seen.min(row)));
+                continue;
+            }
+            pending.push(child);
+        }
+    }
+    earliest
 }
 
 fn documents_the_file(

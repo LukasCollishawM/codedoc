@@ -208,3 +208,31 @@ fn a_file_claim_follows_the_file_when_git_records_a_rename() {
         "git recorded the rename, so the file the claim describes still exists: {verified}"
     );
 }
+
+#[test]
+fn a_comment_below_a_nested_declaration_is_not_called_a_claim_about_the_file() {
+    let workspace = project(&[(
+        "src/header.h",
+        "#ifndef GUARD_H\n#define GUARD_H\n\nnamespace acme {\n\n/// Returns true if the path is absolute.\nbool is_absolute(const char* path);\n\n/// The maximum depth we will descend.\n#define MAX_DEPTH 32\n\n}\n\n#endif\n",
+    )]);
+    codedoc_ops::import(workspace.path(), None, &["src".to_owned()], true, None).unwrap();
+
+    let found = Workspace::at(workspace.path());
+    let records = found.records().unwrap();
+    let about_the_file: Vec<&str> = records
+        .iter()
+        .filter(|record| {
+            record.subject().is_some_and(|anchor| anchor.subject == codedoc_anchor::Subject::File)
+        })
+        .map(|record| record.content().body.claim.as_str())
+        .collect();
+
+    assert!(
+        about_the_file.is_empty(),
+        "every declaration in a C or C++ header sits inside a namespace or an include \
+         guard, so looking only at the root's own children finds no declaration and \
+         calls every comment in the file a claim about the file. Measured on gtest.h, \
+         695 claims were labelled that way, including one describing a single \
+         function: {about_the_file:?}"
+    );
+}
