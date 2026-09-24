@@ -109,6 +109,13 @@ Options: `--detail`, `--assurance asserted|inferred|speculative`, `--author
 human|agent|analyzer|runtime`, `--identity`, `--session`, `--evidence` (repeatable,
 as `git:<rev>`, `test:<name>`, `doc:<path>`, `record:<id>` or a URL), `--supersedes`.
 
+Where no language adapter exists for the file — a Dockerfile, a CI workflow, a SQL
+migration, a Markdown page — the claim is recorded against the file itself, which
+resolves by path and needs no parse. Naming a construct inside such a file is refused,
+because there is nothing to name. The result reports `subject` and `opaque` so a caller
+can tell which of the two it got. Drift is not reported for an opaque anchor: there is
+no shape to compare, so such a claim never reads as stale however much the file changes.
+
 An `--assurance` outside those three is refused with exit 4 rather than ignored, and
 so is an unknown `--kind`. Ignoring a misspelt assurance would record the author's
 default, which for a human is `asserted` — the strongest of the three — so a typo

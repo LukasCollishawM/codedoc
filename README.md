@@ -137,6 +137,12 @@ the repository entirely.
 Rust, Python, TypeScript, TSX, Go, Java, C# and C/C++, via tree-sitter. Adding a
 language means writing an adapter rather than modifying the core.
 
+A file no adapter understands can still carry a claim about the file itself — a
+Dockerfile, a CI workflow, a migration, a Markdown page. Those anchors resolve by path
+rather than by structure, so they survive the file changing and detach when it is
+deleted. What they cannot do is name something inside the file, and they are never
+reported stale, because there is no structure to measure drift against.
+
 Two adapters have known gaps, each covered by a test that will fail when the gap is
 closed (`cargo test --workspace -- --ignored`). In C#, a file-scoped namespace
 (`namespace Acme;`, the default since C# 10) contributes nothing to a symbol path, so

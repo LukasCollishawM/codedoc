@@ -6,4 +6,6 @@ pub mod locate;
 pub mod resolver;
 
 pub use anchor::{Anchor, NodePath, NodeStep, SourceRange, Subject, SymbolTable, symbol_path_of};
-pub use resolver::{Confidence, DetachReason, FileIndex, Located, Resolution, Resolver, Rung};
+pub use resolver::{
+    Confidence, DetachReason, FileIndex, Located, Resolution, Resolver, Rung, resolve_opaque_file,
+};

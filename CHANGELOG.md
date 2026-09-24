@@ -14,6 +14,8 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Added
 
+- **A file no parser understands can carry a claim.** `codedoc attach Dockerfile --kind decision --claim "..."` used to fail with "no language adapter is registered", which shut the ledger out of exactly the places a decision is most often unexplained: Dockerfiles, CI workflows, SQL migrations, lockfiles, Makefiles and the documentation itself. Rung 0 resolves a file claim by path and never parses, so the parse was never needed; the implementation asked for an adapter before it looked at what was being anchored. Such an anchor is opaque — no structure, no shape, content fingerprint over the file's bytes, which is the childless-node rule of the spec applied to a file that is one leaf. No member is added to the format and no migration is required. Naming a construct inside such a file is still refused, and the refusal now says what to do instead. See [ADR-0013](docs/decisions/0013-opaque-file-anchors.md).
+
 - **`lint-prose` has tests.** It is the guard against a class of mistake that has landed five times in this repository, and nothing checked that it still caught it. Four cases: a run left by a lost continuation on a single line, which is the shape `cargo fmt` leaves behind; an intact continuation; the indentation at the start of a continued line, which must not count; and wide indentation in ordinary code, which is not inside a literal at all.
 
 - **The server instructions tell an agent when to call `codedoc_gaps`.** A tool an agent has to discover the use of is a tool it will not reach for on the one task it was built for — arriving at an undocumented repository and being asked to fix that.

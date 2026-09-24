@@ -340,14 +340,23 @@ impl Verifier {
         entries: &[Pending],
         migrated: bool,
     ) -> Vec<Outcome> {
-        let Ok(adapter) = Registry::for_path(path) else {
-            return (0..entries.len())
-                .map(|_| Outcome::detached(DetachReason::LanguageUnsupported))
-                .collect();
-        };
-        let Ok(tree) = adapter.parse(source) else {
-            return (0..entries.len())
-                .map(|_| Outcome::detached(DetachReason::LanguageUnsupported))
+        let prepared = Registry::for_path(path)
+            .ok()
+            .and_then(|adapter| adapter.parse(source).ok().map(|tree| (adapter, tree)));
+
+        let Some((adapter, tree)) = prepared else {
+            return entries
+                .iter()
+                .map(|item| {
+                    if item.anchor.is_opaque() {
+                        return Outcome {
+                            resolution: codedoc_anchor::resolve_opaque_file(source),
+                            drift: None,
+                            relocated_to: None,
+                        };
+                    }
+                    Outcome::detached(DetachReason::LanguageUnsupported)
+                })
                 .collect();
         };
 

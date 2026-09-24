@@ -96,9 +96,17 @@ A `file` subject exists because not all knowledge about code is knowledge about 
 
 An anchor with subject `file` MUST record an empty node path and no symbol, and its range MUST span the file. Its fingerprints and shape histogram are those of the root node, so drift for a file anchor measures how much of the file changed.
 
+A file anchor MAY be captured for a file no language adapter understands, because rung 0 resolves by path and never parses. Such an anchor is **opaque**: it MUST record an empty node kind, an empty shape histogram, and structural and context fingerprints over an empty payload, since it has no structure and no siblings. Its content fingerprint is the digest of the file's bytes, which is the childless-node rule of this section applied to a file that is one leaf. Its language SHOULD be recorded as `text`.
+
+An implementation MUST NOT report drift for an opaque anchor. Drift compares shape histograms and there is none, so any figure would be invented; section 5 requires that a staleness report not carry noise.
+
+An implementation MUST refuse to capture a construct anchor in a file it cannot parse, rather than approximating one.
+
 ## 4. Resolution
 
 An anchor whose subject is `file` MUST be resolved by path alone, at rung 0, and MUST NOT be searched for within the file. It resolves if and only if the file exists — under the path recorded, or under a path rung 5 evidences it was renamed to. This is not a weaker form of the ladder but a stronger one: the identity of a file is its path, so the resolver checks it rather than inferring it.
+
+It follows that an opaque anchor resolves exactly as any other file anchor does. An implementation MUST NOT detach one on the ground that the file has no adapter, because no step of rung 0 consults the language.
 
 For every other anchor, an implementation MUST attempt the rungs in order and MUST stop at the first rung yielding exactly one candidate.
 

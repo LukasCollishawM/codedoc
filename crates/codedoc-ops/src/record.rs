@@ -38,11 +38,21 @@ impl Target {
 pub(crate) fn capture(root: &Path, target: &Target) -> Result<Anchor, OpsError> {
     let path = RepoPath::parse(&target.file)
         .map_err(|source| OpsError::Language { detail: source.to_string() })?;
-    let adapter = codedoc_lang::Registry::for_path(&path)
-        .map_err(|source| OpsError::Language { detail: source.to_string() })?;
     let source = fs::read_to_string(root.join(path.as_str())).map_err(|source| {
         OpsError::Unreadable { path: target.file.clone(), detail: source.to_string() }
     })?;
+    let adapter = match codedoc_lang::Registry::for_path(&path) {
+        Ok(adapter) => adapter,
+        Err(_) if target.symbol.is_none() && target.line.is_none() => {
+            return Ok(Anchor::capture_opaque_file(path, &source));
+        }
+        Err(refused) => {
+            return Err(OpsError::Opaque {
+                path: target.file.clone(),
+                detail: refused.to_string(),
+            });
+        }
+    };
     let tree = adapter
         .parse(&source)
         .map_err(|source| OpsError::Language { detail: source.to_string() })?;
@@ -194,6 +204,8 @@ pub fn attach(
         "kind": record.kind().as_str(),
         "file": anchor.file.as_str(),
         "symbol": anchor.symbol.as_ref().map(ToString::to_string),
+        "subject": anchor.subject.as_str(),
+        "opaque": anchor.is_opaque(),
         "range": anchor.range.to_string(),
         "assurance": attribution.assurance.as_str(),
         "claim": claim,

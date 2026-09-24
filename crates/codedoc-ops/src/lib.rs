@@ -69,6 +69,13 @@ pub enum OpsError {
     )]
     LineMissing { line: u32, path: String, lines: usize },
 
+    #[error(
+        "{path} has no language adapter ({detail}), so nothing inside it can be named. Drop \
+         --symbol and --line to record the claim against the file itself, which resolves by \
+         path and needs no parse"
+    )]
+    Opaque { path: String, detail: String },
+
     #[error("unknown record kind {found}; the vocabulary is {vocabulary}")]
     UnknownKind { found: String, vocabulary: String },
 

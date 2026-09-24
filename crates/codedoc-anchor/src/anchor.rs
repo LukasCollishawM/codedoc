@@ -20,6 +20,16 @@ pub struct SourceRange {
 }
 
 impl SourceRange {
+    pub fn whole_text(source: &str) -> Self {
+        let mut end_line = 1u32;
+        let mut end_column = 1u32;
+        for (index, line) in source.lines().enumerate() {
+            end_line = index as u32 + 1;
+            end_column = line.chars().count() as u32 + 1;
+        }
+        SourceRange { start_line: 1, start_column: 1, end_line, end_column }
+    }
+
     pub fn of(node: Node<'_>) -> Self {
         let start = node.start_position();
         let end = node.end_position();
@@ -314,6 +324,33 @@ impl Anchor {
         anchor.symbol_ordinal = 0;
         anchor.node_path = NodePath::default();
         anchor
+    }
+
+    pub const OPAQUE_LANGUAGE: &'static str = "text";
+
+    pub fn capture_opaque_file(file: RepoPath, source: &str) -> Self {
+        Anchor {
+            file,
+            language: Anchor::OPAQUE_LANGUAGE.to_owned(),
+            node_kind: String::new(),
+            symbol: None,
+            node_path: NodePath::default(),
+            structural: StructuralFingerprint::of(&[]),
+            content: ContentFingerprint::of(source.as_bytes()),
+            preceding: ContextFingerprint::of(&[]),
+            following: ContextFingerprint::of(&[]),
+            shape: BTreeMap::new(),
+            context_siblings: 0,
+            symbol_kind: String::new(),
+            symbol_cardinality: 0,
+            symbol_ordinal: 0,
+            subject: Subject::File,
+            range: SourceRange::whole_text(source),
+        }
+    }
+
+    pub fn is_opaque(&self) -> bool {
+        matches!(self.subject, Subject::File) && self.language == Anchor::OPAQUE_LANGUAGE
     }
 
     pub fn id(&self) -> AnchorId {

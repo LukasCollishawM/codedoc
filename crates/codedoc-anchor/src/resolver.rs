@@ -79,6 +79,15 @@ pub struct Located {
     node_kind: String,
 }
 
+pub fn resolve_opaque_file(source: &str) -> Resolution {
+    Resolution::Located(Located::new(
+        Rung::FileIdentity,
+        SourceRange::whole_text(source),
+        NodePath::default(),
+        String::new(),
+    ))
+}
+
 impl Located {
     fn new(rung: Rung, range: SourceRange, node_path: NodePath, node_kind: String) -> Self {
         Located { rung, confidence: rung.confidence(), range, node_path, node_kind }
