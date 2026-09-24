@@ -376,6 +376,36 @@ impl<'tree, 'adapter> FileIndex<'tree, 'adapter> {
         }
     }
 
+    pub fn candidates_like(
+        &self,
+        anchor: &Anchor,
+        limit: usize,
+    ) -> Vec<(String, SourceRange, u32)> {
+        let mut scored: Vec<(f64, &Candidate<'tree>)> = self
+            .candidates
+            .iter()
+            .filter(|candidate| candidate.kind == anchor.node_kind)
+            .map(|candidate| {
+                (shape_similarity(&anchor.shape, candidate.node, self.adapter), candidate)
+            })
+            .filter(|(score, _)| *score >= 0.5)
+            .collect();
+        scored.sort_by(|left, right| {
+            right.0.partial_cmp(&left.0).unwrap_or(std::cmp::Ordering::Equal)
+        });
+        scored
+            .into_iter()
+            .take(limit)
+            .map(|(score, candidate)| {
+                (
+                    candidate.symbol.clone().unwrap_or_else(|| candidate.kind.clone()),
+                    SourceRange::of(candidate.node),
+                    (score * 100.0).round() as u32,
+                )
+            })
+            .collect()
+    }
+
     pub fn root(&self) -> Node<'tree> {
         self.root
     }

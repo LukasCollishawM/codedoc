@@ -39,6 +39,7 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Changed
 
+- **Detached records come with suggestions.** Each carries up to three same-kind constructs ranked by shape likeness; a renamed function typically appears at 100%. They are proposals to confirm, never applied automatically, which keeps the never-guess rule intact while making a detachment a one-command decision instead of a dead end.
 - **A renamed declaration now detaches** rather than resolving, a consequence of closing the rung 4 false reattachment. Matching on an identical body was tried as a replacement signal and rejected: overloads routinely share a body, so it reintroduced the very defect it was meant to work around. `codedoc resolve` reattaches in one command. See [ADR-0011](docs/decisions/0011-renames-detach.md).
 
 - **Rung 5 follows code that moved between files**, not only files that were renamed. A function relocated from one module to another used to detach; it now resolves and the report names where it went. The search is bounded to files changed since the record's revision, and several candidates detach as ambiguous rather than picking one.

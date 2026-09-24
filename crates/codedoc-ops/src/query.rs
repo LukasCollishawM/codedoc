@@ -140,17 +140,46 @@ pub fn verify_scoped(
     Ok((payload, code))
 }
 
+fn suggestions_for(root: &Path, finding: &codedoc_verify::Finding, graph: &Graph) -> Vec<Value> {
+    let Some(record) =
+        graph.all().iter().find(|entry| entry.id().to_string() == finding.record.to_string())
+    else {
+        return Vec::new();
+    };
+    let Some(anchor) = record.subject() else {
+        return Vec::new();
+    };
+    let Ok(adapter) = codedoc_lang::Registry::for_path(&anchor.file) else {
+        return Vec::new();
+    };
+    let Ok(source) = std::fs::read_to_string(root.join(anchor.file.as_str())) else {
+        return Vec::new();
+    };
+    let Ok(tree) = adapter.parse(&source) else {
+        return Vec::new();
+    };
+    codedoc_anchor::FileIndex::build(adapter, &source, &tree)
+        .candidates_like(anchor, 3)
+        .into_iter()
+        .map(|(symbol, range, likeness)| {
+            json!({"symbol": symbol, "range": range.to_string(), "likeness": likeness})
+        })
+        .collect()
+}
+
 pub fn detached(root: &Path) -> Result<(Value, i32), OpsError> {
     let found = workspace(root)?;
     let report = Verifier::new(found.root())
         .run_across(&found)
         .map_err(|source| OpsError::Ledger { detail: source.to_string() })?;
+    let graph = Graph::across(&found)?;
     let rows: Vec<Value> = report
         .findings
         .iter()
         .filter(|finding| finding.status == Status::Detached)
         .map(|finding| {
             json!({
+                "suggestions": suggestions_for(found.root(), finding, &graph),
                 "record": finding.record.to_string(),
                 "kind": finding.kind,
                 "claim": finding.claim,

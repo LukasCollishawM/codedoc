@@ -151,6 +151,12 @@ perform the whole-ledger integrity scan and says so rather than implying it pass
 Lists anchors that could not be located. These are awaiting a decision, not errors —
 an anchor detaches rather than attaching to the wrong code.
 
+Each entry carries up to three **suggestions**: constructs of the same kind, ranked by
+how closely their shape matches what was recorded. A renamed function usually appears
+at 100%. These are proposals for you to confirm, never applied automatically — the
+whole point of detaching is that the evidence was not sufficient to decide, and a
+suggestion does not change that. It just saves you finding the candidate yourself.
+
 ### `codedoc review [<base>] [--out <path>]`
 
 Renders the claims a change has put in doubt, as markdown suitable for posting on a

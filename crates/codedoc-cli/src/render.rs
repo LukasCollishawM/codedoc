@@ -326,6 +326,20 @@ fn render_detached(payload: &Value, out: &mut String) {
             record["kind"].as_str().unwrap_or(""),
             record["claim"].as_str().unwrap_or("")
         );
+        let empty_suggestions = Vec::new();
+        let suggestions = record["suggestions"].as_array().unwrap_or(&empty_suggestions);
+        if !suggestions.is_empty() {
+            let _ = writeln!(out, "  possibly now:");
+            for candidate in suggestions {
+                let _ = writeln!(
+                    out,
+                    "    {:>3}%  {}  {}",
+                    candidate["likeness"].as_u64().unwrap_or(0),
+                    candidate["symbol"].as_str().unwrap_or(""),
+                    candidate["range"].as_str().unwrap_or("")
+                );
+            }
+        }
         let _ = writeln!(out);
     }
     let _ = writeln!(out, "{} detached", records.len());

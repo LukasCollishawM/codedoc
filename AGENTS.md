@@ -50,7 +50,7 @@ codedoc_context  →  agent reads, then changes code  →  codedoc_attach / code
 | `codedoc_attach` | after working something out that the source doesn't say |
 | `codedoc_relate` | when the fact is about a link between two places |
 | `codedoc_verify` | after making changes — pass `files` or `since` to check only what you touched |
-| `codedoc_detached` | when verify reports detachments |
+| `codedoc_detached` | when verify reports detachments; it suggests where the code may have gone |
 | `codedoc_resolve` | to place a detached record explicitly |
 | `codedoc_supersede` | when an existing record turns out to be wrong |
 | `codedoc_retract` | when a record is no longer true at all |
