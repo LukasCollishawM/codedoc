@@ -176,7 +176,9 @@ A repository MAY carry more than one ledger, and an implementation SHOULD suppor
 
 The local and global scopes exist so that codedoc can be used on a repository the user does not own or does not wish to modify. An implementation offering them **MUST NOT write anything to the working tree for those scopes**, including ignore files: a scope that announces itself in `git status` has failed at its only distinguishing purpose.
 
-Reads MUST merge every scope present, deduplicating by record identifier. Writes MUST target exactly one.
+Reads MUST merge every scope present, deduplicating by record identifier. An interface MAY offer to narrow a listing to one scope — asking what is recorded in the untracked ledger is the question that ledger exists to make askable — but anything deciding whether recorded knowledge still holds MUST read them all, because a claim recorded in one scope is no less true while another is being checked.
+
+Writes MUST target exactly one scope. A record derived from an existing one — a revision, an affirmation, a tombstone, a relocation — MUST default to the scope holding the record it derives from, rather than to whichever scope is the default for new records. Writing it elsewhere would copy into a shared ledger the content of a record deliberately kept out of one, and a tombstone quotes the claim it retires, so retraction would publish exactly the text the local scope was keeping private.
 
 This clause is filesystem behaviour rather than a property of any byte sequence, so it cannot be expressed as a vector in `conformance/`. The reference implementation covers it with integration tests against a real repository, including that `git add -A` followed by a commit cannot capture a local ledger. An implementation claiming scope support should test the same property the same way; a vector set that passes says nothing about it.
 
