@@ -408,23 +408,56 @@ fn clean_comment(raw: &str) -> String {
 }
 
 pub(crate) fn reflow(text: &str) -> String {
-    let mut paragraphs: Vec<String> = Vec::new();
+    let mut segments: Vec<(String, bool)> = Vec::new();
     let mut current: Vec<&str> = Vec::new();
+    let mut after_blank = false;
+
     for line in text.lines() {
         let line = line.trim();
         if line.is_empty() {
             if !current.is_empty() {
-                paragraphs.push(current.join(" "));
+                segments.push((current.join(" "), after_blank));
                 current.clear();
             }
+            after_blank = true;
+            continue;
+        }
+        if starts_a_list_item(line) {
+            if !current.is_empty() {
+                segments.push((current.join(" "), after_blank));
+                current.clear();
+                after_blank = false;
+            }
+            segments.push((line.to_owned(), after_blank));
+            after_blank = false;
             continue;
         }
         current.push(line);
     }
     if !current.is_empty() {
-        paragraphs.push(current.join(" "));
+        segments.push((current.join(" "), after_blank));
     }
-    paragraphs.join("\n\n").trim().to_owned()
+
+    let mut out = String::new();
+    for (index, (segment, started_a_paragraph)) in segments.iter().enumerate() {
+        if index > 0 {
+            out.push_str(if *started_a_paragraph { "\n\n" } else { "\n" });
+        }
+        out.push_str(segment);
+    }
+    out.trim().to_owned()
+}
+
+fn starts_a_list_item(line: &str) -> bool {
+    if let Some(rest) = line.strip_prefix(['-', '*', '+', '\u{2022}']) {
+        return rest.starts_with(' ');
+    }
+    let digits: String = line.chars().take_while(char::is_ascii_digit).collect();
+    if digits.is_empty() || digits.len() > 2 {
+        return false;
+    }
+    let rest = &line[digits.len()..];
+    rest.starts_with(". ") || rest.starts_with(") ")
 }
 
 fn strip_markers(line: &str) -> String {
@@ -447,12 +480,20 @@ pub(crate) fn is_shebang(raw: &str) -> bool {
 }
 
 pub(crate) fn split_claim(text: &str) -> (String, Option<String>) {
-    match text.split_once("\n\n") {
-        Some((head, rest)) if !rest.trim().is_empty() => {
-            (head.trim().to_owned(), Some(rest.trim().to_owned()))
-        }
-        _ => (text.trim().to_owned(), None),
+    let boundary = text.match_indices('\n').map(|(at, _)| at).find(|at| {
+        let rest = &text[at + 1..];
+        rest.starts_with('\n') || starts_a_list_item(rest.trim_start_matches('\n'))
+    });
+
+    let Some(at) = boundary else {
+        return (text.trim().to_owned(), None);
+    };
+    let head = text[..at].trim();
+    let rest = text[at..].trim();
+    if head.is_empty() || rest.is_empty() {
+        return (text.trim().to_owned(), None);
     }
+    (head.to_owned(), Some(rest.to_owned()))
 }
 
 fn is_decorative(claim: &str) -> bool {
@@ -521,6 +562,68 @@ mod tests {
         let (claim, detail) = split_claim(&reflow(&joined));
         assert_eq!(claim, "Host adds a matcher.");
         assert_eq!(detail.as_deref(), Some("It accepts a template."));
+    }
+
+    #[test]
+    fn a_bulleted_list_keeps_one_item_per_line() {
+        let given = "Skip decompression for these:
+- HEAD responses
+- 204 No Content";
+        assert_eq!(reflow(given), given);
+    }
+
+    #[test]
+    fn a_numbered_list_is_a_list_too() {
+        let given = "Order matters:
+1. validate
+2. resolve";
+        assert_eq!(reflow(given), given);
+    }
+
+    #[test]
+    fn a_hyphen_mid_sentence_does_not_start_a_list() {
+        assert_eq!(
+            reflow(
+                "a well-known case
+wrapped here"
+            ),
+            "a well-known case wrapped here"
+        );
+    }
+
+    #[test]
+    fn a_list_directly_under_a_lead_line_becomes_the_detail() {
+        let (claim, detail) = split_claim(&reflow(
+            "Skip these:
+- HEAD
+- 204",
+        ));
+        assert_eq!(claim, "Skip these:");
+        assert_eq!(
+            detail.as_deref(),
+            Some(
+                "- HEAD
+- 204"
+            )
+        );
+    }
+
+    #[test]
+    fn a_list_after_a_paragraph_break_keeps_the_break() {
+        let (claim, detail) = split_claim(&reflow(
+            "Title line.
+
+- first
+- second",
+        ));
+        assert_eq!(claim, "Title line.");
+        assert_eq!(
+            detail.as_deref(),
+            Some(
+                "- first
+- second"
+            )
+        );
     }
 
     #[test]

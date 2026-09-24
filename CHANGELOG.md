@@ -8,6 +8,8 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Fixed
 
+- **Importing a bulleted comment collapsed the list onto one line.** Reflowing wrapped prose is right; doing it to a list is not. got's RFC 9110 comment, six bullets listing the responses that carry no body, arrived as a single run-on sentence. List items now keep their own line, and a list sitting directly under a lead line makes that line the claim and the list its detail.
+
 - **Every crate now carries `publish = false`, which CLAUDE.md has claimed for some time.** None of the thirteen did, so `cargo publish` would have worked on any of them, against a stated policy of publishing narrowly and a format that is explicitly not settled. The claim that `cargo-semver-checks` runs in CI on everything published was true only vacuously, and now says so: nothing is published, and it joins CI with the first release.
 - **`CONTRIBUTING.md` said `just test` runs `cargo nextest run --workspace`.** It runs `cargo test --workspace`.
 
