@@ -320,21 +320,24 @@ Three of these differ from the list this file carried before any code existed, a
 Correctness properties, not feature counts. All tracks proceed concurrently; these gate merges.
 
 - **G1** Canonical encoding byte-identical across Linux, macOS, and Windows. Vectors in `conformance/encoding/`, run on a three-OS matrix.
-- **G2** Zero false reattachments. Measured by replaying real history over five corpora in four languages, **3,909 anchors, zero suspicious, every detachment audited**:
+- **G2** Zero false reattachments. Measured by replaying real history over seven corpora in seven languages, **5,371 anchors, zero suspicious**:
 
 | corpus | language | commits | anchors | survived | detached |
 | --- | --- | --- | --- | --- | --- |
 | [zod](https://github.com/colinhacks/zod) | TypeScript, TSX | 400 | 1,496 | **99.6%** | 6 |
+| [gson](https://github.com/google/gson) | Java | 400 | 218 | **99.5%** | 1 |
 | [ripgrep](https://github.com/BurntSushi/ripgrep) | Rust | 400 | 1,100 | **98.2%** | 20 |
 | this repository | Rust | 86 | 277 | **97.5%** | 7 |
 | [httpx](https://github.com/encode/httpx) | Python | 300 | 667 | **92.5%** | 50 |
 | [cobra](https://github.com/spf13/cobra) | Go | 400 | 369 | **89.4%** | 39 |
+| [fmt](https://github.com/fmtlib/fmt) | C++ | 400 | 1,177 | **82.9%** | 201 |
+| [serilog](https://github.com/serilog/serilog) | C# | 400 | 163 | *not measurable* | 163 |
 
-  Every detachment was checked against the final revision rather than sampled. All 50 on httpx and all 38 of cobra's 39 name a declaration that is absent from that file; the exception is cobra's `argsMinusFirstX`, which became a method on `Command`, so its symbol path genuinely changed. On ripgrep, six are constructs whose symbol was shared by two `#[cfg]`-gated definitions in `pathutil.rs` and now has one; three are the `is_hidden` definitions, renamed; seven are `lowargs.rs` enums whose `impl Default` blocks became derives; `Worker` gained a `Drop` impl so two impls now share that symbol and kind; `hyperlink_aliases` stopped being a `mod` declaration; and `TEMPLATE_CHOICES` and `version_pcre2` were deleted. On zod, five are gone and one, `process`, was renamed to `processSchema`. Every anchor either found its code or correctly reported it gone.
+  **The spread is a property of the corpora and of how their languages name things, not of the adapters.** Detachments on httpx (all 50), cobra (38 of 39) and ripgrep (all 20) were checked against the final revision and name a declaration that is genuinely absent; cobra's exception, `argsMinusFirstX`, became a method on `Command`, so its symbol path legitimately changed. C++ is lower because fmt's test files declare dozens of `TEST(...)` per file and its headers carry many `formatter` template specialisations: a symbol shared by fifty declarations identifies none of them, so adding or removing any one changes the cardinality and correctly detaches the rest. That is the overload rule from section 4 operating at scale rather than a tracking failure.
 
-  The spread between 99.6% and 89.4% is a property of the corpora, not the adapters: cobra deleted 19 files and rewrote its test suites over that range, httpx emptied most of `_utils.py`, and zod largely grew. A survival figure measures how much a codebase deleted as much as how well anchors track.
+  **C# is not measurable until a defect in `codedoc-lang` is fixed.** `codedoc-lang` does not treat `file_scoped_namespace_declaration` as a naming declaration, so `namespace Acme.Widgets;` contributes nothing to a symbol path where the braced form contributes `Acme.Widgets`. serilog migrated between the two forms across this range and every anchor detached. `crates/codedoc-anchor/tests/csharp_namespaces.rs` holds an ignored test asserting the behaviour it should have. Do not quote the 0% as an adapter quality figure; it measures one bug.
 
-  **Rung 5 is exercised**: 27 anchors on ripgrep and 12 here followed a file across a git rename. Until the harness was fixed it skipped renamed files entirely, counting their anchors as neither survival nor detachment, and it captured only direct children of the root — which meant TypeScript, where nearly every declaration sits inside an `export` statement, contributed 143 anchors instead of 1,496. Both faults flattered the numbers by measuring less.
+  **Rung 5 is exercised**: 27 anchors on ripgrep and 12 here followed a file across a git rename. The harness twice flattered these numbers by measuring less — it skipped renamed files entirely, and it captured only direct children of the root, so TypeScript, where nearly every declaration sits inside an `export` statement, contributed 143 anchors instead of 1,496.
 
   **The hard zero is carried by the property test**, which has ground truth by construction: for any tree and any edit script, resolution is correct or `Detached`. Replay over real history cannot label outcomes automatically, so it measures survival and *flags* confident rungs landing on a different symbol for human inspection. Do not claim replay proves the invariant; it evidences it.
 - **G3** Ledger verifies from genesis; index rebuilds byte-identically from it. **Met** — asserted by `crates/codedoc-index/tests/rebuildable.rs`.

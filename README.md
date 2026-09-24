@@ -84,13 +84,13 @@ that it could not be placed, so the two are not traded off against each other:
 anchor survival is a quality metric to improve, and false attachment is a hard zero
 enforced by a property test.
 
-Replayed over the real history of five codebases in four languages — ripgrep, zod,
-httpx, cobra and this repository — **3,909 anchors, nothing landed on the wrong
-symbol**, and every detachment checked against the final revision rather than sampled.
-Survival runs from 99.6% on zod to 89.4% on cobra, which deleted nineteen files and
-rewrote its test suites over that range: the figure measures how much a codebase
-removed as much as how well anchors track. Every anchor either found its code or
-correctly said it was gone.
+Replayed over the real history of seven codebases — zod, gson, ripgrep, httpx, cobra,
+fmt and this repository — **5,371 anchors, nothing landed on the wrong symbol**, and
+the detachments checked against the final revision rather than sampled. Survival runs
+from 99.6% to 82.9%, and the spread is a property of those codebases rather than of the
+language adapters: one deleted nineteen files, another declares dozens of same-named
+test macros per file. Every anchor either found its code or correctly said it was gone.
+[CLAUDE.md](CLAUDE.md) has the table and what each number means.
 
 ```
 $ codedoc verify
