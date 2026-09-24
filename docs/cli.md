@@ -54,6 +54,12 @@ Harvests existing comments, anchors each to the construct it documents, and infe
 kind from markers (`TODO` → warning, `SAFETY:` → security, "because…" → rationale).
 Dry run unless `--write`. **Never modifies source.**
 
+Comments that are not knowledge about the code are left behind: tool directives,
+file banners and section dividers, data samples, and the licence header that opens
+nearly every file in a licensed repository. A licence notice says nothing about the
+construct beneath it and repeats once per file, so importing it buries the claims
+that do — it was 10.6% of gson's records and 7.6% of gin's.
+
 Attributes, decorators and annotations between a comment and what it documents are
 stepped over, so a doc comment above `#[cfg(...)]` above `pub fn` anchors to the
 function. Anchoring to the attribute instead produces a record that cannot be

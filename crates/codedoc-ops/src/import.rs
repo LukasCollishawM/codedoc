@@ -242,6 +242,9 @@ fn harvest_file(
         if claim.chars().count() < MINIMUM_CLAIM_LENGTH || is_decorative(&claim) {
             continue;
         }
+        if is_licence_header(&claim) {
+            continue;
+        }
         let kind = infer_kind(&claim);
         if kind == Kind::Explanation && is_data_sample(&claim) {
             continue;
@@ -543,6 +546,37 @@ fn outside_quotes(text: &str) -> String {
     out
 }
 
+const LICENCE_FORMULAS: &[&str] = &[
+    "spdx-license-identifier",
+    "all rights reserved",
+    "use of this source code is governed",
+    "licensed to the apache software foundation",
+    "licensed under the apache license",
+    "permission is hereby granted, free of charge",
+    "redistribution and use in source and binary forms",
+    "this program is free software",
+    "gnu general public license",
+    "mozilla public license",
+    "without warranty of any kind, express or implied",
+];
+
+fn opens_with_a_copyright_notice(lowered: &str) -> bool {
+    let start = lowered.trim_start();
+    if start.starts_with("copyright") || start.starts_with('©') {
+        return true;
+    }
+    let Some(year) = start.strip_prefix("(c)") else {
+        return false;
+    };
+    year.trim_start().starts_with(|glyph: char| glyph.is_ascii_digit())
+}
+
+fn is_licence_header(claim: &str) -> bool {
+    let lowered = claim.to_ascii_lowercase();
+    LICENCE_FORMULAS.iter().any(|formula| lowered.contains(formula))
+        || opens_with_a_copyright_notice(&lowered)
+}
+
 fn is_decorative(claim: &str) -> bool {
     if claim
         .chars()
@@ -591,7 +625,32 @@ fn infer_kind(claim: &str) -> Kind {
 
 #[cfg(test)]
 mod tests {
-    use super::{clean_comment, is_data_sample, reflow, split_claim, without_directive};
+    use super::{
+        clean_comment, is_data_sample, is_licence_header, reflow, split_claim, without_directive,
+    };
+
+    #[test]
+    fn a_licence_header_is_not_knowledge_about_the_code_beneath_it() {
+        assert!(is_licence_header(
+            "Copyright 2014 Manu Martinez-Almeida. All rights reserved. Use of this source              code is governed by a MIT style license that can be found in the LICENSE file."
+        ));
+        assert!(is_licence_header("Copyright (C) 2008 Google Inc."));
+        assert!(is_licence_header("SPDX-License-Identifier: Apache-2.0"));
+        assert!(is_licence_header(
+            "Licensed to the Apache Software Foundation (ASF) under one or more contributor              license agreements."
+        ));
+    }
+
+    #[test]
+    fn prose_that_happens_to_mention_a_licence_is_kept() {
+        assert!(!is_licence_header(
+            "We cannot vendor this dependency because its licence is incompatible with ours."
+        ));
+        assert!(!is_licence_header("The licence check runs before the release job."));
+        assert!(!is_licence_header(
+            "Returns the copyright holder recorded in the document metadata."
+        ));
+    }
 
     #[test]
     fn a_pair_of_quoted_samples_is_a_sample() {
