@@ -244,3 +244,56 @@ fn history_marks_the_revision_that_is_believed_rather_than_guessing_from_order()
          started with: {listed}"
     );
 }
+
+#[test]
+fn no_command_answers_a_person_with_raw_json() {
+    let root = project();
+    assert!(run(root.path(), &["init"]).status.success());
+    let written = run(
+        root.path(),
+        &[
+            "attach",
+            "src/auth.rs",
+            "--symbol",
+            "rust://validate",
+            "--kind",
+            "invariant",
+            "--claim",
+            "Validation must precede tenant resolution.",
+        ],
+    );
+    let id = payload(&written)["record"].as_str().expect("an id").to_owned();
+
+    let readable = |args: &[&str]| {
+        let output = Command::new(env!("CARGO_BIN_EXE_codedoc"))
+            .arg("--root")
+            .arg(root.path())
+            .args(args)
+            .output()
+            .expect("the binary runs");
+        String::from_utf8_lossy(&output.stdout).trim().to_owned()
+    };
+
+    for args in [
+        vec!["stats"],
+        vec!["doctor"],
+        vec!["evidence"],
+        vec!["coverage"],
+        vec!["conflicts"],
+        vec!["list"],
+        vec!["detached"],
+        vec!["search", "validation"],
+        vec!["brief", "src/auth.rs"],
+        vec!["history", id.as_str()],
+        vec!["affirm", id.as_str()],
+    ] {
+        let rendered = readable(&args);
+        assert!(
+            !rendered.starts_with('{'),
+            "`codedoc {}` answered a person with a machine payload. Every command \
+             needs a human rendering or the fallback prints the JSON and nobody \
+             notices until they run it: {rendered}",
+            args.join(" ")
+        );
+    }
+}

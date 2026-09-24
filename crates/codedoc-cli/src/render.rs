@@ -17,6 +17,7 @@ pub fn human(payload: &Value) -> String {
         Some("kinds") => render_kinds(payload, &mut out),
         Some("import") => render_import(payload, &mut out),
         Some("supersede") => render_supersede(payload, &mut out),
+        Some("affirm") => render_affirm(payload, &mut out),
         Some("resolve") => render_resolve(payload, &mut out),
         Some("retract") => render_retract(payload, &mut out),
         Some("detached") => render_detached(payload, &mut out),
@@ -301,6 +302,18 @@ fn render_supersede(payload: &Value, out: &mut String) {
     let _ = writeln!(out, "  supersedes {}", &text(payload, "supersedes")[..16]);
     let _ = writeln!(out, "  anchored at {}", text(payload, "range"));
     let _ = writeln!(out, "  the superseded record remains readable via `codedoc history`");
+}
+
+fn render_affirm(payload: &Value, out: &mut String) {
+    let _ = writeln!(out, "affirmed {}", &text(payload, "affirms")[..16]);
+    let _ = writeln!(out, "  recorded as {}", &text(payload, "record")[..16]);
+    let drift = count(payload, "drift_cleared");
+    if drift > 0 {
+        let _ = writeln!(out, "  cleared {drift}% drift; the claim is unchanged");
+    } else {
+        let _ = writeln!(out, "  the claim is unchanged");
+    }
+    let _ = writeln!(out, "  anchored at {}", text(payload, "range"));
 }
 
 fn render_resolve(payload: &Value, out: &mut String) {
