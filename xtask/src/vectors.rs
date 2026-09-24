@@ -49,6 +49,14 @@ pub fn run() -> ExitCode {
     }
     println!("wrote {} canonical encoding vectors", CASES.len());
 
+    match crate::domains::generate() {
+        Ok(count) => println!("wrote {count} digest domain vectors"),
+        Err(failure) => {
+            eprintln!("digest domain vectors: {failure}");
+            return ExitCode::from(1);
+        }
+    }
+
     match crate::resolver_vectors::generate() {
         Ok(count) => println!("wrote {count} resolver vectors"),
         Err(failure) => {

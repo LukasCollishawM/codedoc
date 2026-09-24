@@ -62,6 +62,8 @@ Domains defined by this version:
 
 Domain separation is mandatory: a file digest and a record digest over identical payloads MUST differ.
 
+`conformance/encoding/domains.json` pins every domain in the table above against a fixed set of payloads, including an empty one, one carrying a NUL byte, and one whose text begins with a domain string followed by NUL. An implementation that separates domains by concatenation without the separator, or that omits the separator for an empty payload, reproduces none of them.
+
 ## 3. Anchors
 
 An anchor identifies a region of program structure. It MUST NOT be interpreted as a line range; the `range` member is a cache and carries no authority.

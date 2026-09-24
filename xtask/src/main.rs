@@ -3,6 +3,7 @@
 mod allows;
 mod comments;
 mod docs;
+mod domains;
 mod invocations;
 mod prose;
 mod replay;

@@ -1,0 +1,216 @@
+{
+  "version": 1,
+  "description": "Digest domain vectors. The pre-image is the domain string, then one 0x00 byte, then the payload bytes, hashed with BLAKE3-256 and rendered as 64 lowercase hexadecimal characters. Identical payloads under different domains must differ.",
+  "vectors": [
+    {
+      "name": "codedoc.record.v1/empty",
+      "domain": "codedoc.record.v1",
+      "payload_utf8": "",
+      "digest": "35a15b870f0239eb238b3a837767226ad655673585eb3a598f461baaeb7c2cec"
+    },
+    {
+      "name": "codedoc.anchor.v1/empty",
+      "domain": "codedoc.anchor.v1",
+      "payload_utf8": "",
+      "digest": "f8d844718ff16d91780c05c335fa3e307a487e1189615ef53510e97c75dd0ee7"
+    },
+    {
+      "name": "codedoc.file.v1/empty",
+      "domain": "codedoc.file.v1",
+      "payload_utf8": "",
+      "digest": "fd5b36795c3f89484e7ce432b42eba2a190de4959a83d06f1adedc4ef712a0be"
+    },
+    {
+      "name": "codedoc.fingerprint.content.v1/empty",
+      "domain": "codedoc.fingerprint.content.v1",
+      "payload_utf8": "",
+      "digest": "39c0afcbe1eb40d07f2a7da68c343f19917aa918b4169b2c1c81a4dd3731475b"
+    },
+    {
+      "name": "codedoc.fingerprint.structural.v1/empty",
+      "domain": "codedoc.fingerprint.structural.v1",
+      "payload_utf8": "",
+      "digest": "2af86cb9ce51f662495fc32cede036b5cd0837dd798a25af28b397e05ceabc0a"
+    },
+    {
+      "name": "codedoc.fingerprint.context.v1/empty",
+      "domain": "codedoc.fingerprint.context.v1",
+      "payload_utf8": "",
+      "digest": "894150e70153c3018333aaea9d96c684236c4ea50291106824573c32c4c1b8a9"
+    },
+    {
+      "name": "codedoc.ledger.head.v1/empty",
+      "domain": "codedoc.ledger.head.v1",
+      "payload_utf8": "",
+      "digest": "70f426d893fda006653fde6e94dd077b35314a9d542fcebeacb3862d0bc766bb"
+    },
+    {
+      "name": "codedoc.record.v1/ascii",
+      "domain": "codedoc.record.v1",
+      "payload_utf8": "payload",
+      "digest": "a4d2b9c294ac0bc41443e4009b352a0ce22a69bfb5615a91662da07d6a3e4888"
+    },
+    {
+      "name": "codedoc.anchor.v1/ascii",
+      "domain": "codedoc.anchor.v1",
+      "payload_utf8": "payload",
+      "digest": "61ffd4193193a361b086492b3969046354af7483ca8b11104400b34c341704db"
+    },
+    {
+      "name": "codedoc.file.v1/ascii",
+      "domain": "codedoc.file.v1",
+      "payload_utf8": "payload",
+      "digest": "a945449b1bd241a49a3e71bc61f429a180b79b0ba7221caf2e81b474b029ebfc"
+    },
+    {
+      "name": "codedoc.fingerprint.content.v1/ascii",
+      "domain": "codedoc.fingerprint.content.v1",
+      "payload_utf8": "payload",
+      "digest": "40a6bee8f586496fabe714d02f0b7467fb60178792c40737029b0293217fc295"
+    },
+    {
+      "name": "codedoc.fingerprint.structural.v1/ascii",
+      "domain": "codedoc.fingerprint.structural.v1",
+      "payload_utf8": "payload",
+      "digest": "7162e659f33b976b7812a908cd50b7bd8edc831e0d441ac1590da167553e18ee"
+    },
+    {
+      "name": "codedoc.fingerprint.context.v1/ascii",
+      "domain": "codedoc.fingerprint.context.v1",
+      "payload_utf8": "payload",
+      "digest": "d62f2c4368734926a9c8c8785b794472f6967951816c1d152d48e80909848f96"
+    },
+    {
+      "name": "codedoc.ledger.head.v1/ascii",
+      "domain": "codedoc.ledger.head.v1",
+      "payload_utf8": "payload",
+      "digest": "ff8ef13d8d6f48fc9bc3e043a7062a12d13de91c2ac589c62cd840b644c5c630"
+    },
+    {
+      "name": "codedoc.record.v1/non_ascii",
+      "domain": "codedoc.record.v1",
+      "payload_utf8": "café αβ 😀",
+      "digest": "58544eadcee5bc05297755dba79c24428110a22bc0fb4e36a296acfcf5de75ed"
+    },
+    {
+      "name": "codedoc.anchor.v1/non_ascii",
+      "domain": "codedoc.anchor.v1",
+      "payload_utf8": "café αβ 😀",
+      "digest": "0437ea12adafc93fbd1c3ea4d733d7d5ede430e3349dbbdcc7adc0eb195754dc"
+    },
+    {
+      "name": "codedoc.file.v1/non_ascii",
+      "domain": "codedoc.file.v1",
+      "payload_utf8": "café αβ 😀",
+      "digest": "c2aea164c1ecbe84dfeab6cfa5a05276d3280dc1a08599bcc05be2bb0a376ef8"
+    },
+    {
+      "name": "codedoc.fingerprint.content.v1/non_ascii",
+      "domain": "codedoc.fingerprint.content.v1",
+      "payload_utf8": "café αβ 😀",
+      "digest": "489d674e0b238034d28c37dbfd4063bdeac79b96825fcb953392a32c544b9334"
+    },
+    {
+      "name": "codedoc.fingerprint.structural.v1/non_ascii",
+      "domain": "codedoc.fingerprint.structural.v1",
+      "payload_utf8": "café αβ 😀",
+      "digest": "f400c9d5580ac928ef5665bea75906e12c10cf7d11efee2af13e903c75a67eeb"
+    },
+    {
+      "name": "codedoc.fingerprint.context.v1/non_ascii",
+      "domain": "codedoc.fingerprint.context.v1",
+      "payload_utf8": "café αβ 😀",
+      "digest": "31ddc1a064745337bf47857296ce4508610554f9e0d105f343b811925555f46c"
+    },
+    {
+      "name": "codedoc.ledger.head.v1/non_ascii",
+      "domain": "codedoc.ledger.head.v1",
+      "payload_utf8": "café αβ 😀",
+      "digest": "a0d17d2208b3b62edfb7c5bd81cbd571a533b67bee37d36602cabfe241b7bddc"
+    },
+    {
+      "name": "codedoc.record.v1/embedded_nul",
+      "domain": "codedoc.record.v1",
+      "payload_utf8": "a\u0000b\u001fc",
+      "digest": "d45ef70b0b37e4a2bffff566bf1db92e1d8777f3d1e11662d28ddc8c28612e03"
+    },
+    {
+      "name": "codedoc.anchor.v1/embedded_nul",
+      "domain": "codedoc.anchor.v1",
+      "payload_utf8": "a\u0000b\u001fc",
+      "digest": "815cce23387ad2a3484884492f20a757508715b954b64e276c05ea632a56d917"
+    },
+    {
+      "name": "codedoc.file.v1/embedded_nul",
+      "domain": "codedoc.file.v1",
+      "payload_utf8": "a\u0000b\u001fc",
+      "digest": "c11d01276676af97353bd2cada982e1f5ea86b2ff7fca5a6c52ddbb910c37465"
+    },
+    {
+      "name": "codedoc.fingerprint.content.v1/embedded_nul",
+      "domain": "codedoc.fingerprint.content.v1",
+      "payload_utf8": "a\u0000b\u001fc",
+      "digest": "2dbe673656bba7795d257fd9e738f889477147da37f62ee7dccae9e6bc374755"
+    },
+    {
+      "name": "codedoc.fingerprint.structural.v1/embedded_nul",
+      "domain": "codedoc.fingerprint.structural.v1",
+      "payload_utf8": "a\u0000b\u001fc",
+      "digest": "2e7bf17a1912dcd79cfd159ce8db748dc51c346bc31367618c4733a1b3318fdb"
+    },
+    {
+      "name": "codedoc.fingerprint.context.v1/embedded_nul",
+      "domain": "codedoc.fingerprint.context.v1",
+      "payload_utf8": "a\u0000b\u001fc",
+      "digest": "dbac916ba74ec82d21cedba532f7db011374f5ff69da880ccae36188307ae1e3"
+    },
+    {
+      "name": "codedoc.ledger.head.v1/embedded_nul",
+      "domain": "codedoc.ledger.head.v1",
+      "payload_utf8": "a\u0000b\u001fc",
+      "digest": "0ef1add926074decb28be75423d692fcd5d9a0b4e7a44eecd0cba974b2383f83"
+    },
+    {
+      "name": "codedoc.record.v1/domain_prefix_lookalike",
+      "domain": "codedoc.record.v1",
+      "payload_utf8": "codedoc.record.v1\u0000payload",
+      "digest": "171f7ee7ed6f858d43599f9cac982b3aa02ca1afada8e48003e2e492625743da"
+    },
+    {
+      "name": "codedoc.anchor.v1/domain_prefix_lookalike",
+      "domain": "codedoc.anchor.v1",
+      "payload_utf8": "codedoc.record.v1\u0000payload",
+      "digest": "3372adf57c2e019c997640ab528650e74a1bcd333344e7a562de298651e97137"
+    },
+    {
+      "name": "codedoc.file.v1/domain_prefix_lookalike",
+      "domain": "codedoc.file.v1",
+      "payload_utf8": "codedoc.record.v1\u0000payload",
+      "digest": "cb70d6b6cdfd2ce5c9fc9b4c5eb50a296bef30e8fa0c63a54a65ad4d775e1fcc"
+    },
+    {
+      "name": "codedoc.fingerprint.content.v1/domain_prefix_lookalike",
+      "domain": "codedoc.fingerprint.content.v1",
+      "payload_utf8": "codedoc.record.v1\u0000payload",
+      "digest": "d470402dee82ea52238f4efc4e0a3ad741e8621954338e86df737b721ef1bf7d"
+    },
+    {
+      "name": "codedoc.fingerprint.structural.v1/domain_prefix_lookalike",
+      "domain": "codedoc.fingerprint.structural.v1",
+      "payload_utf8": "codedoc.record.v1\u0000payload",
+      "digest": "6a448d1d94d9c9f2b37ef74bccf5e0b26a2afa8ea178458fb08ddd84998e87bf"
+    },
+    {
+      "name": "codedoc.fingerprint.context.v1/domain_prefix_lookalike",
+      "domain": "codedoc.fingerprint.context.v1",
+      "payload_utf8": "codedoc.record.v1\u0000payload",
+      "digest": "f53f5046097de1973315dd3b72c97f53f418960fbe7a0148d933b9528a40e980"
+    },
+    {
+      "name": "codedoc.ledger.head.v1/domain_prefix_lookalike",
+      "domain": "codedoc.ledger.head.v1",
+      "payload_utf8": "codedoc.record.v1\u0000payload",
+      "digest": "7ce8eaf7b3e88319f90e4bd8819c3a51ce27d7a924e1ebf7a5a50168753925f0"
+    }
+  ]
+}
