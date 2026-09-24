@@ -406,6 +406,8 @@ pub fn history(root: &Path, reference: &str) -> Outcome {
 
     let original = find(root, reference)?;
     let chain = graph.revision_history(original.id());
+    let standing: std::collections::BTreeSet<String> =
+        graph.active().iter().map(|record| record.id().to_string()).collect();
     let rows: Vec<Value> = chain
         .iter()
         .enumerate()
@@ -424,6 +426,13 @@ pub fn history(root: &Path, reference: &str) -> Outcome {
                 "created": entry.content().created.to_rfc3339(),
                 "code_revision": entry.content().code_revision.as_ref().map(ToString::to_string),
                 "affirmation": restates_its_parent,
+                "standing": if standing.contains(&entry.id().to_string()) {
+                    "believed"
+                } else if entry.kind() == codedoc_ledger::Kind::Tombstone {
+                    "retraction"
+                } else {
+                    "superseded"
+                },
             })
         })
         .collect();

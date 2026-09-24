@@ -23,6 +23,8 @@ pub fn human(payload: &Value) -> String {
         Some("conflicts") => render_conflicts(payload, &mut out),
         Some("coverage") => render_coverage(payload, &mut out),
         Some("doctor") => render_doctor(payload, &mut out),
+        Some("search") => render_search(payload, &mut out),
+        Some("brief") => render_brief(payload, &mut out),
         Some("evidence") => render_evidence(payload, &mut out),
         Some("repair") => render_repair(payload, &mut out),
         Some("review") => {
@@ -251,9 +253,20 @@ fn render_list(payload: &Value, out: &mut String) {
 fn render_history(payload: &Value, out: &mut String) {
     let empty = Vec::new();
     let chain = payload["chain"].as_array().unwrap_or(&empty);
+    if let Some(symbol) = payload.get("symbol").and_then(Value::as_str) {
+        let _ = writeln!(out, "everything ever recorded about {symbol}");
+        let _ = writeln!(out);
+    }
     for (position, entry) in chain.iter().enumerate() {
-        let marker = if position == 0 { "current" } else { "superseded" };
+        let marker = match entry.get("standing").and_then(Value::as_str) {
+            Some(standing) => standing,
+            None if position + 1 == chain.len() => "current",
+            None => "superseded",
+        };
         let _ = writeln!(out, "{} {}", &entry["record"].as_str().unwrap_or("")[..12], marker);
+        if entry["affirmation"].as_bool().unwrap_or(false) {
+            let _ = writeln!(out, "  re-read and affirmed, wording unchanged");
+        }
         let _ = writeln!(out, "  {}", entry["claim"].as_str().unwrap_or(""));
         let _ = writeln!(out, "  {}", entry["created"].as_str().unwrap_or(""));
         if let Some(revision) = entry.get("code_revision").and_then(Value::as_str) {
@@ -351,6 +364,72 @@ fn render_detached(payload: &Value, out: &mut String) {
     let _ = writeln!(out, "  codedoc resolve <record> --to-line <line> --in-file <path>");
     let _ = writeln!(out, "or drop it:");
     let _ = writeln!(out, "  codedoc retract <record> --reason \"...\"");
+}
+
+fn render_search(payload: &Value, out: &mut String) {
+    let found = count(payload, "count");
+    if found == 0 {
+        let _ = writeln!(out, "nothing recorded matches {}", text(payload, "query"));
+        return;
+    }
+    let _ = writeln!(out, "{found} record{}", if found == 1 { "" } else { "s" });
+    let empty = Vec::new();
+    for entry in payload["records"].as_array().unwrap_or(&empty) {
+        let _ = writeln!(out);
+        let _ = writeln!(
+            out,
+            "  {} · {}",
+            entry["kind"].as_str().unwrap_or(""),
+            entry["symbol"].as_str().unwrap_or_else(|| entry["file"].as_str().unwrap_or(""))
+        );
+        let _ = writeln!(out, "  {}", entry["claim"].as_str().unwrap_or(""));
+        let _ = writeln!(out, "  {}", &entry["record"].as_str().unwrap_or("")[..12]);
+    }
+}
+
+fn render_brief(payload: &Value, out: &mut String) {
+    let empty = Vec::new();
+    let files = payload["files"].as_array().unwrap_or(&empty);
+    let claims = count(payload, "claims");
+    if claims == 0 {
+        let _ = writeln!(out, "nothing recorded covers those {} file(s)", files.len());
+        return;
+    }
+    let _ = writeln!(
+        out,
+        "{claims} recorded claim{} across {} file{}",
+        if claims == 1 { "" } else { "s" },
+        files.len(),
+        if files.len() == 1 { "" } else { "s" }
+    );
+
+    let pack = &payload["pack"];
+    for (heading, key) in [
+        ("invariants", "invariants"),
+        ("security", "security"),
+        ("known failure modes", "failure_modes"),
+        ("rationale and decisions", "rationale"),
+        ("other", "other"),
+    ] {
+        let section = pack[key].as_array().unwrap_or(&empty);
+        if section.is_empty() {
+            continue;
+        }
+        let _ = writeln!(out);
+        let _ = writeln!(out, "{heading}:");
+        for claim in section {
+            let _ = writeln!(
+                out,
+                "  {} — {}",
+                claim["symbol"].as_str().unwrap_or_else(|| claim["file"].as_str().unwrap_or("")),
+                claim["claim"].as_str().unwrap_or("")
+            );
+        }
+    }
+    if pack["truncated"].as_bool().unwrap_or(false) {
+        let _ = writeln!(out);
+        let _ = writeln!(out, "truncated to the requested budget");
+    }
 }
 
 fn render_doctor(payload: &Value, out: &mut String) {

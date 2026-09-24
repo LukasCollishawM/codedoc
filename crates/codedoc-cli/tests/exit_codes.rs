@@ -201,3 +201,46 @@ fn the_merge_driver_refuses_rather_than_writing_a_ledger_that_would_not_verify()
          merge is how a repository ends up with records nothing can read."
     );
 }
+
+#[test]
+fn history_marks_the_revision_that_is_believed_rather_than_guessing_from_order() {
+    let root = project();
+    assert!(run(root.path(), &["init"]).status.success());
+    let written = run(
+        root.path(),
+        &[
+            "attach",
+            "src/auth.rs",
+            "--symbol",
+            "rust://validate",
+            "--kind",
+            "invariant",
+            "--claim",
+            "The original wording of this claim.",
+        ],
+    );
+    let id = payload(&written)["record"].as_str().expect("an id").to_owned();
+    assert!(
+        run(root.path(), &["supersede", &id, "--claim", "The revised wording of this claim."])
+            .status
+            .success()
+    );
+
+    let listed = payload(&run(root.path(), &["history", &id]));
+    let chain = listed["chain"].as_array().expect("a chain");
+    assert_eq!(chain.len(), 2, "{listed}");
+
+    let believed: Vec<&str> = chain
+        .iter()
+        .filter(|entry| entry["standing"] == "believed")
+        .filter_map(|entry| entry["claim"].as_str())
+        .collect();
+    assert_eq!(
+        believed,
+        vec!["The revised wording of this claim."],
+        "exactly one revision is believed, and which one cannot be inferred from \
+         position: two records written in the same second tie on their timestamp, \
+         and the reader would be told the claim was revised into the wording it \
+         started with: {listed}"
+    );
+}

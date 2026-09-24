@@ -181,7 +181,8 @@ What was believed before, and when it changed.
 
 Given a record identifier — abbreviable to any unambiguous prefix — it returns that
 record's supersession chain, from whichever revision you name: the whole chain, not
-only what came before the one you happened to have. Entries restating their parent
+only what came before the one you happened to have. Every entry carries its `standing` — `believed`, `superseded` or `retraction` —
+rather than leaving a reader to infer it from position. Entries restating their parent
 word for word are marked `affirmation: true`, which is how a chain distinguishes
 someone checking again from someone changing their mind.
 
