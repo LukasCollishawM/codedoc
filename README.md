@@ -85,10 +85,11 @@ anchor survival is a quality metric to improve, and false attachment is a hard z
 enforced by a property test.
 
 Replayed over 400 commits of [ripgrep](https://github.com/BurntSushi/ripgrep), a
-codebase we did not write: 1,073 anchors, **98.2% survived**, nothing landed on the
-wrong symbol, and all 19 detachments were checked by hand and correspond to code that
-was genuinely deleted or renamed. Every anchor either found its code or correctly
-said it was gone.
+codebase we did not write: 1,073 anchors, **98.1% survived**, nothing landed on the
+wrong symbol, and all 20 detachments were checked by hand and correspond to code that
+was genuinely deleted, renamed, or whose name came to be shared by a construct that
+had not existed before. Every anchor either found its code or correctly said it was
+gone.
 
 ```
 $ codedoc verify
@@ -107,6 +108,10 @@ this six months ago" is a query rather than an archaeology exercise.
 Relations are first-class: an agent can record that one function must execute after
 another. That fact belongs to neither function, and has nowhere to live in a comment.
 
+An agent arriving at unfamiliar code does not yet know which file to ask about, so
+knowledge is searchable by words as well as by location, and a whole task can be
+briefed in one call from the list of files it will touch.
+
 ## Where it lives
 
 By default the ledger is committed at `.codedoc/` and shared with your team.
@@ -124,8 +129,8 @@ the repository entirely.
 
 ## Languages
 
-Rust, C#, TypeScript, Python, Go, Java — via tree-sitter. Adding one is an adapter,
-not a rewrite.
+Rust, Python, TypeScript, TSX, Go, Java, C# and C/C++ — via tree-sitter. Adding one
+is an adapter, not a rewrite.
 
 ## Status
 
@@ -134,10 +139,11 @@ mechanical `codedoc migrate` path, and after 1.0 it will not change incompatibly
 A ledger accumulates over months and cannot be regenerated from the code, which is
 why the compatibility rules are stricter than the API's.
 
-Working today: the ledger and its integrity checking, anchoring and resolution
-across six languages, comment import, the full record lifecycle, relations, and the
+Working today: the ledger and its integrity checking, anchoring and resolution across
+eight grammars, comment import, search, the full record lifecycle, relations, and the
 CLI, MCP and LSP surfaces. Canonical encoding is verified byte-identical on Linux,
-macOS and Windows in CI.
+macOS and Windows in CI, and `codedoc doctor` runs against this repository's own
+ledger there.
 
 Not done: the VS Code extension installs from a local `.vsix` but is not published
 to the marketplace.
