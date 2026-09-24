@@ -255,7 +255,7 @@ pub fn review_markdown(input: &ReviewInput<'_>) -> String {
                 "{} recorded claim{} against these changes.
 ",
                 input.unchanged,
-                if input.unchanged == 1 { " still holds" } else { "s still hold" }
+                if input.unchanged == 1 { " still resolves" } else { "s still resolve" }
             ));
         }
         out.push_str(&recorded_note(input));

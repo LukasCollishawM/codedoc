@@ -19,7 +19,7 @@ fn a_change_that_breaks_nothing_says_so_plainly() {
     let mut given = input("origin/main");
     given.unchanged = 4;
     let rendered = review_markdown(&given);
-    assert!(rendered.contains("4 recorded claims still hold"));
+    assert!(rendered.contains("4 recorded claims still resolve"));
     assert!(!rendered.contains("may no longer hold"));
 }
 
@@ -27,7 +27,7 @@ fn a_change_that_breaks_nothing_says_so_plainly() {
 fn the_singular_case_reads_as_english() {
     let mut given = input("origin/main");
     given.unchanged = 1;
-    assert!(review_markdown(&given).contains("1 recorded claim still holds"));
+    assert!(review_markdown(&given).contains("1 recorded claim still resolves"));
 }
 
 #[test]
@@ -233,4 +233,17 @@ fn a_claim_whose_code_was_edited_in_place_still_reads_as_edited() {
     assert!(rendered.contains("the code beneath them changed"), "{rendered}");
     assert!(rendered.contains("(36% changed)"), "{rendered}");
     assert!(!rendered.contains("different file"), "{rendered}");
+}
+
+#[test]
+fn a_clean_change_says_the_claims_resolved_not_that_they_are_true() {
+    let mut given = input("origin/main");
+    given.unchanged = 11;
+    let rendered = review_markdown(&given);
+
+    assert!(rendered.contains("11 recorded claims still resolve"), "{rendered}");
+    assert!(
+        !rendered.contains("still hold against"),
+        "resolving an anchor says the construct was found, not that what was recorded about it is true. Changing a string literal a claim quotes leaves the node kinds identical, so drift is zero and the claim resolves, while the claim is now false. Asserting it holds is more than codedoc knows: {rendered}"
+    );
 }
