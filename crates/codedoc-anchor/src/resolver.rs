@@ -283,7 +283,7 @@ impl<'tree, 'adapter> FileIndex<'tree, 'adapter> {
                     })
                     .unwrap_or_default()
             }
-            _ => Vec::new(),
+            Rung::FileIdentity | Rung::GitMigration | Rung::Similarity => Vec::new(),
         }
     }
 

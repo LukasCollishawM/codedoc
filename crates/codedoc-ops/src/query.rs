@@ -535,7 +535,8 @@ pub fn review(root: &Path, base: &str) -> Result<(Value, i32), OpsError> {
                 );
                 detached.push((finding.file.clone(), symbol, finding.claim.clone(), hint))
             }
-            _ => unchanged += 1,
+            codedoc_verify::Status::Fresh | codedoc_verify::Status::Migrated => unchanged += 1,
+            _ => stale.push((finding.file.clone(), symbol, finding.claim.clone(), finding.drift)),
         }
     }
 
