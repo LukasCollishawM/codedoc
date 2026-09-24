@@ -18,6 +18,17 @@ The record is written to `.codedoc/`, travels with the repository, appears on ho
 
 If you are mid-change and not ready to write records, put the prose in the pull request description and a maintainer will help convert it. A contribution will not be rejected for unfamiliarity with the ledger. The lint output states what to do; if it does not, that is a defect in the lint and worth reporting separately.
 
+## Your agent gets codedoc on this repository
+
+`.mcp.json` in the repository root registers `codedoc-mcp` against this checkout, so
+an agent opening the project is handed the twenty-three tools and the ledger that
+describes the code it is about to change. It runs the server through
+`cargo run --release -p codedoc-mcp`, which needs one release build first —
+`just check` does that, and so does `cargo build --release`.
+
+Without it, an agent working on codedoc has to be told to use codedoc, which is the
+position every other repository is in and the one this project exists to change.
+
 ## Standards are enforced by CI, not by reviewers
 
 Every rule in `CLAUDE.md` is a mechanical check. This is deliberate: strict standards policed by human taste turn into gatekeeping, and a reviewer should never be the first to tell you something is disallowed. Run the checks before you push and review becomes a conversation about the design instead of the lint.

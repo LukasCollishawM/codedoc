@@ -31,6 +31,8 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Added
 
+- **`.mcp.json` registers codedoc against its own checkout.** An agent opening this repository now receives the twenty-three tools and the ledger describing the code it is about to change, rather than being told in a document that they exist. G5 claimed dogfooding and CI has been running `codedoc doctor` on every push, but nothing connected the server for the agents actually working here, so using codedoc on codedoc meant remembering to.
+
 - **`codedoc resolve` says when the claim it just moved still names the symbol it came from.** Renaming `Host` to `HostPattern` in gorilla/mux detaches the claim, `codedoc detached` offers three candidates of identical shape and refuses to choose between them, and resolving places it correctly — leaving a claim that opens "Host adds a matcher" on a function called `HostPattern`. The result now reports `was_symbol` and whether the claim mentions it, and the CLI points at `codedoc supersede` at the moment that is the obvious next step. A claim that never named the symbol prompts nothing.
 
 - **`cargo xtask lint-invocations` checks that every command the documentation names exists.** It reads every backticked `codedoc ...` and `cargo xtask ...` in the seven prose documents, confirms the subcommand is real and that each flag appears in that subcommand's `--help`. It found two on its first run, both in CLAUDE.md: `codedoc reindex --from-scratch`, a flag that never existed, and `codedoc lint allows`, which is `cargo xtask lint-allows`. Both had been sitting in the standards document telling readers to run things that do not run.
