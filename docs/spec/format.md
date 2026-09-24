@@ -82,12 +82,21 @@ Cardinality is not rare. A C++ overload set produces it, and so does an in-class
 
 **Shape histogram.** An anchor records a count of node kinds in its subtree, used both to rank candidates at rung 6 and to measure drift. It excludes ignorable nodes.
 
+**Subject.** An anchor declares what it is about: a `construct` within a file, or the `file` itself. The default is `construct`, and an implementation reading a record written before this member existed MUST assume it.
+
+A `file` subject exists because not all knowledge about code is knowledge about a declaration. A module header stating what the file is for, an invariant every entry point in the file upholds, or a warning about the file's licence are claims whose subject genuinely is the file. Before this distinction existed such a claim had to be pinned to whichever declaration happened to sit nearest it, which was both wrong and unresolvable: measured over a 1.09M-line corpus, module-level documentation accounted for 620 of 1,036 anchors that carried no symbol and therefore could never resolve.
+
+An anchor with subject `file` MUST record an empty node path and no symbol, and its range MUST span the file. Its fingerprints and shape histogram are those of the root node, so drift for a file anchor measures how much of the file changed.
+
 ## 4. Resolution
 
-An implementation MUST attempt the rungs in order and MUST stop at the first rung yielding exactly one candidate.
+An anchor whose subject is `file` MUST be resolved by path alone, at rung 0, and MUST NOT be searched for within the file. It resolves if and only if the file exists — under the path recorded, or under a path rung 5 evidences it was renamed to. This is not a weaker form of the ladder but a stronger one: the identity of a file is its path, so the resolver checks it rather than inferring it.
+
+For every other anchor, an implementation MUST attempt the rungs in order and MUST stop at the first rung yielding exactly one candidate.
 
 | rung | criterion | confidence |
 | --- | --- | --- |
+| 0 | the anchor's subject is the file, and the file exists | exact |
 | 1 | content fingerprint and node kind match | exact |
 | 2 | structural fingerprint, node kind and symbol path match | exact |
 | 3 | the symbol path identifies the same number of declarations as when the anchor was captured, the recorded ordinal selects one, and the node path descends to a node of the recorded kind | high |

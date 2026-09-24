@@ -76,6 +76,7 @@ An anchor is a durable reference to program structure. It carries several indepe
 The resolver is a ladder. Each rung yields a confidence, and the rung that fired is **recorded in the resolution** — a `Resolution` value cannot exist without its provenance, because the type makes that unrepresentable:
 
 ```
+0  subject is the file, and the file exists            -> Exact      (module-level claims)
 1  content_fingerprint unique match                    -> Exact
 2  structural_fingerprint + symbol_path unique         -> Exact      (identifier renames)
 3  symbol_path + node_path                             -> High
@@ -84,6 +85,8 @@ The resolver is a ladder. Each rung yields a confidence, and the rung that fired
 6  normalized-token similarity, unique best by margin  -> Low        (never auto-accepted)
 7  otherwise                                           -> Detached
 ```
+
+Rung 0 is not a fallback and does not participate in the ladder. An anchor either says it is about a construct, in which case rungs 1-6 search for that construct, or it says it is about the file, in which case its identity is the path and the resolver checks the path exists. Not all knowledge about code is knowledge about a declaration: a module header, or an invariant every entry point in a file upholds, has the file as its genuine subject. Pinning such a claim to the nearest declaration is both wrong and unresolvable — on a 1.09M-line corpus it was 620 of the 1,036 anchors that carried no symbol and so could never resolve.
 
 Rung 6 never auto-accepts. Anything landing at `Low` is queued for adjudication. Kinds carrying safety weight — `invariant`, `security`, `precondition`, `postcondition` — require `High` or better and are otherwise detached even when a plausible candidate exists. Being wrong about an invariant is the failure mode that ends the project.
 

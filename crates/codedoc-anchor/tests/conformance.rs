@@ -31,7 +31,7 @@ fn every_resolver_vector_reaches_its_stated_outcome() {
         let name = text(case, "name");
         let language = text(case, "language");
         let path = text(case, "path");
-        let symbol = text(case, "symbol");
+        let subject = case.field("subject").and_then(Canonical::as_text).unwrap_or("construct");
         let before = text(case, "before");
         let after = text(case, "after");
         let expect = case.field("expect").expect("vector is missing expect");
@@ -43,9 +43,14 @@ fn every_resolver_vector_reaches_its_stated_outcome() {
         let repo_path = RepoPath::parse(path).unwrap_or_else(|_| panic!("{name}: bad path"));
         let before_tree =
             adapter.parse(before).unwrap_or_else(|_| panic!("{name}: before does not parse"));
-        let node = codedoc_anchor::locate::by_symbol(&before_tree, before, adapter, symbol)
-            .unwrap_or_else(|| panic!("{name}: symbol {symbol} not found in before"));
-        let anchor = Anchor::capture(repo_path, adapter, before, node);
+        let anchor = if subject == "file" {
+            Anchor::capture_file(repo_path, adapter, before, before_tree.root_node())
+        } else {
+            let symbol = text(case, "symbol");
+            let node = codedoc_anchor::locate::by_symbol(&before_tree, before, adapter, symbol)
+                .unwrap_or_else(|| panic!("{name}: symbol {symbol} not found in before"));
+            Anchor::capture(repo_path, adapter, before, node)
+        };
 
         if let Some(Canonical::Integer(expected)) = case.field("symbol_cardinality") {
             assert_eq!(
@@ -111,16 +116,21 @@ fn no_vector_resolves_onto_a_node_absent_from_the_original() {
     for case in cases {
         let name = text(case, "name");
         let language = text(case, "language");
-        let symbol = text(case, "symbol");
+        let subject = case.field("subject").and_then(Canonical::as_text).unwrap_or("construct");
         let before = text(case, "before");
         let after = text(case, "after");
 
         let adapter = Registry::by_name(language).unwrap();
         let repo_path = RepoPath::parse(text(case, "path")).unwrap();
         let before_tree = adapter.parse(before).unwrap();
-        let node =
-            codedoc_anchor::locate::by_symbol(&before_tree, before, adapter, symbol).unwrap();
-        let anchor = Anchor::capture(repo_path, adapter, before, node);
+        let anchor = if subject == "file" {
+            Anchor::capture_file(repo_path, adapter, before, before_tree.root_node())
+        } else {
+            let symbol = text(case, "symbol");
+            let node =
+                codedoc_anchor::locate::by_symbol(&before_tree, before, adapter, symbol).unwrap();
+            Anchor::capture(repo_path, adapter, before, node)
+        };
 
         if let Some(Canonical::Integer(expected)) = case.field("symbol_cardinality") {
             assert_eq!(
@@ -137,10 +147,17 @@ fn no_vector_resolves_onto_a_node_absent_from_the_original() {
             let start = located.range().start_line as usize;
             let end = located.range().end_line as usize;
             let lines: Vec<&str> = after.lines().collect();
-            assert!(
-                start >= 1 && end <= lines.len(),
-                "{name}: located range falls outside the file"
-            );
+            if subject == "file" {
+                assert!(
+                    start == 1 && end >= lines.len(),
+                    "{name}: a claim about the file must span the file"
+                );
+            } else {
+                assert!(
+                    start >= 1 && end <= lines.len(),
+                    "{name}: located range falls outside the file"
+                );
+            }
         }
     }
 }

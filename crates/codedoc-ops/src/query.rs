@@ -28,7 +28,10 @@ pub fn context(
         let index = Index::current(ledger)
             .map_err(|source| OpsError::Index { detail: source.to_string() })?;
         let batch = match (symbol, line) {
-            (Some(wanted), _) => index.active_for_symbol(wanted),
+            (Some(wanted), _) => index.active_for_symbol(wanted).and_then(|mut found| {
+                found.extend(index.active_in_file(&normalised)?.into_iter().filter(is_file_scoped));
+                Ok(found)
+            }),
             (None, Some(wanted)) => index.active_covering_line(&normalised, wanted),
             (None, None) => index.active_in_file(&normalised),
         }
@@ -76,6 +79,14 @@ pub fn context(
         "empty": pack.is_empty(),
         "scopes": found.scopes().iter().map(|scope| scope.as_str()).collect::<Vec<_>>(),
     }))
+}
+
+fn is_file_scoped(record: &codedoc_ledger::Record) -> bool {
+    record
+        .content()
+        .anchors
+        .iter()
+        .any(|entry| matches!(entry.anchor.subject, codedoc_anchor::Subject::File))
 }
 
 pub fn verify(root: &Path) -> Result<(Value, i32), OpsError> {

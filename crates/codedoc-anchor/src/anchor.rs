@@ -194,6 +194,24 @@ impl SymbolTable {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum Subject {
+    #[default]
+    Construct,
+    File,
+}
+
+impl Subject {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Subject::Construct => "construct",
+            Subject::File => "file",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Anchor {
     pub file: RepoPath,
@@ -214,7 +232,13 @@ pub struct Anchor {
     pub symbol_cardinality: u32,
     #[serde(default)]
     pub symbol_ordinal: u32,
+    #[serde(default, skip_serializing_if = "is_construct")]
+    pub subject: Subject,
     pub range: SourceRange,
+}
+
+fn is_construct(subject: &Subject) -> bool {
+    matches!(subject, Subject::Construct)
 }
 
 impl Anchor {
@@ -255,8 +279,33 @@ impl Anchor {
             symbol_kind: owning.clone(),
             symbol_cardinality: symbols.cardinality(&rendered, &owning),
             symbol_ordinal: symbols.ordinal_of(&rendered, &owning, node),
+            subject: Subject::Construct,
             range: SourceRange::of(node),
         }
+    }
+
+    pub fn capture_file(file: RepoPath, adapter: &Adapter, source: &str, root: Node<'_>) -> Self {
+        let digests = fingerprint::compute_all(root, adapter, source);
+        let symbols = SymbolTable::build(root, adapter, source);
+        Anchor::capture_file_with(file, adapter, source, root, &digests, &symbols)
+    }
+
+    pub fn capture_file_with(
+        file: RepoPath,
+        adapter: &Adapter,
+        source: &str,
+        root: Node<'_>,
+        digests: &fingerprint::Digests,
+        symbols: &SymbolTable,
+    ) -> Self {
+        let mut anchor = Anchor::capture_with(file, adapter, source, root, digests, symbols);
+        anchor.subject = Subject::File;
+        anchor.symbol = None;
+        anchor.symbol_kind = String::new();
+        anchor.symbol_cardinality = 0;
+        anchor.symbol_ordinal = 0;
+        anchor.node_path = NodePath::default();
+        anchor
     }
 
     pub fn id(&self) -> AnchorId {

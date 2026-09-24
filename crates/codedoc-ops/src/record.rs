@@ -29,6 +29,10 @@ impl Target {
     pub fn line(file: &str, line: u32) -> Self {
         Target { file: file.to_owned(), symbol: None, line: Some(line) }
     }
+
+    pub fn file(file: &str) -> Self {
+        Target { file: file.to_owned(), symbol: None, line: None }
+    }
 }
 
 pub(crate) fn capture(root: &Path, target: &Target) -> Result<Anchor, OpsError> {
@@ -51,7 +55,9 @@ pub(crate) fn capture(root: &Path, target: &Target) -> Result<Anchor, OpsError> 
         }
         (None, Some(line)) => locate::by_line(&tree, adapter, line)
             .ok_or_else(|| OpsError::LineMissing { line, path: target.file.clone() })?,
-        (None, None) => return Err(OpsError::TargetUnspecified),
+        (None, None) => {
+            return Ok(Anchor::capture_file(path, adapter, &source, tree.root_node()));
+        }
     };
     Ok(Anchor::capture(path, adapter, &source, node))
 }

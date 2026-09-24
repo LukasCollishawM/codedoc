@@ -5,7 +5,7 @@ use codedoc_lang::Adapter;
 use serde::{Deserialize, Serialize};
 use tree_sitter::{Node, Tree};
 
-use crate::anchor::{Anchor, NodePath, SourceRange};
+use crate::anchor::{Anchor, NodePath, SourceRange, Subject};
 use crate::fingerprint;
 
 pub const SIMILARITY_FLOOR: f64 = 0.75;
@@ -25,6 +25,7 @@ pub enum Confidence {
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Rung {
+    FileIdentity,
     ContentIdentity,
     StructuralIdentity,
     SymbolAndNodePath,
@@ -36,7 +37,9 @@ pub enum Rung {
 impl Rung {
     pub fn confidence(self) -> Confidence {
         match self {
-            Rung::ContentIdentity | Rung::StructuralIdentity => Confidence::Exact,
+            Rung::FileIdentity | Rung::ContentIdentity | Rung::StructuralIdentity => {
+                Confidence::Exact
+            }
             Rung::SymbolAndNodePath => Confidence::High,
             Rung::ContextBracket | Rung::GitMigration => Confidence::Medium,
             Rung::Similarity => Confidence::Low,
@@ -45,6 +48,7 @@ impl Rung {
 
     pub fn position(self) -> u8 {
         match self {
+            Rung::FileIdentity => 0,
             Rung::ContentIdentity => 1,
             Rung::StructuralIdentity => 2,
             Rung::SymbolAndNodePath => 3,
@@ -185,6 +189,10 @@ impl<'tree, 'adapter> FileIndex<'tree, 'adapter> {
     }
 
     pub fn resolve(&self, anchor: &Anchor) -> Resolution {
+        match anchor.subject {
+            Subject::File => return self.locate_file(),
+            Subject::Construct => {}
+        }
         let mut first_ambiguity: Option<(Rung, u32)> = None;
         let note = |rung: Rung, count: usize, slot: &mut Option<(Rung, u32)>| {
             if slot.is_none() {
@@ -216,6 +224,15 @@ impl<'tree, 'adapter> FileIndex<'tree, 'adapter> {
             }
             None => Resolution::Detached(DetachReason::NoCandidate),
         }
+    }
+
+    fn locate_file(&self) -> Resolution {
+        Resolution::Located(Located::new(
+            Rung::FileIdentity,
+            SourceRange::of(self.root),
+            NodePath::default(),
+            self.root.kind().to_owned(),
+        ))
     }
 
     fn matches_for(&self, anchor: &Anchor, rung: Rung) -> Vec<usize> {

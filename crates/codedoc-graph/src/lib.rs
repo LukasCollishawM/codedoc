@@ -101,6 +101,18 @@ impl Graph {
             .collect()
     }
 
+    pub fn file_scoped(&self, file: &str) -> Vec<&Record> {
+        self.in_file(file)
+            .into_iter()
+            .filter(|record| {
+                record.content().anchors.iter().any(|entry| {
+                    entry.anchor.file.as_str() == file
+                        && matches!(entry.anchor.subject, codedoc_anchor::Subject::File)
+                })
+            })
+            .collect()
+    }
+
     pub fn covering_line(&self, file: &str, line: u32) -> Vec<&Record> {
         let mut covering: Vec<&Record> = self
             .in_file(file)

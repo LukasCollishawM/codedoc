@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc c9bd682cf29d30318ba7b370d8528b2b1a09556ac5c6eec98f58f2b820b4f21a # shrinks to functions = [Function { name: "aaa", binding: "kkk", value: 0 }, Function { name: "aab", binding: "kkl", value: 0 }], target_index = 0, replacements = [Function { name: "aac", binding: "kkm", value: 0 }], expand = false

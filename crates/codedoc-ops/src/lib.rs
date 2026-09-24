@@ -7,6 +7,7 @@ mod lifecycle;
 mod query;
 mod record;
 mod repair;
+mod revision;
 
 pub use author::Attribution;
 pub use coverage::coverage;
@@ -17,6 +18,7 @@ pub use query::{
 };
 pub use record::{AttachRequest, Provenance, RelateRequest, Target, attach, relate};
 pub use repair::repair;
+pub use revision::head_revision;
 
 use std::path::Path;
 
@@ -43,9 +45,6 @@ pub enum OpsError {
 
     #[error("line {line} covers no node in {path}")]
     LineMissing { line: u32, path: String },
-
-    #[error("locating a target requires a symbol or a line")]
-    TargetUnspecified,
 
     #[error("unknown record kind {found}; the vocabulary is {vocabulary}")]
     UnknownKind { found: String, vocabulary: String },

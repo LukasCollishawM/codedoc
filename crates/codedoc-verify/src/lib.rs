@@ -414,7 +414,7 @@ fn classify(resolution: &Resolution, drift: Option<u32>) -> Status {
         return Status::Detached;
     };
     let positional = match located.rung() {
-        Rung::ContentIdentity => Status::Fresh,
+        Rung::FileIdentity | Rung::ContentIdentity => Status::Fresh,
         Rung::StructuralIdentity | Rung::SymbolAndNodePath => Status::Migrated,
         Rung::ContextBracket | Rung::GitMigration => Status::Stale,
         Rung::Similarity => Status::Detached,

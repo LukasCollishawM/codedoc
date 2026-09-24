@@ -216,11 +216,15 @@ impl ContextPack {
 }
 
 pub fn assemble(graph: &Graph, target: Target, depth: u8) -> ContextPack {
-    let records: Vec<&Record> = match (&target.symbol, target.line) {
+    let mut records: Vec<&Record> = match (&target.symbol, target.line) {
         (Some(symbol), _) => graph.for_symbol(symbol),
         (None, Some(line)) => graph.covering_line(&target.file, line),
         (None, None) => graph.in_file(&target.file),
     };
+    if target.symbol.is_some() {
+        records.extend(graph.file_scoped(&target.file));
+    }
+    records.dedup_by_key(|record| record.id());
 
     let mut pack = ContextPack {
         target,

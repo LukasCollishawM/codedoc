@@ -48,6 +48,7 @@ codedoc_context  →  agent reads, then changes code  →  codedoc_attach / code
 | --- | --- |
 | `codedoc_context` | before touching unfamiliar code |
 | `codedoc_attach` | after working something out that the source doesn't say |
+| `codedoc_attach` without `symbol` or `line` | when what you worked out is true of the whole file, not one declaration |
 | `codedoc_relate` | when the fact is about a link between two places |
 | `codedoc_verify` | after making changes — pass `files` or `since` to check only what you touched |
 | `codedoc_detached` | when verify reports detachments; it suggests where the code may have gone |
@@ -118,6 +119,13 @@ function validates the token" is worthless — the code says that. "Validation m
 precede tenant resolution, because resolving a tenant from an unvalidated token
 allows tenant confusion across trust boundaries" is the thing that dies in a commit
 message otherwise.
+
+**Some knowledge is about a file, not a declaration.** "Every handler in this module
+assumes the request has already been authenticated" is not a fact about any one
+handler, and pinning it to whichever one you happened to be reading makes it invisible
+from the others. Call `codedoc_attach` with a `file` and no `symbol` or `line` and the
+claim is recorded against the file itself. It then reaches anyone asking about any
+symbol in that file, and it goes stale when the file is substantially rewritten.
 
 **Relations are underused.** If an agent only ever calls `codedoc_attach`, it is
 using half the system. Ordering constraints, guard relationships, and "changing this

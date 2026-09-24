@@ -52,11 +52,21 @@ line is not a valid record.
 
 Anchors a claim. Locate with `--symbol <path>` or `--line <n>`.
 
+Omit both and the claim is recorded against **the file itself**. Use this when what you
+know is true of the whole file rather than one declaration — what the module is for, or
+an invariant every entry point in it upholds. A file claim is returned to anyone asking
+about any symbol in that file, and it reports as stale once the file has been
+substantially rewritten.
+
 ```bash
 codedoc attach src/auth.rs --symbol rust://validate_token \
   --kind invariant \
   --claim "Signature validation must precede tenant resolution." \
   --detail "Resolving a tenant from an unvalidated token allows tenant confusion."
+```
+
+```bash
+codedoc attach src/auth.rs   --kind invariant   --claim "Every handler in this module assumes the request is already authenticated."
 ```
 
 Options: `--detail`, `--assurance asserted|inferred|speculative`, `--author

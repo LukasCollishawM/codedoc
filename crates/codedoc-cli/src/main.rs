@@ -1,6 +1,5 @@
 #![forbid(unsafe_code)]
 
-mod git;
 mod gitops;
 mod migrate;
 mod render;
@@ -408,7 +407,7 @@ fn command_attach(root: &Path, scope: Option<Scope>, args: &AttachArgs) -> Resul
     let provenance = ops::Provenance {
         assurance: Assurance::parse(&args.assurance),
         evidence: args.evidence.iter().map(|item| parse_evidence(item)).collect(),
-        revision: git::head_revision(root),
+        revision: ops::head_revision(root),
     };
     Ok((ops::attach(root, scope, &request, &attribution, provenance)?, 0))
 }
@@ -440,7 +439,7 @@ fn command_relate(root: &Path, scope: Option<Scope>, args: &RelateArgs) -> Resul
         claim: args.claim.clone(),
         detail: args.detail.clone(),
     };
-    let provenance = ops::Provenance { revision: git::head_revision(root), ..Default::default() };
+    let provenance = ops::Provenance { revision: ops::head_revision(root), ..Default::default() };
     Ok((ops::relate(root, scope, &request, &attribution, provenance)?, 0))
 }
 

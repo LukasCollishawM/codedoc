@@ -39,6 +39,7 @@ pub fn import(
     let root = root.as_path();
     let targets: Vec<String> = if paths.is_empty() { vec![".".to_owned()] } else { paths.to_vec() };
 
+    let revision = crate::revision::head_revision(root);
     let mut harvested = Vec::new();
     let mut files_scanned = 0usize;
 
@@ -58,7 +59,7 @@ pub fn import(
                 continue;
             };
             files_scanned += 1;
-            harvested.extend(harvest_file(&repo_path, adapter, path));
+            harvested.extend(harvest_file(&repo_path, adapter, path, revision.clone()));
             if limit.is_some_and(|cap| harvested.len() >= cap) {
                 break;
             }
@@ -121,7 +122,12 @@ fn is_excluded(path: &Path) -> bool {
     })
 }
 
-fn harvest_file(repo_path: &RepoPath, adapter: &Adapter, disk: &Path) -> Vec<Harvested> {
+fn harvest_file(
+    repo_path: &RepoPath,
+    adapter: &Adapter,
+    disk: &Path,
+    revision: Option<codedoc_core::GitRev>,
+) -> Vec<Harvested> {
     let Ok(source) = fs::read_to_string(disk) else {
         return Vec::new();
     };
@@ -131,6 +137,7 @@ fn harvest_file(repo_path: &RepoPath, adapter: &Adapter, disk: &Path) -> Vec<Har
 
     let digests = codedoc_anchor::fingerprint::compute_all(tree.root_node(), adapter, &source);
     let symbols = codedoc_anchor::SymbolTable::build(tree.root_node(), adapter, &source);
+    let first_declaration = first_declaration_row(tree.root_node(), adapter);
     let mut blocks: Vec<Vec<Node<'_>>> = Vec::new();
     collect_comment_blocks(tree.root_node(), adapter, &mut blocks);
 
@@ -150,9 +157,20 @@ fn harvest_file(repo_path: &RepoPath, adapter: &Adapter, disk: &Path) -> Vec<Har
             continue;
         }
 
-        let Some(target) = documented_node(*last, adapter) else { continue };
-        let anchor =
-            Anchor::capture_with(repo_path.clone(), adapter, &source, target, &digests, &symbols);
+        let target = documented_node(*last, adapter);
+        let anchor = if documents_the_file(&block, target, first_declaration, adapter, &source) {
+            Anchor::capture_file_with(
+                repo_path.clone(),
+                adapter,
+                &source,
+                tree.root_node(),
+                &digests,
+                &symbols,
+            )
+        } else {
+            let Some(target) = target else { continue };
+            Anchor::capture_with(repo_path.clone(), adapter, &source, target, &digests, &symbols)
+        };
         let kind = infer_kind(&claim);
 
         harvested.push(Harvested {
@@ -169,7 +187,7 @@ fn harvest_file(repo_path: &RepoPath, adapter: &Adapter, disk: &Path) -> Vec<Har
                 evidence: Vec::new(),
                 assurance: Assurance::Inferred,
                 author: Author::Analyzer { name: "comment-import".to_owned() },
-                code_revision: None,
+                code_revision: revision.clone(),
                 created: Timestamp::now(),
                 lifecycle: Lifecycle::Active,
                 parent: None,
@@ -212,6 +230,34 @@ fn collect_comment_blocks<'tree>(
     }
 }
 
+fn first_declaration_row(root: Node<'_>, adapter: &Adapter) -> Option<usize> {
+    let mut cursor = root.walk();
+    root.named_children(&mut cursor)
+        .find(|child| adapter.declares_symbol(child.kind()))
+        .map(|child| child.start_position().row)
+}
+
+fn documents_the_file(
+    block: &[Node<'_>],
+    target: Option<Node<'_>>,
+    first_declaration: Option<usize>,
+    adapter: &Adapter,
+    source: &str,
+) -> bool {
+    let Some(first) = block.first() else { return false };
+    let precedes_every_declaration =
+        first_declaration.is_none_or(|row| first.start_position().row < row);
+    if !precedes_every_declaration {
+        return false;
+    }
+    let inner_doc =
+        block.iter().filter_map(|node| node.utf8_text(source.as_bytes()).ok()).any(|text| {
+            let trimmed = text.trim_start();
+            trimmed.starts_with("//!") || trimmed.starts_with("/*!")
+        });
+    inner_doc || !target.is_some_and(|node| adapter.declares_symbol(node.kind()))
+}
+
 fn documented_node<'tree>(comment: Node<'tree>, adapter: &Adapter) -> Option<Node<'tree>> {
     let mut candidate = comment.next_named_sibling();
     let mut first_adjacent = None;
@@ -228,6 +274,9 @@ fn documented_node<'tree>(comment: Node<'tree>, adapter: &Adapter) -> Option<Nod
         }
         if adapter.declares_symbol(sibling.kind()) {
             return Some(sibling);
+        }
+        if let Some(inner) = declaring_descendant(sibling, adapter) {
+            return Some(inner);
         }
         if first_adjacent.is_none() {
             first_adjacent = Some(sibling);
@@ -249,6 +298,11 @@ fn documented_node<'tree>(comment: Node<'tree>, adapter: &Adapter) -> Option<Nod
         ancestor = node.parent();
     }
     None
+}
+
+fn declaring_descendant<'tree>(node: Node<'tree>, adapter: &Adapter) -> Option<Node<'tree>> {
+    let mut cursor = node.walk();
+    node.named_children(&mut cursor).find(|child| adapter.declares_symbol(child.kind()))
 }
 
 fn is_modifier(kind: &str) -> bool {
