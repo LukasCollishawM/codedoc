@@ -10,6 +10,11 @@ use serde_json::{Value, json};
 const ATTRIBUTE_LINE: &str = ".codedoc/ledger/*.jsonl merge=codedoc-ledger";
 const DRIVER_NAME: &str = "merge.codedoc-ledger";
 
+fn quoted(path: &Path) -> String {
+    let rendered = path.display().to_string().replace('\\', "/");
+    if rendered.contains(' ') { format!("\"{rendered}\"") } else { rendered }
+}
+
 pub fn install_merge_driver(root: &Path) -> Result<(Value, i32)> {
     let configured = Command::new("git")
         .arg("-C")
@@ -21,10 +26,14 @@ pub fn install_merge_driver(root: &Path) -> Result<(Value, i32)> {
         bail!("git config failed; is {} a git repository?", root.display());
     }
 
+    let executable =
+        std::env::current_exe().context("finding this executable, which the driver has to name")?;
+    let command = format!("{} git merge-driver %O %A %B", quoted(&executable));
+
     let driver = Command::new("git")
         .arg("-C")
         .arg(root)
-        .args(["config", &format!("{DRIVER_NAME}.driver"), "codedoc git merge-driver %O %A %B"])
+        .args(["config", &format!("{DRIVER_NAME}.driver"), &command])
         .status()
         .context("running git config")?;
     if !driver.success() {

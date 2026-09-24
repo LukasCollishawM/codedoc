@@ -376,3 +376,31 @@ fn an_anchor_that_escapes_the_repository_root_is_refused() {
     );
     assert_eq!(refused.status.code(), Some(3), "{complaint}");
 }
+
+#[test]
+fn the_installed_merge_driver_names_an_executable_that_exists() {
+    let root = project();
+    run(root.path(), &["init"]);
+
+    let repository = Command::new("git").arg("init").arg(root.path()).output();
+    if repository.map(|done| !done.status.success()).unwrap_or(true) {
+        return;
+    }
+    run(root.path(), &["git", "install-merge-driver"]);
+
+    let configured = Command::new("git")
+        .arg("-C")
+        .arg(root.path())
+        .args(["config", "--get", "merge.codedoc-ledger.driver"])
+        .output()
+        .expect("git config runs");
+    let command = String::from_utf8_lossy(&configured.stdout).trim().to_owned();
+
+    let named = command.split(" git merge-driver").next().unwrap_or_default().trim_matches('"');
+    assert!(
+        Path::new(named).is_file(),
+        "git runs this command during a merge, and when it cannot be run git reports a \
+         conflict and leaves one side's records in the file with no markers, so the \
+         next `git add` drops the other branch silently. Got {command:?}"
+    );
+}

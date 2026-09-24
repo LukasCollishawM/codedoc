@@ -70,6 +70,14 @@ Registers a union merge driver for `.codedoc/ledger/*.jsonl`, so concurrent bran
 merge their records instead of conflicting. The driver refuses to write if any input
 line is not a valid record.
 
+The registered command names the absolute path of the `codedoc` that installed it,
+written to this clone's git config rather than committed. Naming it as a bare
+`codedoc` on `PATH` would resolve to whichever copy is first there, and an older one
+without this subcommand exits non-zero: git then reports a conflict, leaves one
+side's records in the file with no conflict markers, and the next `git add` drops the
+other branch without saying anything. Re-run this after moving or reinstalling the
+binary.
+
 ## Recording
 
 ### `codedoc attach <file> --kind <kind> --claim "..."`
