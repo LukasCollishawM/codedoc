@@ -53,7 +53,7 @@ Then add the server to your MCP client:
 }
 ```
 
-That's the setup. The agent gets twenty tools, discovers them itself, and is told
+That's the setup. The agent gets twenty-one tools, discovers them itself, and is told
 when to use them. See [AGENTS.md](AGENTS.md) for what it is told and how to make
 your agent use it well.
 

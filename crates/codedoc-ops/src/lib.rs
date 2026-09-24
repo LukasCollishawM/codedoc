@@ -3,6 +3,7 @@
 mod author;
 mod coverage;
 mod evidence;
+mod health;
 mod import;
 mod lifecycle;
 mod query;
@@ -14,6 +15,7 @@ mod setup;
 pub use author::Attribution;
 pub use coverage::coverage;
 pub use evidence::evidence;
+pub use health::{doctor, health};
 pub use import::import;
 pub use lifecycle::{Relocation, affirm, resolve, retract, supersede};
 pub use query::{

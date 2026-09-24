@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use codedoc_ledger::{Assurance, Scope};
 use codedoc_ops::{
     AttachRequest, Attribution, Provenance, RelateRequest, Target, affirm, attach, conflicts,
-    context, coverage, detached, evidence, history, import, initialise, list, relate, render,
-    resolve, retract, review, search, stats, supersede, verify_scoped,
+    context, coverage, detached, evidence, health, history, import, initialise, list, relate,
+    render, resolve, retract, review, search, stats, supersede, verify_scoped,
 };
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
@@ -414,6 +414,16 @@ impl Codedoc {
         Parameters(args): Parameters<RecordArgs>,
     ) -> Result<CallToolResult, McpError> {
         respond(history(&self.root, &args.record))
+    }
+
+    #[tool(
+        description = "One answer to whether the recorded knowledge in this repository is in good order: ledger integrity, detached anchors, citations that stopped resolving, claims whose code drifted, and records that disagree. Blocking problems are the ones a machine can settle — a broken chain, an anchor pointing at code that is gone, a citation that no longer resolves. Stale claims and disagreements are reported but not blocking, because settling them needs someone to read the code and decide."
+    )]
+    async fn codedoc_doctor(
+        &self,
+        Parameters(_args): Parameters<NoArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        respond(health(&self.root))
     }
 
     #[tool(

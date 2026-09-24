@@ -62,6 +62,7 @@ codedoc_context  →  agent reads, then changes code  →  codedoc_attach / code
 | `codedoc_history` | to see what was believed before |
 | `codedoc_conflicts` | to find records that disagree, or duplicates that should have been supersedes |
 | `codedoc_evidence` | to find claims whose cited support has since been deleted or retracted |
+| `codedoc_doctor` | to ask, in one call, whether the recorded knowledge here is in good order |
 | `codedoc_review` | after finishing a change, to report what you may have invalidated |
 | `codedoc_coverage` | to find where knowledge is missing, not as a number to maximise |
 | `codedoc_render` | when asked for onboarding notes or architecture docs |

@@ -237,6 +237,27 @@ request and posts the result as a single comment, updated in place rather than
 appended to on each push. Copy it into your own repository; it needs
 `pull-requests: write`.
 
+### `codedoc doctor`
+
+One answer to whether the recorded knowledge in a repository is in good order.
+
+```bash
+codedoc doctor
+```
+
+It reports two classes, and the split is the point.
+
+**Blocking** — a broken hash chain, a detached anchor, a citation that no longer
+resolves. Each of these is settled without anyone's judgement: the chain is broken or
+it is not, the code is there or it is gone. Exit code 2.
+
+**Advisory** — claims whose code drifted, and records that appear to disagree. Settling
+these needs someone to read the code and decide, and a build that fails on "somebody
+should re-read this" is a build people learn to ignore, which costs more than it
+catches. Exit code 0, reported in the output.
+
+The `next` field names the command to run for each finding.
+
 ### `codedoc evidence`
 
 Checks that the support records cite still exists.
