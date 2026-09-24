@@ -114,3 +114,90 @@ fn json_output_is_json_on_every_path_including_failure() {
         );
     }
 }
+
+fn ledger_lines(root: &Path) -> Vec<String> {
+    let mut lines = Vec::new();
+    let directory = root.join(".codedoc").join("ledger");
+    for entry in std::fs::read_dir(directory).expect("a ledger directory").flatten() {
+        let body = std::fs::read_to_string(entry.path()).expect("a shard");
+        lines.extend(body.lines().filter(|line| !line.is_empty()).map(str::to_owned));
+    }
+    lines
+}
+
+fn merge(root: &Path, base: &str, ours: &str, theirs: &str) -> (Output, String) {
+    let scratch = root.join("merge");
+    std::fs::create_dir_all(&scratch).unwrap();
+    let paths: Vec<_> = [("base", base), ("ours", ours), ("theirs", theirs)]
+        .iter()
+        .map(|(name, body)| {
+            let path = scratch.join(format!("{name}.jsonl"));
+            std::fs::write(&path, body).unwrap();
+            path
+        })
+        .collect();
+    let output = Command::new(env!("CARGO_BIN_EXE_codedoc"))
+        .arg("git")
+        .arg("merge-driver")
+        .args(&paths)
+        .output()
+        .expect("the driver runs");
+    let merged = std::fs::read_to_string(&paths[1]).expect("ours is readable");
+    (output, merged)
+}
+
+#[test]
+fn the_merge_driver_unions_two_branches_that_both_recorded_something() {
+    let root = project();
+    assert!(run(root.path(), &["init"]).status.success());
+    for (symbol, claim) in
+        [("rust://validate", "Validation precedes tenancy."), ("rust://validate", "Tokens expire.")]
+    {
+        let written = run(
+            root.path(),
+            &["attach", "src/auth.rs", "--symbol", symbol, "--kind", "invariant", "--claim", claim],
+        );
+        assert!(written.status.success());
+    }
+    let lines = ledger_lines(root.path());
+    assert_eq!(lines.len(), 2);
+
+    let (output, merged) =
+        merge(root.path(), "", &format!("{}\n", lines[0]), &format!("{}\n", lines[1]));
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert_eq!(
+        merged.lines().filter(|line| !line.is_empty()).count(),
+        2,
+        "two branches that each recorded something must end up with both, or a team \
+         loses knowledge every time it merges"
+    );
+}
+
+#[test]
+fn the_merge_driver_refuses_rather_than_writing_a_ledger_that_would_not_verify() {
+    let root = project();
+    assert!(run(root.path(), &["init"]).status.success());
+    let written = run(
+        root.path(),
+        &[
+            "attach",
+            "src/auth.rs",
+            "--symbol",
+            "rust://validate",
+            "--kind",
+            "invariant",
+            "--claim",
+            "Validation precedes tenancy.",
+        ],
+    );
+    assert!(written.status.success());
+    let ours = format!("{}\n", ledger_lines(root.path())[0]);
+
+    let (output, merged) = merge(root.path(), "", &ours, "{\"not\":\"a record\"}\n");
+    assert_eq!(output.status.code(), Some(4), "a refusal is a failure, not a quiet success");
+    assert_eq!(
+        merged, ours,
+        "refusing has to mean leaving what was there. Half-writing a ledger during a \
+         merge is how a repository ends up with records nothing can read."
+    );
+}

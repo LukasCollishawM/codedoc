@@ -8,6 +8,7 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Added
 
+- **The ledger merge driver is tested.** It is what stops two branches conflicting over the same shard, and what a team silently depends on; nothing exercised it. Both documented behaviours are now asserted: it unions the records from both sides, and when any input line is not a valid record it refuses with exit 4 and leaves the existing file untouched rather than half-writing a ledger nothing can read.
 - **The spec says identity is the digest of the canonical re-encoding, not of the stored bytes**, and a test holds it. That is the property that lets a ledger written before an optional member existed keep every identifier it was written with, and it is what makes omitting defaults a compatible change rather than a second breaking one.
 - **`codedoc coverage` reports claims about a file alongside its declaration coverage.** A file claim documents no declaration, so it does not count toward the percentage and should not — but the thinnest-files listing is where someone looks to decide what to document next, and sending them to a file that already carries a module-level claim wastes the trip.
 - **The CLI binary is tested through the binary.** The exit codes in `docs/cli.md` are what a CI job branches on and nothing checked that the process returns them; `--json` is what a script parses and nothing checked it stays JSON when the command fails. Both are asserted now, along with an unknown record kind being refused with the vocabulary rather than a bare rejection.
