@@ -17,6 +17,18 @@ pub fn doctor(root: &Path) -> Result<(Value, i32), crate::OpsError> {
         current.as_u64().unwrap_or(0)
     };
 
+    let found = crate::workspace(root)?;
+    let graph = codedoc_graph::Graph::across(&found)?;
+    let active = graph.active();
+    let unnameable = active
+        .iter()
+        .filter(|record| {
+            record.subject().is_some_and(|anchor| {
+                anchor.symbol.is_none() && !matches!(anchor.subject, codedoc_anchor::Subject::File)
+            })
+        })
+        .count() as u64;
+
     let intact = verified["integrity_intact"].as_bool().unwrap_or(false);
     let detached = count(&verified, &["counts", "detached"]);
     let stale = count(&verified, &["counts", "stale"]);
@@ -24,7 +36,7 @@ pub fn doctor(root: &Path) -> Result<(Value, i32), crate::OpsError> {
     let disagreements = count(&contradictions, &["count"]);
 
     let blocking = !intact || detached > 0 || broken_citations > 0;
-    let advisory = stale > 0 || disagreements > 0;
+    let advisory = stale > 0 || disagreements > 0 || unnameable > 0;
 
     let mut needs: Vec<&str> = Vec::new();
     if !intact {
@@ -41,6 +53,12 @@ pub fn doctor(root: &Path) -> Result<(Value, i32), crate::OpsError> {
     }
     if disagreements > 0 {
         needs.push("records appear to disagree; codedoc conflicts lists them");
+    }
+    if unnameable > 0 {
+        needs.push(
+            "some records sit on a construct the adapter cannot name; they hold only \
+             while their file is unedited",
+        );
     }
 
     let verdict = if blocking {
@@ -64,6 +82,7 @@ pub fn doctor(root: &Path) -> Result<(Value, i32), crate::OpsError> {
             "advisory": {
                 "stale": stale,
                 "disagreements": disagreements,
+                "unnameable": unnameable,
             },
             "next": needs,
         }),

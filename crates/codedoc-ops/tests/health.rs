@@ -125,3 +125,36 @@ fn coverage_says_when_a_thin_file_already_carries_a_claim_about_itself() {
          the trip: {report}"
     );
 }
+
+#[test]
+fn a_record_on_a_construct_that_cannot_be_named_is_reported_but_does_not_block() {
+    let root = project();
+    fs::write(
+        root.path().join("src/lib.rs"),
+        "pub fn compute(d: &[u8]) -> u32 {\n    d.len() as u32\n}\n\nuse std::fmt;\n",
+    )
+    .unwrap();
+    let request = codedoc_ops::AttachRequest {
+        target: codedoc_ops::Target::line("src/lib.rs", 5),
+        kind: "explanation".to_owned(),
+        claim: "This import exists for the Display bound below.".to_owned(),
+        detail: None,
+    };
+    codedoc_ops::attach(
+        root.path(),
+        None,
+        &request,
+        &codedoc_ops::Attribution::human("tester"),
+        codedoc_ops::Provenance::default(),
+    )
+    .unwrap();
+
+    let (report, code) = codedoc_ops::doctor(root.path()).unwrap();
+    assert_eq!(
+        report["advisory"]["unnameable"], 1,
+        "a record on a construct with no symbol resolves only while its file is \
+         byte-identical, which is worth knowing before the edit that loses it: {report}"
+    );
+    assert_eq!(code, 0, "it is a thing to know, not a thing to fail a build on");
+    assert_eq!(report["verdict"], "needs reading", "{report}");
+}

@@ -318,7 +318,8 @@ It reports two classes, and the split is the point.
 resolves. Each of these is settled without anyone's judgement: the chain is broken or
 it is not, the code is there or it is gone. Exit code 2.
 
-**Advisory** — claims whose code drifted, and records that appear to disagree. Settling
+**Advisory** — claims whose code drifted, records that appear to disagree, and records
+sitting on a construct the language adapter cannot name. Settling
 these needs someone to read the code and decide, and a build that fails on "somebody
 should re-read this" is a build people learn to ignore, which costs more than it
 catches. Exit code 0, reported in the output.
