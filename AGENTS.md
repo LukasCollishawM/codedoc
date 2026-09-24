@@ -181,12 +181,12 @@ writes your record — a near-duplicate is a prompt, not a refusal — but if so
 listed there, the better move is usually `codedoc_supersede` on that record, so the
 corpus gains a sharper claim instead of a second rough one.
 
-**Staleness is a question, not a verdict.** When `codedoc_verify` reports a record as
-stale, the code beneath a claim changed enough to be worth re-reading. It does not mean
-the claim is wrong. Read the code and then say which it was: `codedoc_affirm` if it
-still holds, `codedoc_supersede` if it needs rewording, `codedoc_retract` if it is gone.
-Leaving it unanswered is the one bad option — a corpus where everything reads stale is
-a corpus nobody reads.
+**Staleness requires an answer, and is not itself a verdict.** When `codedoc_verify`
+reports a record as stale, the code beneath the claim has changed enough to warrant
+re-reading; it does not imply the claim is wrong. Read the code and then respond:
+`codedoc_affirm` if it still holds, `codedoc_supersede` if it needs rewording,
+`codedoc_retract` if it no longer applies. Leaving it unanswered is the outcome to
+avoid, since a corpus in which everything reads as stale will not be consulted.
 
 **Some knowledge is about a file, not a declaration.** "Every handler in this module
 assumes the request has already been authenticated" is not a fact about any one
@@ -201,15 +201,15 @@ codedoc, initialise it `local`: the ledger goes inside `.git/`, where the reposi
 cannot track it, so nothing you record shows up in their `git status` or their diffs.
 Use `shared` only when adopting codedoc is their decision, not yours.
 
-**Cite what convinced you.** `evidence` takes `test:<name>`, `doc:<path>`,
-`record:<id>`, `git:<rev>` or a URL, and it is the difference between a claim someone
-can check and a claim they have to take on faith. `codedoc_evidence` later reports
-citations that stopped resolving, so a claim leaning on a deleted document or a
-retracted record surfaces instead of quietly keeping its authority.
+**Cite the supporting material.** `evidence` takes `test:<name>`, `doc:<path>`,
+`record:<id>`, `git:<rev>` or a URL. It distinguishes a claim that can be checked from
+one that has to be taken on trust. `codedoc_evidence` later reports citations that no
+longer resolve, so a claim resting on a deleted document or a retracted record is
+surfaced rather than retaining its apparent authority.
 
-**Relations are underused.** If an agent only ever calls `codedoc_attach`, it is
-using half the system. Ordering constraints, guard relationships, and "changing this
-invalidates that" are the facts with nowhere else to live.
+**Relations are underused.** An agent that only calls `codedoc_attach` is using part
+of the system. Ordering constraints, guard relationships and "changing this invalidates
+that" have no other place to be recorded.
 
 ## Security
 
