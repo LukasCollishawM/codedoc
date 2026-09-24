@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/*", "xtask"]
 
 [workspace.package]
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT OR Apache-2.0"
@@ -11,16 +11,16 @@ repository = "https://github.com/lukas/codedoc"
 authors = ["codedoc contributors"]
 
 [workspace.dependencies]
-codedoc-core = { path = "crates/codedoc-core", version = "0.1.0" }
-codedoc-lang = { path = "crates/codedoc-lang", version = "0.1.0" }
-codedoc-anchor = { path = "crates/codedoc-anchor", version = "0.1.0" }
-codedoc-ledger = { path = "crates/codedoc-ledger", version = "0.1.0" }
-codedoc-index = { path = "crates/codedoc-index", version = "0.1.0" }
-codedoc-graph = { path = "crates/codedoc-graph", version = "0.1.0" }
-codedoc-context = { path = "crates/codedoc-context", version = "0.1.0" }
-codedoc-verify = { path = "crates/codedoc-verify", version = "0.1.0" }
-codedoc-ops = { path = "crates/codedoc-ops", version = "0.1.0" }
-codedoc-render = { path = "crates/codedoc-render", version = "0.1.0" }
+codedoc-core = { path = "crates/codedoc-core", version = "1.0.0" }
+codedoc-lang = { path = "crates/codedoc-lang", version = "1.0.0" }
+codedoc-anchor = { path = "crates/codedoc-anchor", version = "1.0.0" }
+codedoc-ledger = { path = "crates/codedoc-ledger", version = "1.0.0" }
+codedoc-index = { path = "crates/codedoc-index", version = "1.0.0" }
+codedoc-graph = { path = "crates/codedoc-graph", version = "1.0.0" }
+codedoc-context = { path = "crates/codedoc-context", version = "1.0.0" }
+codedoc-verify = { path = "crates/codedoc-verify", version = "1.0.0" }
+codedoc-ops = { path = "crates/codedoc-ops", version = "1.0.0" }
+codedoc-render = { path = "crates/codedoc-render", version = "1.0.0" }
 
 blake3 = "1"
 serde = { version = "1", features = ["derive"] }

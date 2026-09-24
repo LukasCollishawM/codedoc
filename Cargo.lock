@@ -216,7 +216,7 @@ checksum = "1c133bc6a41be0d194c306b5506d15e6feeea7b1d6604bd3f8310dfb2ca96486"
 
 [[package]]
 name = "codedoc-anchor"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "codedoc-core",
  "codedoc-lang",
@@ -230,7 +230,7 @@ dependencies = [
 
 [[package]]
 name = "codedoc-cli"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -251,7 +251,7 @@ dependencies = [
 
 [[package]]
 name = "codedoc-context"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "codedoc-anchor",
  "codedoc-core",
@@ -267,7 +267,7 @@ dependencies = [
 
 [[package]]
 name = "codedoc-core"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "blake3",
  "proptest",
@@ -278,7 +278,7 @@ dependencies = [
 
 [[package]]
 name = "codedoc-graph"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "codedoc-anchor",
  "codedoc-core",
@@ -292,7 +292,7 @@ dependencies = [
 
 [[package]]
 name = "codedoc-index"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "codedoc-anchor",
  "codedoc-core",
@@ -307,7 +307,7 @@ dependencies = [
 
 [[package]]
 name = "codedoc-lang"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "codedoc-core",
  "thiserror",
@@ -324,7 +324,7 @@ dependencies = [
 
 [[package]]
 name = "codedoc-ledger"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "codedoc-anchor",
  "codedoc-core",
@@ -339,7 +339,7 @@ dependencies = [
 
 [[package]]
 name = "codedoc-lsp"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "codedoc-anchor",
  "codedoc-core",
@@ -358,7 +358,7 @@ dependencies = [
 
 [[package]]
 name = "codedoc-mcp"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "codedoc-anchor",
  "codedoc-context",
@@ -379,7 +379,7 @@ dependencies = [
 
 [[package]]
 name = "codedoc-ops"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "codedoc-anchor",
  "codedoc-context",
@@ -401,7 +401,7 @@ dependencies = [
 
 [[package]]
 name = "codedoc-render"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "codedoc-anchor",
  "codedoc-context",
@@ -418,7 +418,7 @@ dependencies = [
 
 [[package]]
 name = "codedoc-verify"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "codedoc-anchor",
  "codedoc-core",
@@ -1694,7 +1694,7 @@ checksum = "f17a85883d4e6d00e8a97c586de764dabcc06133f7f1d55dce5cdc070ad7fe59"
 
 [[package]]
 name = "xtask"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "codedoc-anchor",
  "codedoc-core",

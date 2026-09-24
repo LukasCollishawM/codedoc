@@ -17,3 +17,6 @@ Any change to the on-disk format requires a record here, then a change to `docs/
 | [ADR-0009](0009-zero-comments-in-this-repository.md) | This repository contains no comments |
 | [ADR-0010](0010-no-verification-cache.md) | No verification cache *(rejected)* |
 | [ADR-0011](0011-renames-detach.md) | A renamed declaration detaches |
+| [ADR-0012](0012-file-scoped-claims.md) | Claims whose subject is the file |
+| [ADR-0013](0013-opaque-file-anchors.md) | Opaque anchors for files no adapter parses |
+| [ADR-0014](0014-freeze-the-format-at-1-0.md) | Freeze the format at 1.0 |

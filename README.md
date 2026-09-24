@@ -176,14 +176,29 @@ only constructs the adapter could not name: got 7%, click 3%, gorilla/mux 0%.
 
 ## Status
 
-Pre-1.0. The on-disk format may change before 1.0, always with a mechanical
-`codedoc migrate` path, and not incompatibly after it.
+1.0. The format in [docs/spec/format.md](docs/spec/format.md) is stable: a ledger
+written by a conforming implementation stays readable, and every identifier in it stays
+the identifier it was written with. [ADR-0014](docs/decisions/0014-freeze-the-format-at-1-0.md)
+states what a later 1.x may add and what it may never change.
 
 Implemented: ledger and integrity checking, anchoring and resolution across eight
 grammars, comment import, search, the full record lifecycle, relations, and the CLI,
 MCP and LSP surfaces. CI verifies byte-identical encoding on Linux, macOS and Windows.
 
-Outstanding: the VS Code extension installs from a local `.vsix` and is not published.
+Outstanding, and none of it changes the format:
+
+- No second implementation has been written against the specification alone and passed
+  `conformance/`. Until one has, 1.0 is a promise this project makes rather than one
+  tested from outside.
+- The crates are not on crates.io. The compatibility surface is the format rather than
+  the Rust API, and publishing a library is a permanent obligation nobody has asked for.
+- Four declaration forms carry no symbol, or the wrong one: C# file-scoped namespaces,
+  C++ namespaces opened by a macro, Go `const` and `var`, and TypeScript lexical
+  declarations. An anchor that cannot be named detaches rather than misattaching, so
+  this costs durability and not safety. Each is pinned by an ignored test.
+- Python docstrings are not imported, because a docstring is an expression rather than
+  a comment.
+- The VS Code extension installs from a local `.vsix` and is not published.
 
 ## Documentation
 
