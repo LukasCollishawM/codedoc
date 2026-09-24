@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::process::{Command, ExitCode};
 
-use codedoc_anchor::{Anchor, Resolution, Resolver, Rung};
+use codedoc_anchor::{Anchor, Resolution, Rung};
 use codedoc_core::RepoPath;
 use codedoc_lang::Registry;
 
@@ -131,7 +131,11 @@ fn replay_file(repository: &str, oldest: &str, newest: &str, journey: &Journey, 
         return;
     };
 
-    let resolver = Resolver::new(adapter);
+    let before_digests =
+        codedoc_anchor::fingerprint::compute_all(old_tree.root_node(), adapter, &before);
+    let before_symbols = codedoc_anchor::SymbolTable::build(old_tree.root_node(), adapter, &before);
+    let index = codedoc_anchor::FileIndex::build(adapter, &after, &new_tree);
+
     let mut cursor = old_tree.root_node().walk();
     let mut declarations = Vec::new();
     for child in old_tree.root_node().named_children(&mut cursor) {
@@ -146,16 +150,19 @@ fn replay_file(repository: &str, oldest: &str, newest: &str, journey: &Journey, 
     }
 
     for declaration in declarations {
-        let anchor = Anchor::capture(path.clone(), adapter, &before, declaration);
+        let anchor = Anchor::capture_with(
+            path.clone(),
+            adapter,
+            &before,
+            declaration,
+            &before_digests,
+            &before_symbols,
+        );
         let expected = anchor.symbol.as_ref().map(ToString::to_string);
         tally.anchors += 1;
 
-        let outcome = if migrated {
-            codedoc_anchor::FileIndex::build(adapter, &after, &new_tree)
-                .resolve_after_migration(&anchor)
-        } else {
-            resolver.resolve(&anchor, &after, &new_tree)
-        };
+        let outcome =
+            if migrated { index.resolve_after_migration(&anchor) } else { index.resolve(&anchor) };
         match outcome {
             Resolution::Detached(reason) => {
                 tally.detached += 1;

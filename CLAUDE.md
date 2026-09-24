@@ -351,6 +351,18 @@ Correctness properties, not feature counts. All tracks proceed concurrently; the
 
   **Naming is what makes an anchor durable, and this is the measurement that shows it.** Verifying a freshly imported corpus against the code it was captured from should resolve everything. Java and Go detach nothing; Rust detaches 22 of 27,642 (0.08%), C++ 17 of 5,261 (0.32%), TypeScript 71 of 4,147 (1.71%). In all five corpora **every single one of those anchors has no symbol** — without one a construct can only be matched by content, so two identical bodies are indistinguishable, and ambiguity is failure rather than a tiebreak. TypeScript's rate is twenty-one times Rust's for exactly the reason above. An adapter that fails to name a declaration form is a correctness problem, not a cosmetic one.
 
+  **Five more corpora, measured after the harness stopped being quadratic**, none of them in the table above and none chosen by anyone here. 1,839 anchors, zero suspicious:
+
+| corpus | language | commits | anchors | survived | detached |
+| --- | --- | --- | --- | --- | --- |
+| [gson](https://github.com/google/gson) | Java | 150 | 128 | **100.0%** | 0 |
+| [click](https://github.com/pallets/click) | Python | 150 | 576 | **97.4%** | 15 |
+| [json](https://github.com/nlohmann/json) | C++ | 150 | 831 | **96.4%** | 30 |
+| [got](https://github.com/sindresorhus/got) | TypeScript | 150 | 136 | **94.9%** | 7 |
+| [mux](https://github.com/gorilla/mux) | Go | 150 | 168 | **94.0%** | 10 |
+
+  nlohmann could not be measured at all before that: replaying twenty of its commits did not finish in one hundred and ten seconds, and it now takes seven for a hundred and fifty. The harness rebuilt the whole-file fingerprint table and the whole `FileIndex` once **per declaration**, so a single 25,000-line header cost both a few hundred times over. That is the third time this shape of mistake has been found here, and it had the worst consequence of the three: it silently restricted the corpus that substantiates G2 to repositories small enough to tolerate it, which excludes exactly the single-header C++ shape that stresses the resolver hardest.
+
   **Rung 5 is exercised**: 27 anchors on ripgrep and 12 here followed a file across a git rename. The harness twice flattered these numbers by measuring less — it skipped renamed files entirely, and it captured only direct children of the root, so TypeScript, where nearly every declaration sits inside an `export` statement, contributed 143 anchors instead of 1,496.
 
   **The hard zero is carried by the property test**, which has ground truth by construction: for any tree and any edit script, resolution is correct or `Detached`. Replay over real history cannot label outcomes automatically, so it measures survival and *flags* confident rungs landing on a different symbol for human inspection. Do not claim replay proves the invariant; it evidences it.
