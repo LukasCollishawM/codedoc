@@ -251,7 +251,18 @@ impl Kind {
             Kind::Invariant | Kind::Security | Kind::Precondition | Kind::Postcondition => {
                 AnchorConfidence::High
             }
-            _ => AnchorConfidence::Medium,
+            Kind::Explanation
+            | Kind::Rationale
+            | Kind::Performance
+            | Kind::Assumption
+            | Kind::Workaround
+            | Kind::Specification
+            | Kind::KnownFailureMode
+            | Kind::Ownership
+            | Kind::Decision
+            | Kind::Warning
+            | Kind::Relation(_)
+            | Kind::Tombstone => AnchorConfidence::Medium,
         }
     }
 
