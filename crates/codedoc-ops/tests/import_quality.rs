@@ -222,3 +222,36 @@ fn a_deprecation_note_is_a_warning() {
     let listing = codedoc_ops::list(root.path(), None, None, None, None, None, None).unwrap();
     assert_eq!(listing["records"][0]["kind"], "warning", "{listing}");
 }
+
+#[test]
+fn doxygen_markup_does_not_arrive_as_prose() {
+    let root = project(&[(
+        "src/reader.cpp",
+        "/*!\n@brief reads a MessagePack byte array\n@param len the length to read\n@return the bytes\n*/\nvoid read_array(int len) {}\n",
+    )]);
+    codedoc_ops::import(root.path(), None, &["src".to_owned()], true, None).unwrap();
+    let listing = codedoc_ops::list(root.path(), None, None, None, None, None, None).unwrap();
+    let record = &listing["records"][0];
+
+    assert_eq!(
+        record["claim"], "reads a MessagePack byte array",
+        "a summary tag is a marker, not part of what the comment says: {listing}"
+    );
+    let detail = record["detail"].as_str().unwrap_or_default();
+    assert!(detail.starts_with("@param"), "the reference tags are the detail: {listing}");
+}
+
+#[test]
+fn a_banner_is_not_a_claim() {
+    let root = project(&[(
+        "src/header.cpp",
+        "// __ _____ _____ |  |   __|     | JSON for Modern C++\n// /////////////// constructors ///////////////\nvoid build() {}\n",
+    )]);
+    codedoc_ops::import(root.path(), None, &["src".to_owned()], true, None).unwrap();
+    let listing = codedoc_ops::list(root.path(), None, None, None, None, None, None).unwrap();
+    assert_eq!(
+        listing["total"], 0,
+        "ASCII art and section dividers carry more punctuation than letters, and every \
+         C file opens with one: {listing}"
+    );
+}

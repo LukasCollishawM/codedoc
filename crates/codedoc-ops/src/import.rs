@@ -233,7 +233,7 @@ fn harvest_file(
             .collect::<Vec<_>>()
             .join("\n");
 
-        let text = reflow(&text);
+        let text = crate::doc_tags::break_before_first_block_tag(&reflow(&text));
         let carried = match without_directive(text.trim()) {
             Some(reason) => reason,
             None => text.trim().to_owned(),
@@ -418,8 +418,10 @@ fn clean_comment(raw: &str) -> String {
     let trimmed = raw.trim();
     let stripped = trimmed
         .strip_prefix("/**")
+        .or_else(|| trimmed.strip_prefix("/*!"))
         .or_else(|| trimmed.strip_prefix("/*"))
         .map(|body| body.trim_end_matches("*/"))
+        .map(|body| body.strip_prefix('!').unwrap_or(body))
         .unwrap_or(trimmed);
     stripped.lines().map(strip_markers).collect::<Vec<_>>().join("\n").trim().to_owned()
 }
@@ -542,9 +544,18 @@ fn outside_quotes(text: &str) -> String {
 }
 
 fn is_decorative(claim: &str) -> bool {
-    claim
+    if claim
         .chars()
         .all(|character| !character.is_alphanumeric() || character == '-' || character == '=')
+    {
+        return true;
+    }
+    let body: Vec<char> = claim.chars().filter(|character| !character.is_whitespace()).collect();
+    if body.is_empty() {
+        return false;
+    }
+    let ornament = body.iter().filter(|character| !character.is_alphanumeric()).count();
+    ornament * 2 > body.len()
 }
 
 fn infer_kind(claim: &str) -> Kind {

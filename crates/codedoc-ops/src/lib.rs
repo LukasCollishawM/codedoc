@@ -2,6 +2,7 @@
 
 mod author;
 mod coverage;
+mod doc_tags;
 mod evidence;
 mod gaps;
 mod health;
