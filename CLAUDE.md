@@ -351,15 +351,19 @@ Correctness properties, not feature counts. All tracks proceed concurrently; the
 
   **Naming is what makes an anchor durable, and this is the measurement that shows it.** Verifying a freshly imported corpus against the code it was captured from should resolve everything. Java and Go detach nothing; Rust detaches 22 of 27,642 (0.08%), C++ 17 of 5,261 (0.32%), TypeScript 71 of 4,147 (1.71%). In all five corpora **every single one of those anchors has no symbol** — without one a construct can only be matched by content, so two identical bodies are indistinguishable, and ambiguity is failure rather than a tiebreak. TypeScript's rate is twenty-one times Rust's for exactly the reason above. An adapter that fails to name a declaration form is a correctness problem, not a cosmetic one.
 
-  **Five more corpora, measured after the harness stopped being quadratic**, none of them in the table above and none chosen by anyone here. 1,839 anchors, five flagged for inspection:
+  **Seven more corpora, measured after the harness stopped being quadratic**, none of them in the table above and none chosen by anyone here. 6,407 anchors, five flagged for inspection:
 
 | corpus | language | commits | anchors | survived | detached |
 | --- | --- | --- | --- | --- | --- |
+| [gin](https://github.com/gin-gonic/gin) | Go | 150 | 846 | **100.0%** | 0 |
 | [gson](https://github.com/google/gson) | Java | 150 | 128 | **100.0%** | 0 |
 | [click](https://github.com/pallets/click) | Python | 150 | 576 | **97.4%** | 15 |
+| [traefik](https://github.com/traefik/traefik) | Go, TypeScript, TSX | 150 | 3,722 | **96.7%** | 121 |
 | [json](https://github.com/nlohmann/json) | C++ | 150 | 831 | **96.4%** | 30 |
 | [got](https://github.com/sindresorhus/got) | TypeScript | 150 | 136 | **94.9%** | 7 |
 | [mux](https://github.com/gorilla/mux) | Go | 150 | 168 | **94.0%** | 10 |
+
+  traefik is the first corpus here that is more than one language, and the largest single replay: 3,722 anchors across Go, TypeScript and TSX in one ledger, resolving in one pass.
 
   **All five flagged results are on nlohmann and all five are one adapter defect.** `value_t` and `operator` resolved at content identity onto the declarations they were captured from, and every one kept its leaf declaration, so nothing reattached to the wrong construct. What changed was the symbol path, which gained a segment named `namespace`: tree-sitter-cpp cannot expand `NLOHMANN_JSON_NAMESPACE_BEGIN`, so it reads that macro, the namespace it opens and the body beneath it as one `function_definition` whose return type is the macro and whose name is the token `namespace`. The symbol therefore depends on whether the preprocessor context happened to parse, and moves when that changes. It also collides: **33.0% of nlohmann's 1,987 imported anchors are rooted at `cpp://namespace` and 33 of them are that bare symbol**, which by the overload rule identifies none of them, against **6.6% of fmt's 1,032**. Reported to `codedoc-lang`, which owns the fix — a declarator that is a reserved word is a mis-parse, and refusing it costs nothing real. `crates/codedoc-anchor/tests/cpp_namespace_macros.rs` pins the behaviour it should have. Replay exits non-zero whenever it flags anything; a sweep that loses that exit code is how the count above was first recorded as a zero.
 
