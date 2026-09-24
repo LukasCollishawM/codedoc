@@ -1,21 +1,24 @@
 # codedoc
 
-**codedoc gives a codebase a memory.** When a coding agent works something out about
-your code that the source does not say, it writes it down here, and the next agent to
-touch that code is told about it before it changes anything.
+codedoc stores what people and agents work out about a codebase: constraints, traps,
+the reasoning behind a decision. The claims live outside the source files and stay
+attached to the code they describe, so an agent about to change that code can be handed
+them first.
 
 ## The problem
 
 Somebody once spent an afternoon discovering that a function must run before another,
 or that an error code means the opposite of what it looks like, or that a timeout is 30
 seconds because anything lower breaks a downstream service. That knowledge went into a
-commit message, a pull request comment, or a chat window, and is now gone.
+commit message, a pull request comment, or a chat window, and is gone.
 
-Coding agents make this worse and better at the same time. Worse, because an agent
-re-derives that knowledge on every task and then discards it. Better, because an agent
-will happily write down what it learns, if there is somewhere to put it — and a comment
-is not somewhere, because the next refactor deletes it or moves the code out from under
-it.
+Coding agents make this worse and better at once. Worse, because an agent re-derives
+that knowledge on every task and then discards it. Better, because an agent will write
+down what it learns if there is somewhere to put it.
+
+A comment is a poor somewhere. It cannot be searched across a repository by what it
+says, cannot be marked as superseded by a later understanding, carries no record of who
+claimed it or how sure they were, and nothing checks it against the code it sits above.
 
 codedoc is that somewhere.
 
@@ -114,8 +117,8 @@ source.
 
 ## How it survives the code changing
 
-A note pinned to "line 47" is wrong the moment someone adds an import. So codedoc does
-not store line numbers. Each claim is attached to an **anchor**, which records several
+A note filed under "line 47" is wrong as soon as anything above it changes length, so
+codedoc does not store line numbers. Each claim is attached to an **anchor**, which records several
 independent descriptions of the code it points at:
 
 - the **name** — `rust://is_ancestor`, built from the enclosing declarations
@@ -167,7 +170,7 @@ Claims can also join two pieces of code rather than describe one: *this function
 run after that one*, *this is guarded by that check*. Such a fact belongs to neither
 function on its own and has nowhere to live in a comment on either.
 
-## Does it actually work
+## Measured against real history
 
 Replayed over the real history of seven codebases — zod, gson, ripgrep, httpx, cobra,
 fmt and this repository — **5,371 anchors, and not one landed on the wrong symbol.**
