@@ -332,6 +332,7 @@ pub fn list(
                 "record": record.id().to_string(),
                 "kind": record.kind().as_str(),
                 "claim": record.content().body.claim,
+                "detail": record.content().body.detail,
                 "author": serde_json::to_value(&record.content().author).unwrap_or(Value::Null),
                 "file": record.subject().map(|anchor| anchor.file.as_str().to_owned()),
                 "symbol": record
@@ -443,6 +444,7 @@ pub fn history(root: &Path, reference: &str) -> Outcome {
                 "record": entry.id().to_string(),
                 "kind": entry.kind().as_str(),
                 "claim": entry.content().body.claim,
+                "detail": entry.content().body.detail,
                 "created": entry.content().created.to_rfc3339(),
                 "code_revision": entry.content().code_revision.as_ref().map(ToString::to_string),
                 "affirmation": restates_its_parent,
@@ -489,6 +491,7 @@ fn symbol_history(graph: &Graph, symbol: &str) -> Outcome {
                 "record": record.id().to_string(),
                 "kind": record.kind().as_str(),
                 "claim": record.content().body.claim,
+                "detail": record.content().body.detail,
                 "created": record.content().created.to_rfc3339(),
                 "code_revision": record.content().code_revision.as_ref().map(ToString::to_string),
                 "standing": if standing.contains(&record.id().to_string()) {

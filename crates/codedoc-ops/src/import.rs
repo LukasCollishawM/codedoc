@@ -16,6 +16,62 @@ use tree_sitter::Node;
 use walkdir::WalkDir;
 
 const MINIMUM_CLAIM_LENGTH: usize = 12;
+
+const DIRECTIVES: &[&str] = &[
+    "type: ignore",
+    "noqa",
+    "pylint:",
+    "pyright:",
+    "mypy:",
+    "ruff:",
+    "pragma:",
+    "fmt: off",
+    "fmt: on",
+    "fmt: skip",
+    "isort:",
+    "-*- coding:",
+    "eslint-disable",
+    "eslint-enable",
+    "@ts-ignore",
+    "@ts-expect-error",
+    "@ts-nocheck",
+    "prettier-ignore",
+    "istanbul ignore",
+    "c8 ignore",
+    "deno-lint-ignore",
+    "biome-ignore",
+    "sourcemappingurl",
+    "nolint",
+    "go:generate",
+    "go:build",
+    "go:embed",
+    "go:noinline",
+    "go:linkname",
+    "+build",
+    "clang-format off",
+    "clang-format on",
+    "spdx-license-identifier",
+    "@generated",
+    "checkstyle:",
+    "codeql",
+    "vim:",
+    "local variables:",
+];
+
+const REASON_SEPARATORS: &[&str] = &[" -- ", " — ", " # ", " // "];
+
+pub(crate) fn without_directive(claim: &str) -> Option<String> {
+    let lowered = claim.to_ascii_lowercase();
+    let matched = DIRECTIVES.iter().find(|directive| lowered.starts_with(*directive))?;
+    let rest = &claim[matched.len()..];
+    let reason = REASON_SEPARATORS
+        .iter()
+        .filter_map(|separator| rest.split_once(separator))
+        .map(|(_, reason)| reason.trim())
+        .find(|reason| !reason.is_empty())
+        .unwrap_or("");
+    Some(reason.to_owned())
+}
 const ADJACENCY_LINES: usize = 2;
 
 struct Harvested {
@@ -164,10 +220,17 @@ fn harvest_file(
         let text = block
             .iter()
             .filter_map(|node| node.utf8_text(source.as_bytes()).ok())
+            .filter(|raw| !is_shebang(raw))
             .map(clean_comment)
             .collect::<Vec<_>>()
             .join("\n");
-        let claim = text.trim().to_owned();
+
+        let text = reflow(&text);
+        let carried = match without_directive(text.trim()) {
+            Some(reason) => reason,
+            None => text.trim().to_owned(),
+        };
+        let (claim, detail) = split_claim(&carried);
         if claim.chars().count() < MINIMUM_CLAIM_LENGTH || is_decorative(&claim) {
             continue;
         }
@@ -198,7 +261,7 @@ fn harvest_file(
                 schema: SCHEMA_VERSION,
                 kind,
                 anchors: vec![AnchorRole { role: Role::Subject, anchor }],
-                body: Body { claim, detail: None },
+                body: Body { claim, detail },
                 evidence: Vec::new(),
                 assurance: Assurance::Inferred,
                 author: Author::Analyzer { name: "comment-import".to_owned() },
@@ -341,21 +404,55 @@ fn clean_comment(raw: &str) -> String {
         .or_else(|| trimmed.strip_prefix("/*"))
         .map(|body| body.trim_end_matches("*/"))
         .unwrap_or(trimmed);
-    stripped
-        .lines()
-        .map(|line| {
-            line.trim()
-                .trim_start_matches("///")
-                .trim_start_matches("//!")
-                .trim_start_matches("//")
-                .trim_start_matches('#')
-                .trim_start_matches('*')
-                .trim()
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
-        .trim()
-        .to_owned()
+    stripped.lines().map(strip_markers).collect::<Vec<_>>().join("\n").trim().to_owned()
+}
+
+pub(crate) fn reflow(text: &str) -> String {
+    let mut paragraphs: Vec<String> = Vec::new();
+    let mut current: Vec<&str> = Vec::new();
+    for line in text.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            if !current.is_empty() {
+                paragraphs.push(current.join(" "));
+                current.clear();
+            }
+            continue;
+        }
+        current.push(line);
+    }
+    if !current.is_empty() {
+        paragraphs.push(current.join(" "));
+    }
+    paragraphs.join("\n\n").trim().to_owned()
+}
+
+fn strip_markers(line: &str) -> String {
+    let trimmed = line.trim();
+    for opener in ["///", "//!", "//", "--"] {
+        if let Some(body) = trimmed.strip_prefix(opener) {
+            let body = body.strip_prefix('<').unwrap_or(body);
+            return body.trim().to_owned();
+        }
+    }
+    if let Some(body) = trimmed.strip_prefix('#') {
+        let body = body.strip_prefix(':').unwrap_or(body);
+        return body.trim().to_owned();
+    }
+    trimmed.strip_prefix('*').unwrap_or(trimmed).trim().to_owned()
+}
+
+pub(crate) fn is_shebang(raw: &str) -> bool {
+    raw.trim_start().starts_with("#!")
+}
+
+pub(crate) fn split_claim(text: &str) -> (String, Option<String>) {
+    match text.split_once("\n\n") {
+        Some((head, rest)) if !rest.trim().is_empty() => {
+            (head.trim().to_owned(), Some(rest.trim().to_owned()))
+        }
+        _ => (text.trim().to_owned(), None),
+    }
 }
 
 fn is_decorative(claim: &str) -> bool {
@@ -390,4 +487,47 @@ fn infer_kind(claim: &str) -> Kind {
         return Kind::Performance;
     }
     Kind::Explanation
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{clean_comment, reflow, split_claim, without_directive};
+
+    #[test]
+    fn a_blank_comment_line_cleans_to_nothing() {
+        assert_eq!(clean_comment("//"), "");
+        assert_eq!(clean_comment("#"), "");
+    }
+
+    #[test]
+    fn reflow_joins_wrapped_lines_and_keeps_paragraph_breaks() {
+        assert_eq!(reflow("one\ntwo"), "one two");
+        assert_eq!(reflow("one\n\ntwo"), "one\n\ntwo");
+    }
+
+    #[test]
+    fn split_claim_divides_at_the_first_paragraph_break() {
+        assert_eq!(split_claim("one\n\ntwo"), ("one".to_owned(), Some("two".to_owned())));
+        assert_eq!(split_claim("one two"), ("one two".to_owned(), None));
+    }
+
+    #[test]
+    fn a_block_of_three_lines_becomes_claim_and_detail() {
+        let joined = ["Host adds a matcher.", "", "It accepts a template."]
+            .iter()
+            .map(|line| clean_comment(line))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let (claim, detail) = split_claim(&reflow(&joined));
+        assert_eq!(claim, "Host adds a matcher.");
+        assert_eq!(detail.as_deref(), Some("It accepts a template."));
+    }
+
+    #[test]
+    fn an_eslint_directive_keeps_only_the_reason() {
+        let reason = without_directive(
+            "eslint-disable-next-line no-await-in-loop -- requests must be serialised",
+        );
+        assert_eq!(reason.as_deref(), Some("requests must be serialised"));
+    }
 }
