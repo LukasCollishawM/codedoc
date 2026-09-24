@@ -100,10 +100,9 @@ Every MCP client receives these instructions when it connects:
 | `codedoc_import` | once, when adopting codedoc on a repository that already has comments |
 | `codedoc_stats` | to check ledger health and coverage |
 
-**Report what you put in doubt.** `codedoc_review` renders the claims a change has
-made stale or detached. An agent that finishes a change and says nothing about the
-three invariants it invalidated has done half the job, and the reviewer will not know
-to look.
+**Report what a change puts in doubt.** `codedoc_review` renders the claims a change
+has made stale or detached. An agent that completes a change without reporting the
+invariants it invalidated leaves the reviewer with no indication to look.
 
 Four CLI commands have no tool: `init`, `reindex`, `migrate` and `git
 install-merge-driver`. Those are administrative — setting a repository up, repairing
@@ -162,24 +161,24 @@ returns what is already known about that change as one answer, with the budget s
 across the whole set rather than a few claims from each file. `codedoc_context` is the
 sharper tool once you are at one location and know where.
 
-**If `codedoc_attach` comes back with `symbol: null`, the record is fragile.** It
-landed on a construct the language adapter cannot name — a macro invocation, a
+**A result of `symbol: null` from `codedoc_attach` indicates a fragile record.** It
+has landed on a construct the language adapter cannot name — a macro invocation, a
 top-level statement, or a form the adapter does not recognise. Such a record resolves
 only while its file is byte-identical and detaches on the first edit. Prefer attaching
 to the enclosing named declaration instead, or to the file, and say in the claim which
 part of it you mean.
 
-**Do not write down what the name already says.** `codedoc_attach` reports
-`restates_the_symbol` when every word of your claim is already in the symbol it is
-attached to. "Validates the token" on `validate_token` costs a reader time and tells
-them nothing; what you worked out — that validation has to precede tenant resolution,
-or that an empty token returns false rather than erroring — is the record worth having.
+**Do not record what the name already states.** `codedoc_attach` reports
+`restates_the_symbol` when every word of a claim already appears in the symbol it is
+attached to. "Validates the token" on `validate_token` costs a reader time and conveys
+nothing. The worthwhile record is the derived constraint: that validation must precede
+tenant resolution, or that an empty token returns false rather than raising.
 
-**`codedoc_attach` tells you when you are repeating yourself.** Its result carries a
-`similar` list: existing claims on the same code that yours largely restates. It still
-writes your record — a near-duplicate is a prompt, not a refusal — but if something is
-listed there, the better move is usually `codedoc_supersede` on that record, so the
-corpus gains a sharper claim instead of a second rough one.
+**`codedoc_attach` reports near-duplicates.** Its result carries a `similar` list of
+existing claims on the same code that the new one largely restates. The record is still
+written, since a near-duplicate is advisory rather than an error, but where something is
+listed the better action is usually `codedoc_supersede` on that record, which yields one
+sharper claim rather than two rough ones.
 
 **Staleness requires an answer, and is not itself a verdict.** When `codedoc_verify`
 reports a record as stale, the code beneath the claim has changed enough to warrant
