@@ -130,17 +130,27 @@ fn render_verify(payload: &Value, out: &mut String) {
         out,
         "{fresh} unchanged   {migrated} migrated   {stale} stale   {detached} detached"
     );
+    let edited = counts.get("edited").and_then(Value::as_u64).unwrap_or(0);
+    if edited > 0 {
+        let _ = writeln!(out, "{edited} with edited code beneath an unchanged shape");
+    }
 
     let empty = Vec::new();
     let findings = payload["findings"].as_array().unwrap_or(&empty);
     for finding in findings {
         let status = finding["status"].as_str().unwrap_or("");
-        if status == "fresh" || status == "migrated" {
+        let edited_here = finding["content_changed"].as_bool() == Some(true);
+        if (status == "fresh" || status == "migrated") && !edited_here {
             continue;
         }
         let _ = writeln!(out);
+        let heading = if edited_here && status != "stale" && status != "detached" {
+            "EDITED"
+        } else {
+            status
+        };
         let _ =
-            writeln!(out, "{} {}", status.to_uppercase(), finding["file"].as_str().unwrap_or(""));
+            writeln!(out, "{} {}", heading.to_uppercase(), finding["file"].as_str().unwrap_or(""));
         if let Some(symbol) = finding.get("symbol").and_then(Value::as_str) {
             let _ = writeln!(out, "  {symbol}");
         }

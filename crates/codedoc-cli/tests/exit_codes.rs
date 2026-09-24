@@ -461,3 +461,52 @@ fn render_given_a_file_says_it_wanted_a_format() {
         "every other command takes a file first, so passing one here is the obvious mistake. This reported it as an unknown record kind, which is a different vocabulary belonging to attach, and left the reader looking for a record kind called tree.go: {said}"
     );
 }
+
+#[test]
+fn the_human_report_says_what_the_json_says_about_an_edit() {
+    let root = project();
+    assert!(run(root.path(), &["init"]).status.success(), "init");
+    assert!(
+        run(
+            root.path(),
+            &[
+                "attach",
+                "src/auth.rs",
+                "--symbol",
+                "rust://validate",
+                "--kind",
+                "explanation",
+                "--claim",
+                "An empty token is never valid.",
+            ],
+        )
+        .status
+        .success(),
+        "attach"
+    );
+
+    std::fs::write(
+        root.path().join("src/auth.rs"),
+        "pub fn validate(token: &str) -> bool {
+    !token.is_empty() && token != \"root\"
+}
+",
+    )
+    .unwrap();
+
+    let json = payload(&run(root.path(), &["verify"]));
+    let edited = json["counts"]["edited"].as_u64().unwrap_or(0);
+    assert_eq!(edited, 1, "the body was edited: {json}");
+
+    let human = Command::new(env!("CARGO_BIN_EXE_codedoc"))
+        .arg("--root")
+        .arg(root.path())
+        .arg("verify")
+        .output()
+        .expect("the binary runs");
+    let said = String::from_utf8_lossy(&human.stdout);
+    assert!(
+        said.contains("EDITED"),
+        "the human renderer is written over the JSON, so information the JSON carries and the human report drops is a divergence between the two paths. verify skipped every fresh and migrated finding, and an edit that keeps a construct's shape is reported on a finding that is still one of those: {said}"
+    );
+}

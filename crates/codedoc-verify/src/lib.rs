@@ -79,8 +79,12 @@ impl Report {
         for status in [Status::Fresh, Status::Migrated, Status::Stale, Status::Detached] {
             counts.insert(status.as_str(), 0);
         }
+        counts.insert("edited", 0);
         for finding in &self.findings {
             *counts.entry(finding.status.as_str()).or_insert(0) += 1;
+            if finding.content_changed {
+                *counts.entry("edited").or_insert(0) += 1;
+            }
         }
         counts
     }
