@@ -40,10 +40,14 @@ enum AuthorKind {
 
 #[derive(clap::Args)]
 struct RelateArgs {
+    #[arg(help = "The place the fact is about, as path@symbol or path:line")]
     subject: String,
 
+    #[arg(help = "must_execute_after, guarded_by, constrained_by, invalidates, tested_by, \
+                  derived_from, contradicts, supersedes or owns")]
     verb: String,
 
+    #[arg(help = "The place at the other end of the link, as path@symbol or path:line")]
     object: String,
 
     #[arg(long)]
@@ -68,15 +72,25 @@ enum GitCommand {
 
 #[derive(clap::Args)]
 struct AttachArgs {
+    #[arg(help = "The file the claim is about, relative to the repository root")]
     file: String,
 
-    #[arg(long, conflicts_with = "line")]
+    #[arg(
+        long,
+        conflicts_with = "line",
+        help = "The construct inside that file, as the adapter names it, such as rust://validate"
+    )]
     symbol: Option<String>,
 
-    #[arg(long, conflicts_with = "symbol")]
+    #[arg(
+        long,
+        conflicts_with = "symbol",
+        help = "A line inside the construct, when its name is not to hand. Without either, \
+                the claim is about the file"
+    )]
     line: Option<u32>,
 
-    #[arg(long)]
+    #[arg(long, help = "One of `codedoc kinds`, such as invariant, security or rationale")]
     kind: String,
 
     #[arg(long)]
@@ -308,8 +322,28 @@ enum Command {
     },
 }
 
+fn parsed() -> Result<Cli, ExitCode> {
+    match Cli::try_parse() {
+        Ok(cli) => Ok(cli),
+        Err(complaint) => {
+            let _ = complaint.print();
+            Err(match complaint.kind() {
+                clap::error::ErrorKind::DisplayHelp
+                | clap::error::ErrorKind::DisplayVersion
+                | clap::error::ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand => {
+                    ExitCode::SUCCESS
+                }
+                _ => ExitCode::from(4),
+            })
+        }
+    }
+}
+
 fn main() -> ExitCode {
-    let cli = Cli::parse();
+    let cli = match parsed() {
+        Ok(cli) => cli,
+        Err(code) => return code,
+    };
     match dispatch(&cli) {
         Ok((value, code)) => {
             let rendered = if cli.json {

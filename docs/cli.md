@@ -32,7 +32,7 @@ one ledger would make them answer the wrong question.
 | `1` | stale documentation present |
 | `2` | something needs a decision: a detached anchor from `verify`, `detached` or `review`; a citation that stopped resolving from `evidence`; either of those from `doctor` |
 | `3` | ledger integrity failure |
-| `4` | the command itself failed |
+| `4` | the command itself failed, including a misuse of the command line |
 
 `doctor` exits `0` for findings that need someone to read code and decide — drifted
 claims, apparent disagreements — and `2` only for what a machine can settle. A build

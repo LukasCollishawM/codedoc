@@ -428,3 +428,22 @@ fn a_base_revision_this_clone_does_not_have_is_the_command_failing_not_the_ledge
         );
     }
 }
+
+#[test]
+fn a_misuse_of_the_command_line_is_not_an_anchor_needing_adjudication() {
+    let root = project();
+
+    for (command, want, why) in [
+        (vec!["attach"], 4, "attach with no file, kind or claim is a usage error"),
+        (vec!["notacommand"], 4, "an unknown subcommand is a usage error"),
+        (vec!["--help"], 0, "asking for help is not a failure"),
+        (vec!["--version"], 0, "asking the version is not a failure"),
+    ] {
+        let attempt = run(root.path(), &command);
+        assert_eq!(
+            attempt.status.code(),
+            Some(want),
+            "clap exits 2 on a usage error by default, and docs/cli.md gives 2 to a detached anchor or a broken citation, which is a decision someone has to make about the corpus. A mistyped command is not that, and an agent or CI job branching on 2 would go looking for anchors to adjudicate. {why}: {command:?}"
+        );
+    }
+}
