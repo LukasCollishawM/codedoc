@@ -1,6 +1,7 @@
 use codedoc_core::RecordId;
 use codedoc_ledger::{Kind, Record};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 use crate::Graph;
 
@@ -100,52 +101,58 @@ impl Graph {
             });
         }
 
-        for (position, left) in active.iter().enumerate() {
-            if left.kind().is_relation() || left.kind() == Kind::Tombstone {
+        let mut sharing: BTreeMap<(String, String), Vec<&Record>> = BTreeMap::new();
+        for record in &active {
+            if record.kind().is_relation() || record.kind() == Kind::Tombstone {
                 continue;
             }
-            for right in active.iter().skip(position + 1) {
-                if right.kind().is_relation() || left.kind() != right.kind() {
-                    continue;
-                }
-                let anchor = subject_symbol(left);
-                if anchor.is_none() || anchor != subject_symbol(right) {
-                    continue;
-                }
+            let Some(symbol) = subject_symbol(record) else {
+                continue;
+            };
+            sharing.entry((symbol, record.kind().as_str())).or_default().push(record);
+        }
 
-                let score =
-                    claim_similarity(&left.content().body.claim, &right.content().body.claim);
-                if (NEAR_DUPLICATE_FLOOR..NEAR_DUPLICATE_CEILING).contains(&score) {
-                    findings.push(Finding {
-                        kind: Conflict::NearDuplicate,
-                        left: left.id(),
-                        right: right.id(),
-                        anchor: anchor.clone(),
-                        left_claim: left.content().body.claim.clone(),
-                        right_claim: right.content().body.claim.clone(),
-                        similarity: Some((score * 100.0) as u32),
-                    });
-                    continue;
-                }
+        for ((symbol, _), candidates) in &sharing {
+            for (position, left) in candidates.iter().enumerate() {
+                for right in candidates.iter().skip(position + 1) {
+                    let anchor = Some(symbol.clone());
 
-                let opposed = matches!(
-                    (left.content().assurance, right.content().assurance),
-                    (codedoc_ledger::Assurance::Asserted, codedoc_ledger::Assurance::Speculative)
-                        | (
+                    let score =
+                        claim_similarity(&left.content().body.claim, &right.content().body.claim);
+                    if (NEAR_DUPLICATE_FLOOR..NEAR_DUPLICATE_CEILING).contains(&score) {
+                        findings.push(Finding {
+                            kind: Conflict::NearDuplicate,
+                            left: left.id(),
+                            right: right.id(),
+                            anchor: anchor.clone(),
+                            left_claim: left.content().body.claim.clone(),
+                            right_claim: right.content().body.claim.clone(),
+                            similarity: Some((score * 100.0) as u32),
+                        });
+                        continue;
+                    }
+
+                    let opposed = matches!(
+                        (left.content().assurance, right.content().assurance),
+                        (
+                            codedoc_ledger::Assurance::Asserted,
+                            codedoc_ledger::Assurance::Speculative
+                        ) | (
                             codedoc_ledger::Assurance::Speculative,
                             codedoc_ledger::Assurance::Asserted
                         )
-                );
-                if opposed {
-                    findings.push(Finding {
-                        kind: Conflict::OppositeAssurance,
-                        left: left.id(),
-                        right: right.id(),
-                        anchor,
-                        left_claim: left.content().body.claim.clone(),
-                        right_claim: right.content().body.claim.clone(),
-                        similarity: None,
-                    });
+                    );
+                    if opposed {
+                        findings.push(Finding {
+                            kind: Conflict::OppositeAssurance,
+                            left: left.id(),
+                            right: right.id(),
+                            anchor,
+                            left_claim: left.content().body.claim.clone(),
+                            right_claim: right.content().body.claim.clone(),
+                            similarity: None,
+                        });
+                    }
                 }
             }
         }
@@ -178,6 +185,41 @@ mod tests {
         let graph = Graph::from_records(vec![first, second]);
         let found = graph.conflicts();
         assert_eq!(found.len(), 1);
+        assert_eq!(found[0].kind, Conflict::NearDuplicate);
+    }
+
+    #[test]
+    fn a_pair_is_found_however_many_unrelated_records_sit_between_them() {
+        let mut records = vec![record_on(
+            "rust://authorize",
+            Kind::Invariant,
+            "Authorization must precede reservation of funds.",
+            Assurance::Asserted,
+            10,
+        )];
+        for index in 0..200 {
+            records.push(record_on(
+                &format!("rust://unrelated{index}"),
+                Kind::Invariant,
+                "Something entirely different is true here.",
+                Assurance::Asserted,
+                20 + index,
+            ));
+        }
+        records.push(record_on(
+            "rust://authorize",
+            Kind::Invariant,
+            "Authorization must precede the reservation of funds always.",
+            Assurance::Asserted,
+            900,
+        ));
+
+        let found = Graph::from_records(records).conflicts();
+        assert_eq!(
+            found.len(),
+            1,
+            "comparing only records that share a symbol is what makes this affordable,              and it must not depend on the two being near each other in the ledger"
+        );
         assert_eq!(found[0].kind, Conflict::NearDuplicate);
     }
 

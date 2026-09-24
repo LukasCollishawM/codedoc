@@ -204,18 +204,25 @@ Behaviour that the specification mandates is tested from `conformance/` vectors 
 
 ### Performance budgets
 
-Measured, not aspirational. Two corpora, both release builds. The small one is the `rmcp` 3.4.1 source (65 files, ~50k LOC, 2095 records). The large one is 120 crates from the cargo registry: **1,910 files, 1.09M LOC, 27,420 records**.
+Measured, not aspirational, and on the large corpus only — a figure from a small one has repeatedly failed to predict anything. The corpus is 120 crates from the cargo registry: **1,910 files, 1.09M LOC, 27,642 records**, imported from the comments already in them. Release builds, best of three.
 
-| operation | 50k LOC | 1.09M LOC | budget |
-| --- | --- | --- | --- |
-| `import --write` | 1.5s | 20.7s | — |
-| `reindex` | — | 2.9s | 60s |
-| `verify` | 3.0s | 7.7s | 60s |
-| `context` (depth 2) | 74ms | 33ms | 100ms |
+| operation | 1.09M LOC | budget |
+| --- | --- | --- |
+| `import --write` | 27s | — |
+| `reindex` | 2.4s | 60s |
+| `verify` | 3.8s | 60s |
+| `doctor` | 5.1s | 60s |
+| `conflicts` | 0.6s | 60s |
+| `coverage` | 0.8s | 60s |
+| `context` (depth 2) | 45ms | 100ms |
+| `brief` | 46ms | 100ms |
+| `search` | 68ms | 100ms |
 
 Everything is inside budget at a million lines, but only after the scale test found something a smaller corpus could not. `context` was **1.98s** at 1M LOC while passing comfortably at 50k, because relation lookup ran one query per symbol, used a `LIKE 'relation.%'` that the kind index cannot serve, and an unindexed `NOT IN` subquery — a cost invisible until a file carried enough claims for the per-symbol loop to matter. One query with a bound `IN` list, a range predicate the index can use, and an index on `parent` took it to 33ms.
 
 The lesson is worth more than the number: a budget met on a small corpus says nothing about an algorithm that is linear in the wrong variable. Measure on the large corpus before claiming a budget is met.
+
+It happened again, and the second time the lesson had already been written down. `conflicts` compared every pair of active records, recomputing each one's subject symbol inside the inner loop, when only pairs sharing a symbol and a kind can ever match. On 43 records that is invisible. On 27,642 it is **164 seconds** — and it went unnoticed until `doctor` called it and a whole-corpus run took nearly three minutes. Bucketing by symbol and kind first, then comparing within buckets, took it to **0.6s**: the same findings, 271 times faster. Anything pairwise needs the large corpus before it is believed, and adding a command that calls three others means re-measuring all three.
 
 **A green local gate says nothing about what you committed.** Every check here runs against the working tree, so none of them can see a file that was edited but never staged. That happened: three commits carried a module that existed only on one disk, because `git add` was given a pathspec for its old location, failed atomically, and its error was discarded. Local builds passed throughout; CI failed three times saying exactly what was wrong. Before trusting a push, either read CI or clone the pushed commit somewhere clean and build it — and never silence `git add`.
 
