@@ -288,7 +288,11 @@ pub fn review_markdown(input: &ReviewInput<'_>) -> String {
     ));
     out.push_str(
         "\nA claim listed here is not necessarily wrong. It means the code it describes \
-         moved or changed enough to be worth re-reading before merge.\n",
+         moved or changed enough to be worth re-reading before merge. Having read it, \
+         say which it was: `codedoc affirm <record>` if the claim still holds, \
+         `codedoc supersede` if it needs rewording, `codedoc retract` if it is gone. \
+         A claim nobody answers for keeps appearing here until everyone stops reading \
+         this comment.\n",
     );
     out.push_str(&undocumented_note(input));
     out

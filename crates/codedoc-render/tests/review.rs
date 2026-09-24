@@ -96,3 +96,35 @@ fn fully_documented_changes_get_no_prompt() {
     given.undocumented_declarations = 0;
     assert!(!review_markdown(&given).contains("carry no recorded knowledge"));
 }
+
+#[test]
+fn a_flagged_claim_names_the_three_ways_to_answer_for_it() {
+    let mut given = input("origin/main");
+    given.stale = vec![(
+        "src/auth.rs".to_owned(),
+        "rust://validate".to_owned(),
+        "Validation precedes tenant resolution.".to_owned(),
+        Some(41),
+    )];
+    let rendered = review_markdown(&given);
+
+    for action in ["codedoc affirm", "codedoc supersede", "codedoc retract"] {
+        assert!(
+            rendered.contains(action),
+            "this comment is where a person meets the tool, and telling them a claim \
+             needs re-reading without naming what to do afterwards leaves the work \
+             undone and the comment repeating itself forever: {action} missing"
+        );
+    }
+}
+
+#[test]
+fn a_clean_change_is_not_lectured_about_what_to_do_next() {
+    let mut given = input("origin/main");
+    given.unchanged = 3;
+    let rendered = review_markdown(&given);
+    assert!(
+        !rendered.contains("codedoc affirm"),
+        "there is nothing to answer for, so advice on answering is noise: {rendered}"
+    );
+}
