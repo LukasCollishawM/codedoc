@@ -218,7 +218,7 @@ mod tests {
         assert_eq!(
             found.len(),
             1,
-            "comparing only records that share a symbol is what makes this affordable,              and it must not depend on the two being near each other in the ledger"
+            "comparing only records that share a symbol is what makes this affordable, and it must not depend on the two being near each other in the ledger"
         );
         assert_eq!(found[0].kind, Conflict::NearDuplicate);
     }

@@ -105,11 +105,15 @@ pub fn concerns_for(root: &Path, file: &Path) -> Vec<Concern> {
             let headline = match severity {
                 Severity::Stale => match finding.drift {
                     Some(amount) => format!(
-                        "codedoc: this {} may no longer describe the code ({amount}% changed)",
+                        "codedoc: this {} may no longer describe the code ({amount}% \
+                         changed). Read it, then `codedoc affirm` if it still holds, or \
+                         `codedoc supersede` if it does not.",
                         finding.kind
                     ),
                     None => format!(
-                        "codedoc: this {} resolved only through a weak signal",
+                        "codedoc: this {} resolved only through a weak signal. Read it, \
+                         then `codedoc affirm` if it still holds, or `codedoc supersede` \
+                         if it does not.",
                         finding.kind
                     ),
                 },

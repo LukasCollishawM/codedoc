@@ -60,12 +60,12 @@ pub fn run(arguments: &[String]) -> ExitCode {
     }
 
     println!("replay: {} commits, {} files", commits.len(), files.len());
-    println!("  anchors captured   {}", tally.anchors);
-    println!("  survived           {} ({:.1}%)", tally.located(), tally.survival() * 100.0);
+    println!("  {:<18} {}", "anchors captured", tally.anchors);
+    println!("  {:<18} {} ({:.1}%)", "survived", tally.located(), tally.survival() * 100.0);
     for (rung, count) in &tally.by_rung {
         println!("    {rung:<20} {count}");
     }
-    println!("  detached           {}", tally.detached);
+    println!("  {:<18} {}", "detached", tally.detached);
     for (reason, count) in &tally.reasons {
         println!("    {reason:<20} {count}");
     }
@@ -85,11 +85,11 @@ pub fn run(arguments: &[String]) -> ExitCode {
 
     if tally.suspicious.is_empty() {
         println!();
-        println!("  suspicious         0");
+        println!("  {:<18} 0", "suspicious");
         return ExitCode::SUCCESS;
     }
 
-    println!("  suspicious         {}", tally.suspicious.len());
+    println!("  {:<18} {}", "suspicious", tally.suspicious.len());
     for entry in tally.suspicious.iter().take(25) {
         println!("    {entry}");
     }

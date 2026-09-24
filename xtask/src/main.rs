@@ -2,6 +2,7 @@
 
 mod comments;
 mod docs;
+mod prose;
 mod replay;
 mod resolver_vectors;
 mod vectors;
@@ -14,10 +15,11 @@ fn main() -> ExitCode {
     match task.as_str() {
         "lint-comments" => comments::run(),
         "lint-docs" => docs::run(),
+        "lint-prose" => prose::run(),
         "replay" => replay::run(&rest),
         "vectors" => vectors::run(),
         "check" => {
-            let outcomes = [comments::run(), docs::run(), replay::run(&rest)];
+            let outcomes = [comments::run(), docs::run(), prose::run(), replay::run(&rest)];
             outcomes
                 .into_iter()
                 .find(|outcome| *outcome != ExitCode::SUCCESS)
@@ -25,7 +27,7 @@ fn main() -> ExitCode {
         }
         other => {
             eprintln!("unknown task {other:?}");
-            eprintln!("tasks: lint-comments, lint-docs, replay, vectors, check");
+            eprintln!("tasks: lint-comments, lint-docs, lint-prose, replay, vectors, check");
             ExitCode::from(2)
         }
     }

@@ -466,7 +466,7 @@ mod tests {
     fn the_bundled_sqlite_provides_full_text_search() {
         let connection = Connection::open_in_memory().unwrap();
         connection.execute_batch("CREATE VIRTUAL TABLE probe USING fts5(body);").expect(
-            "search depends on fts5, which is a compile-time option in sqlite rather than              something to discover at run time on a user's machine",
+            "search depends on fts5, which is a compile-time option in sqlite rather than something to discover at run time on a user's machine",
         );
     }
 
@@ -477,7 +477,7 @@ mod tests {
         assert_eq!(
             fts_expression("retry-after"),
             "\"retry\"* OR \"after\"*",
-            "punctuation inside a word separates it; stripping it instead would fuse two              terms into one that matches nothing"
+            "punctuation inside a word separates it; stripping it instead would fuse two terms into one that matches nothing"
         );
         assert_eq!(fts_expression("  "), "");
         assert_eq!(fts_expression("\"*-"), "");

@@ -24,7 +24,7 @@ Every rule in `CLAUDE.md` is a mechanical check. This is deliberate: strict stan
 
 ```bash
 just check        # exactly what CI runs: lint + test + replay
-just lint         # clippy -D warnings, fmt, no-comments, cargo-deny
+just lint         # clippy -D warnings, fmt, no-comments, docs, prose, cargo-deny
 just test         # cargo nextest run --workspace
 ```
 

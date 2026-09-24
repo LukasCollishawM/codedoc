@@ -56,7 +56,7 @@ fn every_resolver_vector_reaches_its_stated_outcome() {
             assert_eq!(
                 i64::from(anchor.symbol_cardinality),
                 *expected,
-                "{name}: a symbol path that names several declarations must record how                  many, or deleting one of them silently reattaches its record to a sibling"
+                "{name}: a symbol path that names several declarations must record how many, or deleting one of them silently reattaches its record to a sibling"
             );
         }
 

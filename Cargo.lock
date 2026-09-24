@@ -346,12 +346,14 @@ dependencies = [
  "codedoc-graph",
  "codedoc-lang",
  "codedoc-ledger",
+ "codedoc-ops",
  "codedoc-render",
  "codedoc-verify",
  "lsp-server",
  "lsp-types",
  "serde",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]

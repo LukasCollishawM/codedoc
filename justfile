@@ -11,6 +11,7 @@ lint:
     cargo clippy --workspace --all-targets -- -D warnings
     cargo run --quiet -p xtask -- lint-comments
     cargo run --quiet -p xtask -- lint-docs
+    cargo run --quiet -p xtask -- lint-prose
 
 replay commits="200":
     cargo run --quiet --release -p xtask -- replay --commits {{commits}}

@@ -128,7 +128,7 @@ mod tests {
         assert_eq!(
             node.kind(),
             "let_declaration",
-            "a statement and the identifier and literal inside it all span one line, so              ties must resolve outward. Anchoring to a bare identifier would attach a              claim to a token that says nothing about what the line does."
+            "a statement and the identifier and literal inside it all span one line, so ties must resolve outward. Anchoring to a bare identifier would attach a claim to a token that says nothing about what the line does."
         );
     }
 

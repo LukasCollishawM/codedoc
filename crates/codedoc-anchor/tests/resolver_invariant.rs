@@ -168,7 +168,7 @@ fn genuinely_indistinguishable_candidates_detach_rather_than_guess() {
     let outcome = resolve(&anchor, alpha_removed);
     assert!(
         outcome.is_detached(),
-        "the documented function was deleted and two identical twins remain; nothing          distinguishes them, so resolving is a guess. got {outcome:?}"
+        "the documented function was deleted and two identical twins remain; nothing distinguishes them, so resolving is a guess. got {outcome:?}"
     );
 }
 
@@ -200,7 +200,7 @@ fn deleting_one_overload_does_not_reattach_to_its_sibling() {
     let outcome = codedoc_anchor::FileIndex::build(adapter, after, &after_tree).resolve(&anchor);
     assert!(
         outcome.is_detached(),
-        "the documented overload was deleted; resolving onto the surviving overload is a false          reattachment, and a symbol path shared by two declarations does not identify either.          got {outcome:?}"
+        "the documented overload was deleted; resolving onto the surviving overload is a false reattachment, and a symbol path shared by two declarations does not identify either. got {outcome:?}"
     );
 }
 

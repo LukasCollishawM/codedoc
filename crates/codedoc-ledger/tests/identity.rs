@@ -34,7 +34,7 @@ fn a_record_keeps_the_identity_it_was_written_with() {
             for entry in &record.content().anchors {
                 assert_eq!(
                     entry.anchor.symbol_cardinality, 1,
-                    "a record written before cardinality existed must read as one                      declaration, or every anchor in it silently stops matching"
+                    "a record written before cardinality existed must read as one declaration, or every anchor in it silently stops matching"
                 );
                 assert_eq!(entry.anchor.symbol_ordinal, 0);
             }

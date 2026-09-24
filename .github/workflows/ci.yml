@@ -40,6 +40,8 @@ jobs:
         run: cargo run --quiet -p xtask -- lint-comments
       - name: documentation matches the CLI
         run: cargo run --quiet -p xtask -- lint-docs
+      - name: no collapsed line continuations
+        run: cargo run --quiet -p xtask -- lint-prose
 
   anchors:
     name: anchor survival
