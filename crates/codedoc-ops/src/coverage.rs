@@ -12,9 +12,9 @@ use walkdir::WalkDir;
 
 use crate::{Outcome, workspace};
 
-struct FileCoverage {
+pub(crate) struct FileCoverage {
     file: String,
-    declared: Vec<String>,
+    pub(crate) declared: Vec<String>,
 }
 
 fn is_excluded(path: &Path) -> bool {
@@ -46,7 +46,7 @@ fn is_excluded(path: &Path) -> bool {
     vendored || named_as_test
 }
 
-fn declarations_in(root: &Path, relative: &RepoPath) -> Option<FileCoverage> {
+pub(crate) fn declarations_in(root: &Path, relative: &RepoPath) -> Option<FileCoverage> {
     let adapter = Registry::for_path(relative).ok()?;
     let source = fs::read_to_string(root.join(relative.as_str())).ok()?;
     let tree = adapter.parse(&source).ok()?;

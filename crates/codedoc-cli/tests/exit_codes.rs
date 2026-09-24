@@ -297,3 +297,30 @@ fn no_command_answers_a_person_with_raw_json() {
         );
     }
 }
+
+#[test]
+fn a_mistyped_symbol_comes_back_with_the_symbols_that_file_does_declare() {
+    let root = project();
+    assert!(run(root.path(), &["init"]).status.success());
+
+    let refused = run(
+        root.path(),
+        &[
+            "attach",
+            "src/auth.rs",
+            "--symbol",
+            "rust://validate_tokn",
+            "--kind",
+            "invariant",
+            "--claim",
+            "A claim whose symbol path has a typo in it.",
+        ],
+    );
+    assert_eq!(refused.status.code(), Some(4));
+    let rendered = payload(&refused)["error"].as_str().unwrap_or_default().to_owned();
+    assert!(
+        rendered.contains("rust://validate"),
+        "the file declares exactly the symbol that was meant, so saying only that the \
+         typo was not found leaves the caller to go and find what is: {rendered}"
+    );
+}

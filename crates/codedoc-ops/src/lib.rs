@@ -57,8 +57,8 @@ pub enum OpsError {
     #[error("{path} could not be read: {detail}")]
     Unreadable { path: String, detail: String },
 
-    #[error("no symbol {symbol} found in {path}")]
-    SymbolMissing { symbol: String, path: String },
+    #[error("no symbol {symbol} in {path}. It declares: {nearest}")]
+    SymbolMissing { symbol: String, path: String, nearest: String },
 
     #[error("line {line} covers no node in {path}")]
     LineMissing { line: u32, path: String },

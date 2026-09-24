@@ -50,7 +50,11 @@ pub(crate) fn capture(root: &Path, target: &Target) -> Result<Anchor, OpsError> 
     let node = match (&target.symbol, target.line) {
         (Some(symbol), _) => {
             locate::by_symbol(&tree, &source, adapter, symbol).ok_or_else(|| {
-                OpsError::SymbolMissing { symbol: symbol.clone(), path: target.file.clone() }
+                OpsError::SymbolMissing {
+                    symbol: symbol.clone(),
+                    path: target.file.clone(),
+                    nearest: nearest_symbols(root, &path, symbol),
+                }
             })?
         }
         (None, Some(line)) => locate::by_line(&tree, adapter, line)
@@ -60,6 +64,30 @@ pub(crate) fn capture(root: &Path, target: &Target) -> Result<Anchor, OpsError> 
         }
     };
     Ok(Anchor::capture(path, adapter, &source, node))
+}
+
+fn nearest_symbols(root: &Path, relative: &RepoPath, wanted: &str) -> String {
+    let Some(found) = crate::coverage::declarations_in(root, relative) else {
+        return String::new();
+    };
+    let target = wanted.rsplit(['/', ':']).find(|part| !part.is_empty()).unwrap_or(wanted);
+    let mut ranked: Vec<(usize, &String)> = found
+        .declared
+        .iter()
+        .map(|candidate| {
+            let terminal =
+                candidate.rsplit(['/', ':']).find(|part| !part.is_empty()).unwrap_or(candidate);
+            let shared = terminal
+                .chars()
+                .zip(target.chars())
+                .take_while(|(left, right)| left.eq_ignore_ascii_case(right))
+                .count();
+            (usize::MAX - shared, candidate)
+        })
+        .collect();
+    ranked.sort();
+    let names: Vec<&str> = ranked.iter().take(4).map(|(_, name)| name.as_str()).collect();
+    names.join(", ")
 }
 
 pub(crate) fn append(
