@@ -121,3 +121,72 @@ fn naming_no_files_and_no_revision_is_refused_rather_than_answered_with_everythi
          something far larger than the caller asked for"
     );
 }
+
+#[test]
+fn a_brief_with_no_budget_is_still_bounded_and_keeps_the_invariants() {
+    let root = project();
+    for index in 0..200 {
+        attach(
+            root.path(),
+            "src/auth.rs",
+            "rust://validate",
+            "explanation",
+            &format!(
+                "Explanation number {index} describing a detail of validate that a reader \
+                 could work out from the code with enough patience."
+            ),
+        );
+    }
+    attach(
+        root.path(),
+        "src/auth.rs",
+        "rust://validate",
+        "invariant",
+        "Validation must precede tenant resolution, or a tenant is resolved from an \
+         unvalidated token.",
+    );
+
+    let report = codedoc_ops::brief(root.path(), &["src/auth.rs".to_owned()], None, 2, None)
+        .expect("a brief");
+    let pack = &report["pack"];
+
+    assert_eq!(
+        pack["truncated"], true,
+        "two hundred claims on one symbol must not arrive whole: {}",
+        pack["truncated"]
+    );
+    let serialised = serde_json::to_string(&report).expect("serialisable").len();
+    assert!(
+        serialised < 40_000,
+        "a brief nobody budgeted still has to fit somebody's context; got {serialised} bytes"
+    );
+    assert_eq!(
+        pack["invariants"].as_array().map(Vec::len),
+        Some(1),
+        "the invariant is what the budget is spent on first: {pack}"
+    );
+}
+
+#[test]
+fn a_budget_too_small_for_any_claim_still_answers_with_the_most_important_one() {
+    let root = project();
+    populate(root.path());
+
+    attach(
+        root.path(),
+        "src/auth.rs",
+        "rust://validate",
+        "explanation",
+        "An explanation that must not survive a budget of one character.",
+    );
+
+    let report =
+        codedoc_ops::brief(root.path(), &["src/auth.rs".to_owned()], None, 0, Some(1)).unwrap();
+
+    assert_eq!(
+        report["claims"], 1,
+        "a budget nothing fits in is a reason to return the single most important \
+         claim, not a reason to return nothing: {report}"
+    );
+    assert_eq!(report["pack"]["truncated"], true, "{report}");
+}

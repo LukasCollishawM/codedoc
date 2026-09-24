@@ -8,6 +8,8 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Fixed
 
+- **`codedoc context` and `codedoc brief` had no default budget**, so an agent that did not name one received everything. A brief for a single file of got, the HTTP client, returned 149 claims and 65KB of JSON — into the context window the tool exists to protect. Both now default to 12,000 characters, and the budget counts the record identity, file, symbol and assurance that travel with each claim rather than only the claim text, which it had been under-counting by a factor of three. The same brief now returns 31 claims and 15KB with all twelve invariants intact, because budget is spent on invariants first. A budget too small for any claim returns the single most important one rather than nothing.
+
 - **`codedoc import` counted files it could not read as scanned.** A source file that is not valid UTF-8 was silently skipped while still being added to the scanned total, so a repository of latin-1 files reported "scanned 12 files, found 0 documentable comments" — which reads as a statement about the comments rather than about the encoding. Unreadable files are now excluded from the count and reported on their own line. The counts also say "1 file" rather than "1 files".
 
 - **Importing a bulleted comment collapsed the list onto one line.** Reflowing wrapped prose is right; doing it to a list is not. got's RFC 9110 comment, six bullets listing the responses that carry no body, arrived as a single run-on sentence. List items now keep their own line, and a list sitting directly under a lead line makes that line the claim and the list its detail.

@@ -1,5 +1,7 @@
 #![forbid(unsafe_code)]
 
+pub const DEFAULT_BUDGET: usize = 12_000;
+
 use codedoc_core::RecordId;
 use codedoc_graph::Graph;
 use codedoc_ledger::{Kind, Record};
@@ -88,7 +90,8 @@ impl Claim {
     }
 
     fn weight(&self) -> usize {
-        self.claim.len() + self.detail.as_ref().map(String::len).unwrap_or(0)
+        const ENVELOPE: usize = 220;
+        ENVELOPE + self.claim.len() + self.detail.as_ref().map(String::len).unwrap_or(0)
     }
 }
 
@@ -210,6 +213,7 @@ impl ContextPack {
     pub fn fit_within(&mut self, budget: usize) {
         let mut remaining = budget;
         let mut dropped = false;
+        let mut anything_kept = false;
         for section in [
             &mut self.invariants,
             &mut self.security,
@@ -220,8 +224,9 @@ impl ContextPack {
             let mut kept = Vec::new();
             for claim in section.drain(..) {
                 let weight = claim.weight();
-                if weight <= remaining {
-                    remaining -= weight;
+                if weight <= remaining || !anything_kept {
+                    remaining = remaining.saturating_sub(weight);
+                    anything_kept = true;
                     kept.push(claim);
                 } else {
                     dropped = true;

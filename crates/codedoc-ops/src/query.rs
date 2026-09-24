@@ -71,9 +71,7 @@ pub fn context(
     );
     pack.deduplicate();
     pack.rank();
-    if let Some(limit) = budget {
-        pack.fit_within(limit);
-    }
+    pack.fit_within(budget.unwrap_or(codedoc_context::DEFAULT_BUDGET));
 
     Ok(json!({
         "command": "context",
@@ -146,9 +144,7 @@ pub fn brief(
     let mut pack = pack.expect("targets is not empty");
     pack.deduplicate();
     pack.rank();
-    if let Some(limit) = budget {
-        pack.fit_within(limit);
-    }
+    pack.fit_within(budget.unwrap_or(codedoc_context::DEFAULT_BUDGET));
 
     Ok(json!({
         "command": "brief",

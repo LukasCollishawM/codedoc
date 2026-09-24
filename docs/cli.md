@@ -174,8 +174,13 @@ Retrieves what is known about a location: invariants, security, known failure mo
 rationale, and relations at `--depth` (default 2).
 
 Claims are ranked by trust — assurance, then authorship, then age — and `--budget`
-caps the assembled size by dropping the least trustworthy first. `--as-of` answers as
-of a past moment; see `codedoc list` below.
+caps the assembled size by dropping the least trustworthy first. It defaults to 12,000
+characters, counting each claim's own text plus the record identity, file, symbol and
+assurance that travel with it; a pack that is cut reports `truncated`. Budget is spent
+on invariants first, then security, failure modes, rationale and the rest, so what
+survives a tight budget is what a reader could not have guessed. A budget too small for
+any claim returns the single most important one rather than nothing. `--as-of` answers
+as of a past moment; see `codedoc list` below.
 
 ### `codedoc list [--limit N] [--file <path>] [--symbol <path>] [--as-of <date>] [--author <text>]`
 
@@ -364,7 +369,8 @@ codedoc brief --since main --depth 1
 This is the counterpart to `codedoc review`: a brief is what you should know before
 starting, a review is what you may have invalidated after finishing.
 
-`--budget` is spent **across the whole set**, not per file. Asking for context on six
+`--budget` defaults to 12,000 characters here too, and is spent **across the whole
+set**, not per file. Asking for context on six
 files separately returns the top claims from each and six times the intended size; a
 brief returns what matters most about the change. `--depth` follows relations that many
 hops. Each claim names the file and symbol it belongs to, which a single-file context
