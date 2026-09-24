@@ -1,18 +1,56 @@
 # codedoc
 
-codedoc is a semantic memory layer for source repositories, designed to be operated by
-coding agents rather than by people. It stores what has been established about a
-codebase — invariants, security properties, known failure modes, the reasoning behind a
-decision — outside the source files, anchored to program structure rather than to line
-numbers, and serves it back through MCP before an agent modifies anything.
+**codedoc gives a codebase a memory.** When a coding agent works something out about
+your code that the source does not say, it writes it down here, and the next agent to
+touch that code is told about it before it changes anything.
 
-Most use is indirect: the agent calls it, not the developer.
+## The problem
 
-The problem it addresses is retention rather than effort. A coding agent working in an
-unfamiliar repository routinely derives constraints that the source does not state. The
-channels available for writing those down — a comment, a commit message, a chat
-transcript — either do not survive the next refactor or are never read again, so the
-next agent derives the same constraints from scratch.
+Somebody once spent an afternoon discovering that a function must run before another,
+or that an error code means the opposite of what it looks like, or that a timeout is 30
+seconds because anything lower breaks a downstream service. That knowledge went into a
+commit message, a pull request comment, or a chat window, and is now gone.
+
+Coding agents make this worse and better at the same time. Worse, because an agent
+re-derives that knowledge on every task and then discards it. Better, because an agent
+will happily write down what it learns, if there is somewhere to put it — and a comment
+is not somewhere, because the next refactor deletes it or moves the code out from under
+it.
+
+codedoc is that somewhere.
+
+## What it looks like
+
+An agent working on your code finds something non-obvious and records it:
+
+```bash
+codedoc attach crates/codedoc-verify/src/history.rs --symbol rust://is_ancestor \
+  --kind invariant \
+  --claim "Only git exit code 1 means not an ancestor; every other failure must be read as already present." \
+  --detail "git exits 0 for ancestor, 1 for not, and 128 for a revision it does not know. The only caller decides whether a record was written during a change, so reading 128 as 'not an ancestor' would credit an author with recording work they did not do. Under-crediting is the smaller wrong."
+```
+
+Nothing changes in the source file. Weeks later, a different agent is asked to touch
+that function and calls codedoc first:
+
+```
+$ codedoc context crates/codedoc-verify/src/history.rs --symbol rust://is_ancestor
+
+TARGET
+  crates/codedoc-verify/src/history.rs
+  rust://is_ancestor
+
+INVARIANTS
+  - Only git exit code 1 means not an ancestor; every other failure must be
+    read as already present.
+    git exits 0 for ancestor, 1 for not, and 128 for a revision it does not
+    know. The only caller decides whether a record was written during a
+    change, so reading 128 as 'not an ancestor' would credit an author with
+    recording work they did not do. Under-crediting is the smaller wrong.
+    [asserted]
+```
+
+That is the whole idea. The rest of this page is how it survives the code changing.
 
 ## Install
 
@@ -26,8 +64,7 @@ cargo install --path crates/codedoc-mcp   # the MCP server
 cargo install --path crates/codedoc-lsp   # optional: hovers and diagnostics in an editor
 ```
 
-`codedoc-mcp` is a separate binary from `codedoc`, and it is the one the MCP
-configuration below invokes.
+`codedoc-mcp` is a separate binary from `codedoc`, and it is the one your agent runs.
 
 ## Point your agent at it
 
@@ -53,131 +90,138 @@ Then register the server with your MCP client:
 ```
 
 The agent gets twenty-three tools, discovers them itself, and is told
-when to use them. [AGENTS.md](AGENTS.md) documents the instructions the server sends
-and how to get useful records out of an agent.
+when to use them. [AGENTS.md](AGENTS.md) covers what it is told and how to get useful
+records out of an agent rather than restatements of the code.
 
-On a repository that already has comments, `codedoc import src/` anchors each comment
-to the construct it documents and classifies it: `TODO` becomes a warning, `SAFETY:`
-becomes a security record. It runs as a dry run by default and does not modify source
-files.
+Adopting on a codebase that already has comments? `codedoc import src/` reads them,
+works out which construct each one describes, and files it — `TODO` becomes a warning,
+`SAFETY:` becomes a security note. It is a dry run by default and never edits your
+source.
 
-On a repository with no existing documentation, `codedoc gaps` ranks undocumented
-declarations by what the git history did to them — how many commits touched those
-lines, how many of those commits were corrective, and what the most recent one said.
-Repeated corrections indicate that the code as written was insufficient to work from,
-which makes them a reasonable place to start.
+## How it survives the code changing
 
-## How it works
+A note pinned to "line 47" is wrong the moment someone adds an import. So codedoc does
+not store line numbers. Each claim is attached to an **anchor**, which records several
+independent descriptions of the code it points at:
 
-**Records rather than comments.** A record is a typed claim — `invariant`, `security`,
-`known_failure_mode`, `rationale` and others — attached to a region of code. It carries
-its author (a named human, or an agent and session) and an assurance level. An agent's
-inference and a human's verified assertion remain distinguishable indefinitely.
+- the **name** — `rust://is_ancestor`, built from the enclosing declarations
+- the **shape** of the code, ignoring what things are called
+- the **content**, ignoring formatting and comments
+- the **neighbours** on either side
 
-**Anchors rather than line numbers.** An anchor stores several independent signals: a
-symbol path, a fingerprint of the code's shape that ignores identifier names, a
-fingerprint of its content that ignores formatting, and fingerprints of its immediate
-neighbours. Inserting lines above a claim, or renaming locals within it, does not move
-it.
+Insert fifty lines above it and every one of those still matches. Rename the variables
+inside it and the shape still matches. Reformat it and the content still matches. The
+claim follows the code.
 
-**Detachment rather than approximation.** When the resolver exhausts its evidence, the
-anchor detaches and waits for adjudication instead of binding to the nearest plausible
-candidate. Attaching a claim to the wrong function is treated as strictly worse than
-reporting that it could not be placed, so the two are not traded against each other:
-anchor survival is a quality metric to be improved, and false attachment is held at
-zero by a property test.
+**When the evidence runs out, codedoc stops rather than guesses.** If a function was
+deleted and a similar one now sits where it was, codedoc will not quietly move the
+claim across — it marks the anchor **detached** and asks a human. Documentation
+attached to the wrong function is worse than documentation that admits it is lost, so
+the two are not traded off against each other.
 
-Replayed over the real history of seven codebases — zod, gson, ripgrep, httpx, cobra,
-fmt and this repository — 5,371 anchors resolved with no anchor landing on the wrong
-symbol, with detachments checked against the final revision rather than sampled.
-Survival ranges from 99.6% to 82.9%. The spread is a property of the codebases rather
-than of the language adapters: one deleted nineteen files over the window, another
-declares dozens of identically named test macros per file. [CLAUDE.md](CLAUDE.md)
-contains the full table.
+Asking what state things are in looks like this:
 
 ```
 $ codedoc verify
-1493 unchanged   270 migrated   196 stale   136 detached
+71 unchanged   18 migrated   0 stale   0 detached
 ```
 
-Unchanged and migrated anchors both held. Stale means the code beneath a claim changed
-enough to warrant review, which includes a function that keeps its name and signature
-while its body is rewritten. Detached means the anchor could not be placed and is
-waiting for a decision.
+- **unchanged** — found it, nothing about it moved
+- **migrated** — found it somewhere else; the code moved and the claim came with it
+- **stale** — found it, but the code underneath changed enough to be worth re-reading.
+  It does not mean the claim is wrong
+- **detached** — could not find it without guessing, so it is waiting for a decision
 
-Records are immutable. Revising one appends a superseding record; retracting one
-appends a tombstone. Because nothing is edited or deleted, the state of belief at any
-past date is a query rather than a reconstruction.
+Anything stale or detached is listed underneath with the claim and where it was, and
+the exit code says which happened, so CI can branch on it.
 
-Relations are first-class: an agent can record that one function must execute after
-another. Such a fact belongs to neither function individually and has no natural place
-in a comment on either.
+A stale claim is a question put to whoever changed the code: `codedoc affirm` if it
+still holds, `codedoc supersede` if it needs rewording, `codedoc retract` if it is gone.
+A claim nobody answers keeps being reported until somebody does.
 
-Knowledge is searchable by words as well as by location, since an agent arriving at
-unfamiliar code does not yet know which file to ask about, and an entire task can be
-briefed in a single call from the list of files it will touch.
+## Records are never edited
 
-## Where it lives
+Revising a claim writes a new one that supersedes the old. Retracting one writes a
+tombstone. Nothing is deleted, so "what did we believe about this six months ago" is a
+question you can ask.
 
-By default the ledger is written to `.codedoc/`, committed, and shared with the team.
+Each record carries who made it — a named person, or a specific agent and session — and
+how sure they were. An agent's guess and a human's verified assertion stay
+distinguishable, and the two are weighted differently when context is assembled.
 
-For a repository you do not own or do not wish to modify:
+Claims can also join two pieces of code rather than describe one: *this function must
+run after that one*, *this is guarded by that check*. Such a fact belongs to neither
+function on its own and has nowhere to live in a comment on either.
+
+## Does it actually work
+
+Replayed over the real history of seven codebases — zod, gson, ripgrep, httpx, cobra,
+fmt and this repository — **5,371 anchors, and not one landed on the wrong symbol.**
+Survival ranges from 99.6% to 82.9%, and the detachments were checked against the final
+revision rather than sampled: they name code that is genuinely gone.
+
+The spread is a property of the codebases rather than the language support. One of them
+deleted nineteen files over the window; another declares dozens of identically named
+test macros per file, and a name shared by fifty declarations identifies none of them.
+[CLAUDE.md](CLAUDE.md) has the table and what each number means.
+
+## Where the claims live
+
+By default they go in `.codedoc/`, committed, and shared with your team.
+
+For a repository you do not own or do not want to modify:
 
 ```bash
 codedoc init --scope local
 ```
 
-This writes to `.git/codedoc/`, which git cannot track. There is no directory in the
-working tree, no `.gitignore` entry and nothing in `git status`, so the repository
-contains no evidence that codedoc is in use. `--scope global` stores the ledger outside
-the repository entirely.
+That writes inside `.git/`, which git cannot track. No directory in your working tree,
+no `.gitignore` entry, nothing in `git status` — the repository contains no evidence
+you are using it. `--scope global` keeps them outside the repository entirely.
 
 ## Languages
 
 Rust, Python, TypeScript, TSX, Go, Java, C# and C/C++, via tree-sitter. Adding a
-language means writing an adapter rather than modifying the core.
+language means writing an adapter rather than changing the core.
 
-A file no adapter understands can still carry a claim about the file itself — a
-Dockerfile, a CI workflow, a migration, a Markdown page. Those anchors resolve by path
-rather than by structure, so they survive the file changing and detach when it is
-deleted. What they cannot do is name something inside the file, and they are never
-reported stale, because there is no structure to measure drift against.
+A file no parser understands — a Dockerfile, a CI workflow, a migration, a Markdown
+page — can still carry a claim about the file as a whole. Those follow the file's path
+rather than its structure, so they survive it being edited and detach when it is
+deleted. What they cannot do is point at something inside the file.
 
-Two adapters have known gaps, each covered by a test that will fail when the gap is
-closed (`cargo test --workspace -- --ignored`). In C#, a file-scoped namespace
-(`namespace Acme;`, the default since C# 10) contributes nothing to a symbol path, so
-types declared in such files are recorded unqualified. In TypeScript, an arrow function
-or constant bound with `const` is not treated as a declaration, so a claim attached to
-one resolves only while its file is unedited. Neither gap can cause a claim to attach
-to the wrong code, since an anchor that cannot be named detaches instead, but both
-reduce what can be tracked. [CLAUDE.md](CLAUDE.md) quantifies the effect.
+Two adapters have known gaps, each with a test that will fail when the gap closes
+(`cargo test --workspace -- --ignored`). In C#, a file-scoped namespace
+(`namespace Acme;`) contributes nothing to a name, so types in those files are recorded
+unqualified. In TypeScript, `export const validate = () => {}` is not treated as a
+declaration, so a claim on one holds only while its file is unedited. Neither can
+attach a claim to the wrong code — an anchor that cannot be named detaches instead —
+but both narrow what can be tracked.
 
 ## Status
 
-Early, and the on-disk format is not yet stable. Before 1.0 it may change, always with
-a mechanical `codedoc migrate` path; after 1.0 it will not change incompatibly. A
-ledger accumulates over months and cannot be regenerated from the code, which is why
-its compatibility guarantees are stricter than the API's.
+Early, and the storage format is not settled. Before 1.0 it may change, always with a
+mechanical `codedoc migrate` path; after 1.0 it will not change incompatibly. Claims
+accumulate over months and cannot be regenerated from the code, which is why the
+compatibility rules here are stricter than for the API.
 
-Implemented: the ledger and its integrity checking, anchoring and resolution across
-eight grammars, comment import, search, the full record lifecycle, relations, and the
-CLI, MCP and LSP surfaces. CI verifies that the canonical encoding is byte-identical on
-Linux, macOS and Windows, and runs `codedoc doctor` against this repository's own
-ledger.
+Working: the store and its integrity checking, anchoring and resolution across eight
+grammars, comment import, search, the full claim lifecycle, relations, and the CLI, MCP
+and LSP surfaces. CI checks that the storage encoding is byte-identical on Linux, macOS
+and Windows, and runs codedoc against this repository's own claims.
 
-Outstanding: the VS Code extension installs from a local `.vsix` but is not published
-to the marketplace.
+Not done: the VS Code extension installs from a local `.vsix` but is not on the
+marketplace.
 
 ## Documentation
 
 | | |
 | --- | --- |
-| [AGENTS.md](AGENTS.md) | the instructions sent to agents, and how to get good records out of one |
-| [docs/cli.md](docs/cli.md) | the command-line reference, for humans and CI |
-| [docs/spec/format.md](docs/spec/format.md) | the normative format; the Rust implementation is the reference, not the definition |
-| [CLAUDE.md](CLAUDE.md) | architecture and the invariants that govern changes to it |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | required reading before a PR, including the no-comments rule |
-| [SECURITY.md](SECURITY.md) | threat model; a cloned repository's ledger is untrusted input |
+| [AGENTS.md](AGENTS.md) | what your agent is told, and how to get good records out of one |
+| [docs/cli.md](docs/cli.md) | every command, for humans and CI |
+| [docs/spec/format.md](docs/spec/format.md) | the storage format, written to bind other implementations |
+| [CLAUDE.md](CLAUDE.md) | architecture and the rules that govern changes to it |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | read before a PR, including the no-comments rule |
+| [SECURITY.md](SECURITY.md) | threat model; a cloned repository's claims are untrusted input |
 
 ## Licence
 
