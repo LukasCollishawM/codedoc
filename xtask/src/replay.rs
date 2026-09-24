@@ -5,6 +5,8 @@ use codedoc_anchor::{Anchor, Resolution, Resolver, Rung};
 use codedoc_core::RepoPath;
 use codedoc_lang::Registry;
 
+const DETACHMENT_LISTING: usize = 200;
+
 #[derive(Default)]
 struct Tally {
     anchors: usize,
@@ -71,8 +73,13 @@ pub fn run(arguments: &[String]) -> ExitCode {
     if !tally.detached_detail.is_empty() {
         println!();
         println!("  what detached, and why:");
-        for entry in &tally.detached_detail {
+        for entry in tally.detached_detail.iter().take(DETACHMENT_LISTING) {
             println!("    {entry}");
+        }
+        if let Some(hidden) = tally.detached_detail.len().checked_sub(DETACHMENT_LISTING)
+            && hidden > 0
+        {
+            println!("    ... and {hidden} more, not shown");
         }
     }
 
@@ -133,12 +140,10 @@ fn replay_file(repository: &str, oldest: &str, newest: &str, file: &str, tally: 
                     _ => "unknown",
                 };
                 *tally.reasons.entry(named).or_insert(0) += 1;
-                if tally.detached_detail.len() < 12 {
-                    tally.detached_detail.push(format!(
-                        "{named:<16} {file}: {}",
-                        expected.clone().unwrap_or_else(|| "<anonymous>".to_owned())
-                    ));
-                }
+                tally.detached_detail.push(format!(
+                    "{named:<16} {file}: {}",
+                    expected.clone().unwrap_or_else(|| "<anonymous>".to_owned())
+                ));
             }
             Resolution::Located(located) => {
                 let rung = rung_name(located.rung());
