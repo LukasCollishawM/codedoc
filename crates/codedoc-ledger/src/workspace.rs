@@ -1,3 +1,4 @@
+use codedoc_core::readable_path;
 use std::path::{Path, PathBuf};
 
 use crate::ledger::{Ledger, LedgerError};
@@ -18,7 +19,7 @@ impl Workspace {
                 return Ok(workspace);
             }
             if !current.pop() {
-                return Err(LedgerError::Absent { root: start.display().to_string() });
+                return Err(LedgerError::Absent { root: readable_path(start) });
             }
         }
     }
@@ -87,11 +88,9 @@ impl Workspace {
         if let Some(scope) = preferred {
             return self.for_scope(scope).ok_or(LedgerError::ScopeUnavailable {
                 scope: scope.as_str(),
-                root: self.root.display().to_string(),
+                root: readable_path(&self.root),
             });
         }
-        self.ledgers
-            .first()
-            .ok_or_else(|| LedgerError::Absent { root: self.root.display().to_string() })
+        self.ledgers.first().ok_or_else(|| LedgerError::Absent { root: readable_path(&self.root) })
     }
 }

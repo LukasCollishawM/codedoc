@@ -1,4 +1,5 @@
 use std::fmt;
+use std::path::Path;
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
@@ -230,6 +231,17 @@ impl From<RepoPath> for String {
     fn from(path: RepoPath) -> String {
         path.0
     }
+}
+
+const VERBATIM: &str = r"\\?\";
+const VERBATIM_UNC: &str = r"\\?\UNC\";
+
+pub fn readable_path(path: &Path) -> String {
+    let rendered = path.display().to_string();
+    if let Some(share) = rendered.strip_prefix(VERBATIM_UNC) {
+        return format!(r"\\{share}");
+    }
+    rendered.strip_prefix(VERBATIM).unwrap_or(&rendered).to_owned()
 }
 
 #[cfg(test)]

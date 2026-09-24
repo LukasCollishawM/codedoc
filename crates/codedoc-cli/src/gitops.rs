@@ -4,6 +4,7 @@ use std::path::Path;
 use std::process::Command;
 
 use anyhow::{Context, Result, bail};
+use codedoc_core::readable_path;
 use codedoc_ledger::Record;
 use serde_json::{Value, json};
 
@@ -57,7 +58,7 @@ pub fn install_merge_driver(root: &Path) -> Result<(Value, i32)> {
         json!({
             "command": "git-install-merge-driver",
             "driver": DRIVER_NAME,
-            "attributes": attributes.display().to_string(),
+            "attributes": readable_path(&attributes),
             "attribute_line": ATTRIBUTE_LINE,
             "already_present": already,
         }),

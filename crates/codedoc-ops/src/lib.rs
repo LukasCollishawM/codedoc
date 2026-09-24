@@ -32,6 +32,7 @@ pub use setup::initialise;
 
 use std::path::Path;
 
+use codedoc_core::readable_path;
 use codedoc_ledger::{Ledger, LedgerError, Scope, Workspace};
 use thiserror::Error;
 
@@ -133,7 +134,7 @@ impl From<LedgerError> for OpsError {
 pub type Outcome = Result<serde_json::Value, OpsError>;
 
 pub(crate) fn workspace(root: &Path) -> Result<Workspace, OpsError> {
-    Workspace::discover(root).map_err(|_| OpsError::NoLedger { root: root.display().to_string() })
+    Workspace::discover(root).map_err(|_| OpsError::NoLedger { root: readable_path(root) })
 }
 
 impl OpsError {

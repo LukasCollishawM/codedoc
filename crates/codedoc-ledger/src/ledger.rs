@@ -3,7 +3,7 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use codedoc_core::{CanonicalError, LedgerHead, RecordId};
+use codedoc_core::{CanonicalError, LedgerHead, RecordId, readable_path};
 use rayon::prelude::*;
 use thiserror::Error;
 
@@ -87,15 +87,15 @@ impl Ledger {
         let Some(base) = scope.directory(root) else {
             return Err(LedgerError::ScopeUnavailable {
                 scope: scope.as_str(),
-                root: root.display().to_string(),
+                root: readable_path(root),
             });
         };
         if base.exists() {
-            return Err(LedgerError::AlreadyPresent { root: root.display().to_string() });
+            return Err(LedgerError::AlreadyPresent { root: readable_path(root) });
         }
         let records = base.join(RECORDS_DIRECTORY);
         fs::create_dir_all(&records).map_err(|source| LedgerError::Io {
-            path: records.display().to_string(),
+            path: readable_path(&records),
             detail: source.to_string(),
         })?;
         if scope.leaves_repository_evidence() {
@@ -119,7 +119,7 @@ impl Ledger {
                 return Ledger::open(&current);
             }
             if !current.pop() {
-                return Err(LedgerError::Absent { root: start.display().to_string() });
+                return Err(LedgerError::Absent { root: readable_path(start) });
             }
         }
     }
@@ -130,18 +130,18 @@ impl Ledger {
                 return Ok(ledger);
             }
         }
-        Err(LedgerError::Absent { root: root.display().to_string() })
+        Err(LedgerError::Absent { root: readable_path(root) })
     }
 
     pub fn open_scope(root: &Path, scope: Scope) -> Result<Self, LedgerError> {
         let Some(base) = scope.directory(root) else {
             return Err(LedgerError::ScopeUnavailable {
                 scope: scope.as_str(),
-                root: root.display().to_string(),
+                root: readable_path(root),
             });
         };
         if !base.is_dir() {
-            return Err(LedgerError::Absent { root: root.display().to_string() });
+            return Err(LedgerError::Absent { root: readable_path(root) });
         }
         Ok(Ledger { root: root.to_path_buf(), base, scope })
     }
@@ -183,7 +183,7 @@ impl Ledger {
         }
         let mut shards: Vec<PathBuf> = fs::read_dir(&directory)
             .map_err(|source| LedgerError::Io {
-                path: directory.display().to_string(),
+                path: readable_path(&directory),
                 detail: source.to_string(),
             })?
             .filter_map(Result::ok)
@@ -196,7 +196,7 @@ impl Ledger {
             .par_iter()
             .map(|shard| {
                 let raw = fs::read(shard).map_err(|source| LedgerError::Io {
-                    path: shard.display().to_string(),
+                    path: readable_path(shard),
                     detail: source.to_string(),
                 })?;
                 let mut records = Vec::new();
@@ -205,7 +205,7 @@ impl Ledger {
                         continue;
                     }
                     let record = Record::decode_line(line).map_err(|source| {
-                        let shard = shard.display().to_string();
+                        let shard = readable_path(shard);
                         let line_number = offset + 1;
                         if is_conflict_marker(line) {
                             LedgerError::Unmerged { shard, line: line_number }
@@ -254,16 +254,16 @@ impl Ledger {
         let shard = self.shard_for(record.id());
         if let Some(parent) = shard.parent() {
             fs::create_dir_all(parent).map_err(|source| LedgerError::Io {
-                path: parent.display().to_string(),
+                path: readable_path(parent),
                 detail: source.to_string(),
             })?;
         }
         let mut handle =
             fs::OpenOptions::new().create(true).append(true).open(&shard).map_err(|source| {
-                LedgerError::Io { path: shard.display().to_string(), detail: source.to_string() }
+                LedgerError::Io { path: readable_path(&shard), detail: source.to_string() }
             })?;
         handle.write_all(&line).and_then(|()| handle.write_all(b"\n")).map_err(|source| {
-            LedgerError::Io { path: shard.display().to_string(), detail: source.to_string() }
+            LedgerError::Io { path: readable_path(&shard), detail: source.to_string() }
         })?;
         Ok(record)
     }
@@ -290,19 +290,19 @@ impl Ledger {
 
         let directory = self.records_directory();
         fs::create_dir_all(&directory).map_err(|source| LedgerError::Io {
-            path: directory.display().to_string(),
+            path: readable_path(&directory),
             detail: source.to_string(),
         })?;
         for (shard, buffer) in shards {
             let mut handle =
                 fs::OpenOptions::new().create(true).append(true).open(&shard).map_err(
                     |source| LedgerError::Io {
-                        path: shard.display().to_string(),
+                        path: readable_path(&shard),
                         detail: source.to_string(),
                     },
                 )?;
             handle.write_all(&buffer).map_err(|source| LedgerError::Io {
-                path: shard.display().to_string(),
+                path: readable_path(&shard),
                 detail: source.to_string(),
             })?;
         }
@@ -313,7 +313,7 @@ impl Ledger {
         let directory = self.records_directory();
         if directory.is_dir() {
             let entries = fs::read_dir(&directory).map_err(|source| LedgerError::Io {
-                path: directory.display().to_string(),
+                path: readable_path(&directory),
                 detail: source.to_string(),
             })?;
             for entry in entries.filter_map(Result::ok) {
@@ -322,14 +322,14 @@ impl Ledger {
                     path.extension().is_some_and(|extension| extension == SHARD_EXTENSION);
                 if is_shard {
                     fs::remove_file(&path).map_err(|source| LedgerError::Io {
-                        path: path.display().to_string(),
+                        path: readable_path(&path),
                         detail: source.to_string(),
                     })?;
                 }
             }
         }
         fs::create_dir_all(&directory).map_err(|source| LedgerError::Io {
-            path: directory.display().to_string(),
+            path: readable_path(&directory),
             detail: source.to_string(),
         })?;
 
@@ -345,7 +345,7 @@ impl Ledger {
         }
         for (shard, buffer) in shards {
             fs::write(&shard, &buffer).map_err(|source| LedgerError::Io {
-                path: shard.display().to_string(),
+                path: readable_path(&shard),
                 detail: source.to_string(),
             })?;
         }
@@ -380,8 +380,6 @@ impl Ledger {
 }
 
 fn write_file(path: &Path, contents: &[u8]) -> Result<(), LedgerError> {
-    fs::write(path, contents).map_err(|source| LedgerError::Io {
-        path: path.display().to_string(),
-        detail: source.to_string(),
-    })
+    fs::write(path, contents)
+        .map_err(|source| LedgerError::Io { path: readable_path(path), detail: source.to_string() })
 }
