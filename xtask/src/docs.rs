@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 use std::fs;
+use std::path::Path;
 use std::process::{Command, ExitCode};
 
 pub fn run() -> ExitCode {
@@ -207,6 +208,63 @@ const EDITOR_LANGUAGES: [(&str, &str); 8] = [
     ("cpp", "cpp"),
 ];
 
+const DOCUMENTS: [&str; 7] = [
+    "README.md",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "docs/cli.md",
+    "docs/spec/format.md",
+];
+
+fn every_referenced_path_exists() -> ExitCode {
+    let mut broken = Vec::new();
+    let mut checked = 0usize;
+
+    for document in DOCUMENTS {
+        let Ok(body) = fs::read_to_string(document) else {
+            continue;
+        };
+        for reference in referenced_paths(&body) {
+            checked += 1;
+            if !Path::new(&reference).exists() {
+                broken.push(format!("{document} points at {reference}"));
+            }
+        }
+    }
+
+    if broken.is_empty() {
+        println!("lint-docs: {checked} referenced paths, all present");
+        return ExitCode::SUCCESS;
+    }
+
+    eprintln!("lint-docs: {} path(s) the documentation names but does not have", broken.len());
+    eprintln!();
+    for entry in &broken {
+        eprintln!("  {entry}");
+    }
+    eprintln!();
+    eprintln!("A file named in the documentation and absent from the repository is a");
+    eprintln!("claim about the project that is not true. Fix the path or the prose.");
+    ExitCode::from(1)
+}
+
+fn referenced_paths(body: &str) -> BTreeSet<String> {
+    let mut found = BTreeSet::new();
+    for chunk in body.split('`').skip(1).step_by(2) {
+        let trimmed = chunk.trim_end_matches('/');
+        let looks_like_a_path = ["crates/", "docs/", "conformance/", "editors/", "xtask/"]
+            .iter()
+            .any(|prefix| trimmed.starts_with(prefix));
+        let plain = trimmed.chars().all(|glyph| glyph.is_alphanumeric() || "._-/".contains(glyph));
+        if looks_like_a_path && plain && !trimmed.is_empty() {
+            found.insert(trimmed.to_owned());
+        }
+    }
+    found
+}
+
 fn the_editor_activates_for_every_language() -> ExitCode {
     let Ok(registry) = fs::read_to_string("crates/codedoc-lang/src/registry.rs") else {
         println!("lint-docs: no language registry to compare the editor against");
@@ -229,7 +287,7 @@ fn the_editor_activates_for_every_language() -> ExitCode {
 
     if silent.is_empty() {
         println!("lint-docs: the editor extension activates for every supported language");
-        return ExitCode::SUCCESS;
+        return every_referenced_path_exists();
     }
 
     eprintln!("lint-docs: the extension never activates for {} language(s)", silent.len());

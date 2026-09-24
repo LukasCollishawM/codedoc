@@ -60,7 +60,7 @@ These are not guidelines. A change that violates one is wrong regardless of what
 
 Dependencies flow strictly downward. `core <- anchor <- lang`; `core <- ledger <- index`; `graph` over core+ledger; `context` over graph+index+anchor; cli/lsp/mcp/render at the top only. An upward or lateral dependency between peer crates is a design error — resolve it by moving the shared concept down, never by adding the edge.
 
-`editors/vscode/` and `editors/rider/` are thin JSON-RPC clients over `codedoc-lsp`. They contain **no** anchor logic, no ledger logic, and no schema knowledge beyond the wire types. Any editor feature requiring new intelligence is implemented in the server.
+`editors/vscode/` is a thin JSON-RPC client over `codedoc-lsp`, and any other editor client is held to the same shape. They contain **no** anchor logic, no ledger logic, and no schema knowledge beyond the wire types. Any editor feature requiring new intelligence is implemented in the server.
 
 ## Anchors
 

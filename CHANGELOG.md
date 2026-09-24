@@ -8,6 +8,7 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Added
 
+- **`lint-docs` checks that every repository path the documentation names exists.** It found one: CLAUDE.md described `editors/rider/` alongside `editors/vscode/` as though both were there. A file named in the documentation and absent from the repository is a claim about the project that is not true.
 - **`codedoc review` says what a change recorded, not only what it put in doubt.** Counted from the revision each record was written against. Where git cannot place a revision it is treated as already present, so a repository with rewritten history under-credits rather than claiming the author recorded things they did not. A review that only ever reports damage teaches people the tool is a complaint. Recording something is the behaviour it exists to produce, so the comment now credits it, counted from the revision each record was written against.
 - **`codedoc list --author`** answers what one person, one agent or one session recorded. Records have carried their author and session since the beginning and nothing could filter on it, so reviewing an agent's output — the step that keeps a corpus worth reading — meant scanning everything.
 - **`codedoc doctor` reports records sitting on a construct that cannot be named.** They resolve only while their file is byte-identical, so they are the ones that vanish on an edit nobody thought was risky. Advisory rather than blocking: it is a thing to know, not a thing to fail a build on.
