@@ -317,7 +317,9 @@ fn a_moment_before_anything_was_recorded_reports_that_nothing_was_known() {
     let before = codedoc_ops::list(root.path(), None, None, None, Some("2000-01-01")).unwrap();
     assert_eq!(
         before["count"], 0,
-        "the README promises that what was believed at some past moment is a query          rather than an archaeology exercise, so the moment has to reach the graph:          {before}"
+        "the README promises that what was believed at some past moment is a query \
+         rather than an archaeology exercise, so the moment has to reach the graph: \
+         {before}"
     );
     assert_eq!(before["as_of"], "2000-01-01", "the answer says what it was asked");
 
