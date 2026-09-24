@@ -44,6 +44,8 @@ jobs:
         run: cargo run --quiet -p xtask -- lint-prose
       - name: every suppression is justified in the ledger
         run: cargo run --quiet -p xtask -- lint-allows
+      - name: every command the documentation names exists
+        run: cargo run --quiet -p xtask -- lint-invocations
 
   anchors:
     name: anchor survival

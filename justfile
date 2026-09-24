@@ -13,6 +13,7 @@ lint:
     cargo run --quiet -p xtask -- lint-docs
     cargo run --quiet -p xtask -- lint-prose
     cargo run --quiet -p xtask -- lint-allows
+    cargo run --quiet -p xtask -- lint-invocations
 
 replay commits="200":
     cargo run --quiet --release -p xtask -- replay --commits {{commits}}

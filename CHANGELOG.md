@@ -20,6 +20,8 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Added
 
+- **`cargo xtask lint-invocations` checks that every command the documentation names exists.** It reads every backticked `codedoc ...` and `cargo xtask ...` in the seven prose documents, confirms the subcommand is real and that each flag appears in that subcommand's `--help`. It found two on its first run, both in CLAUDE.md: `codedoc reindex --from-scratch`, a flag that never existed, and `codedoc lint allows`, which is `cargo xtask lint-allows`. Both had been sitting in the standards document telling readers to run things that do not run.
+
 - **`codedoc list --limit`**, and a `total` alongside `count` so a truncated listing says what it left out. Every other listing command had a limit; `list` returned everything, and its own MCP tool description conceded the problem — "this returns everything that matches and a mature ledger holds thousands" — while offering no way to narrow it. Importing gorilla/mux produced 1,304 lines from one command.
 - **`codedoc init` names the scope you probably want on someone else's repository.** Initialising defaults to a shared ledger and leaves `.codedoc/` in the working tree. AGENTS.md tells agents to use `--scope local` when the owners have not adopted codedoc, but the command said nothing at the moment it mattered, so the first act of trying codedoc on an unfamiliar checkout was dirtying it.
 

@@ -23,7 +23,7 @@ codedoc:   repo + accumulated understanding -> agent acts -> repo + understandin
 
 These are not guidelines. A change that violates one is wrong regardless of what it enables. They are enforced in CI and each has a dedicated test suite.
 
-**I1 — The ledger is the only truth.** Every index, cache, and projection is derived and must be reconstructible from the ledger alone. `codedoc reindex --from-scratch` after `rm -rf .codedoc/index.sqlite` must produce a byte-identical index. If a piece of state cannot be rebuilt, it does not belong outside the ledger.
+**I1 — The ledger is the only truth.** Every index, cache, and projection is derived and must be reconstructible from the ledger alone. `codedoc reindex` deletes the index and rebuilds it from the ledger, and must produce byte-identical output every time. If a piece of state cannot be rebuilt, it does not belong outside the ledger.
 
 **I2 — Never silently reattach.** A resolution either clears its evidence threshold or the anchor becomes `DETACHED` and waits for adjudication. **Ambiguity is failure, not a tiebreak.** Two candidates at the same rung means DETACHED, always. Low survival rates are a quality problem and get iterated on; a single false reattachment is a corruption event, because it makes the corpus confidently wrong, which is worse than empty. Target anchor survival is soft. **False-reattachment rate is a hard zero.**
 
@@ -140,7 +140,7 @@ No `//`, no `/* */`, anywhere under `crates/**/src`. This is the thesis, enforce
 
 Explanation goes in the ledger. Until the ledger can hold it, it goes in `docs/decisions/`. The arc is deliberate: `///` doc comments are permitted **only on `pub` items**, and only until `codedoc render rustdoc` can generate them from the ledger — at which point they become build artifacts and the sources lose them too. The day this repository's public API documentation is emitted from its own ledger is the day the product is real.
 
-`unsafe` is banned outright, so `// SAFETY:` never arises. Every `#[allow(...)]` must have a corresponding `workaround` record anchored to that item; `codedoc lint allows` fails CI otherwise. The suppression and its justification are linked by structure rather than by adjacency — the entire pitch, applied to ourselves.
+`unsafe` is banned outright, so `// SAFETY:` never arises. Every `#[allow(...)]` must have a corresponding `workaround` record anchored to that item; `cargo xtask lint-allows` fails CI otherwise. The suppression and its justification are linked by structure rather than by adjacency — the entire pitch, applied to ourselves.
 
 If you feel the urge to write a comment, that urge is the product's input signal. Emit a record.
 

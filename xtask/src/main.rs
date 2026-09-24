@@ -3,6 +3,7 @@
 mod allows;
 mod comments;
 mod docs;
+mod invocations;
 mod prose;
 mod replay;
 mod resolver_vectors;
@@ -15,6 +16,7 @@ fn main() -> ExitCode {
     let rest: Vec<String> = std::env::args().skip(2).collect();
     match task.as_str() {
         "lint-allows" => allows::run(),
+        "lint-invocations" => invocations::run(),
         "lint-comments" => comments::run(),
         "lint-docs" => docs::run(),
         "lint-prose" => prose::run(),
