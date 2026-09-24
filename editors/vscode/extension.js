@@ -40,7 +40,7 @@ async function start(context) {
   } catch (failure) {
     vscode.window.showErrorMessage(
       `codedoc: could not start the language server (${failure.message}). ` +
-        `Set codedoc.serverPath, or install it with: cargo install --path crates/codedoc-cli`
+        `Set codedoc.serverPath, or install it with: cargo install --path crates/codedoc-lsp`
     );
     client = undefined;
     return;

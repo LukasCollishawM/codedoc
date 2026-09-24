@@ -7,11 +7,10 @@ A thin client over `codedoc-lsp`. It contains no anchoring or ledger logic; ever
 `codedoc-lsp` on your `PATH`:
 
 ```bash
-cargo install --path crates/codedoc-cli   # installs codedoc
-cargo build --release                     # builds codedoc-lsp
+cargo install --path crates/codedoc-lsp
 ```
 
-Then either put `target/release` on your `PATH` or set `codedoc.serverPath` to the absolute path of the binary.
+That puts `codedoc-lsp` on your `PATH`. Alternatively run `cargo build --release` and set `codedoc.serverPath` to the absolute path of `target/release/codedoc-lsp`.
 
 The workspace must have a ledger (`codedoc init`), otherwise there is nothing to show.
 

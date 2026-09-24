@@ -93,6 +93,7 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Fixed
 
+- **The VS Code extension told a user whose language server would not start to install the CLI package**, which does not provide `codedoc-lsp` either. Same mistake as the README, in the message shown at precisely the moment someone is stuck.
 - **The install instructions did not install the MCP server.** The README said `cargo install --path crates/codedoc-cli`, which provides `codedoc` and not `codedoc-mcp` — the binary the MCP configuration three paragraphs below it tells your agent to run. Anyone following the README exactly would have configured an agent to run a command that was not there. `just install` had the same gap.
 - **`just check` was described as exactly what CI runs and was missing two of its checks**, `cargo deny` and `codedoc doctor`.
 - **A line that covers no code says how many lines the file has, and why a symbol is better.** `line 999 covers no node in src/auth.rs` did not distinguish a line past the end of the file from a blank line in the middle of it, and both are common mistakes.
