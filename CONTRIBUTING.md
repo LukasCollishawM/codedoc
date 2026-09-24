@@ -1,12 +1,12 @@
 # Contributing to codedoc
 
-## The rule that will surprise you
+## This codebase contains no comments
 
-**This codebase contains no comments.** Not sparse comments, not comments-where-needed. None. `cargo xtask lint-comments` fails the build on `//` and `/* */` anywhere under `crates/**/src`.
+`cargo xtask lint-comments` fails the build on `//` and `/* */` anywhere under `crates/**/src`. The rule is absolute rather than a preference for sparse commenting.
 
-This is not asceticism, and it is not a style preference. codedoc exists because knowledge written as a comment cannot be queried, typed, superseded, contradicted, attached to two places at once, or checked for staleness when the code beneath it moves. The project would be incoherent if it stored its own knowledge that way. So it does not.
+The reason is the premise of the project. Knowledge written as a comment cannot be queried, typed, superseded, contradicted, attached to two places at once, or checked for staleness when the code beneath it moves. A tool built on that argument cannot coherently store its own knowledge in comments.
 
-What replaces comments is a command:
+Records replace them:
 
 ```bash
 codedoc attach crates/codedoc-anchor/src/resolver.rs --symbol resolve_context \
@@ -14,9 +14,9 @@ codedoc attach crates/codedoc-anchor/src/resolver.rs --symbol resolve_context \
   --claim "Context rungs bracket the target rather than matching it, because a node that moved without changing has identical fingerprints at every position."
 ```
 
-That record lands in `.codedoc/`, travels with the repository, appears on hover in your editor, and — unlike a comment — gets flagged when the code it describes changes underneath it.
+The record is written to `.codedoc/`, travels with the repository, appears on hover in an editor, and is flagged for review when the code it describes changes.
 
-If you are mid-change and not ready to write records, put the prose in your PR description and a maintainer will help convert it. **A first contribution will never be rejected for not knowing the ledger.** The lint tells you what to do, and if it fails to, that is a bug in the lint worth reporting on its own.
+If you are mid-change and not ready to write records, put the prose in the pull request description and a maintainer will help convert it. A contribution will not be rejected for unfamiliarity with the ledger. The lint output states what to do; if it does not, that is a defect in the lint and worth reporting separately.
 
 ## Standards are enforced by CI, not by reviewers
 
@@ -43,13 +43,13 @@ broken and what fixing it would have to make true; the live one fails the day th
 closes and tells you to delete both. A known gap that lives only in prose is one
 nobody finds and nobody can check.
 
-## The invariants are not negotiable
+## The invariants
 
-`CLAUDE.md` states four. One deserves repeating here because it is the most likely to be argued with in a PR:
+`CLAUDE.md` states four. One is repeated here because it is the one most often disputed in review:
 
 **Never silently reattach.** When the resolver cannot identify where documentation moved to, the correct outcome is `DETACHED`, not a best guess. Ambiguity is failure, never a tiebreak. A patch that raises anchor-survival numbers by guessing will be rejected even though the numbers improve, because documentation attached to the wrong code is worse than documentation that admits it is lost. Survival rate is a quality metric. False reattachment is a hard zero, and the replay harness fails the build on a single instance.
 
-If you think you have a resolution strategy that is genuinely sound rather than merely lucky, open an issue before writing it. That conversation is one of the more interesting ones this project has.
+If you believe you have a resolution strategy that is sound rather than merely effective on the available corpora, open an issue before implementing it.
 
 ## Changing the format
 
@@ -65,4 +65,4 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/). Sig
 
 Code is dual-licensed `MIT OR Apache-2.0`; the specification and conformance vectors are `CC0-1.0`. Contributions are accepted under those terms.
 
-Discussion happens in public issues. Design decisions land as ADRs, including the ones that were rejected and why — a decision record that only contains accepted decisions is a press release.
+Discussion happens in public issues. Design decisions are recorded as ADRs, including rejected ones and the reasoning for rejecting them.
