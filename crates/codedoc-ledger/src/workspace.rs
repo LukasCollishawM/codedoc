@@ -11,7 +11,7 @@ pub struct Workspace {
 
 impl Workspace {
     pub fn discover(start: &Path) -> Result<Self, LedgerError> {
-        let mut current = start.to_path_buf();
+        let mut current = std::fs::canonicalize(start).unwrap_or_else(|_| start.to_path_buf());
         loop {
             let workspace = Workspace::at(&current);
             if !workspace.ledgers.is_empty() {

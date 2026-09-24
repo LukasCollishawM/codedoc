@@ -116,6 +116,43 @@ pub(crate) fn workspace(root: &Path) -> Result<Workspace, OpsError> {
     Workspace::discover(root).map_err(|_| OpsError::NoLedger { root: root.display().to_string() })
 }
 
+pub(crate) fn repo_relative_to(base: &Path, given: &str) -> String {
+    let canonical = |path: &Path| std::fs::canonicalize(path).ok();
+    let Some(base) = canonical(base) else {
+        return given.to_owned();
+    };
+    if canonical(&base.join(given)).is_some() {
+        return given.to_owned();
+    }
+    let Ok(here) = std::env::current_dir() else {
+        return given.to_owned();
+    };
+    let Some(resolved) = canonical(&here.join(given)) else {
+        return given.to_owned();
+    };
+    match resolved.strip_prefix(&base) {
+        Ok(relative) => relative.to_string_lossy().replace('\\', "/"),
+        Err(_) => given.to_owned(),
+    }
+}
+
+pub(crate) fn repo_relative(found: &Workspace, given: &str, invoked_from: &Path) -> String {
+    let canonical = |path: &Path| std::fs::canonicalize(path).ok();
+    let Some(base) = canonical(found.root()) else {
+        return given.to_owned();
+    };
+    if canonical(&base.join(given)).is_some() {
+        return given.to_owned();
+    }
+    let Some(resolved) = canonical(&invoked_from.join(given)) else {
+        return given.to_owned();
+    };
+    match resolved.strip_prefix(&base) {
+        Ok(relative) => relative.to_string_lossy().replace('\\', "/"),
+        Err(_) => given.to_owned(),
+    }
+}
+
 pub(crate) fn workspace_in(root: &Path, scope: Option<Scope>) -> Result<Workspace, OpsError> {
     Ok(workspace(root)?.confined_to(scope))
 }

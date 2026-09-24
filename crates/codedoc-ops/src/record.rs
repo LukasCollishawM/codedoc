@@ -36,6 +36,9 @@ impl Target {
 }
 
 pub(crate) fn capture(root: &Path, target: &Target) -> Result<Anchor, OpsError> {
+    let mut target = target.clone();
+    target.file = crate::repo_relative_to(root, &target.file);
+    let target = &target;
     let path = RepoPath::parse(&target.file)
         .map_err(|source| OpsError::Language { detail: source.to_string() })?;
     let source = fs::read_to_string(root.join(path.as_str())).map_err(|source| {

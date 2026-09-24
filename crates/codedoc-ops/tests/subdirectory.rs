@@ -1,0 +1,74 @@
+use std::fs;
+use std::path::Path;
+
+use codedoc_ledger::Ledger;
+
+fn project() -> tempfile::TempDir {
+    let root = tempfile::tempdir().expect("a temporary directory");
+    fs::create_dir_all(root.path().join("src/db/models")).unwrap();
+    fs::write(
+        root.path().join("src/db/models/query.rs"),
+        "pub fn filter(rows: u32) -> u32 {\n    rows\n}\n",
+    )
+    .unwrap();
+    Ledger::initialise(root.path()).unwrap();
+    root
+}
+
+fn attach_from(invoked_from: &Path, file: &str) -> codedoc_ops::Outcome {
+    let request = codedoc_ops::AttachRequest {
+        target: codedoc_ops::Target::symbol(file, "rust://filter"),
+        kind: "invariant".to_owned(),
+        claim: "Filtering never returns more rows than it was given.".to_owned(),
+        detail: None,
+    };
+    codedoc_ops::attach(
+        invoked_from,
+        None,
+        &request,
+        &codedoc_ops::Attribution::human("tester"),
+        codedoc_ops::Provenance::default(),
+    )
+}
+
+#[test]
+fn a_ledger_above_the_working_directory_is_found() {
+    let root = project();
+    let deep = root.path().join("src/db/models");
+
+    let (report, _) = codedoc_ops::verify(&deep).expect(
+        "git, cargo and npm all walk up to the root, and a tool that refuses sends the \
+         user to create a second ledger in a subdirectory",
+    );
+    assert_eq!(report["counts"]["detached"], 0, "{report}");
+}
+
+#[test]
+fn a_path_typed_from_a_subdirectory_resolves() {
+    let root = project();
+    let deep = root.path().join("src/db/models");
+    let previous = std::env::current_dir().ok();
+    std::env::set_current_dir(&deep).expect("move into the subdirectory");
+
+    let written = attach_from(&deep, "query.rs");
+
+    if let Some(back) = previous {
+        let _ = std::env::set_current_dir(back);
+    }
+    let written = written.expect("the file is there, spelled the way the shell spells it");
+    assert_eq!(
+        written["file"], "src/db/models/query.rs",
+        "a claim filed under the caller's working directory is a claim nobody else \
+         can resolve: {written}"
+    );
+}
+
+#[test]
+fn a_repository_relative_path_still_works_from_anywhere() {
+    let root = project();
+    let deep = root.path().join("src/db/models");
+
+    let written = attach_from(&deep, "src/db/models/query.rs")
+        .expect("the repository-relative spelling is still accepted");
+    assert_eq!(written["file"], "src/db/models/query.rs", "{written}");
+}

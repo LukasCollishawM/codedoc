@@ -22,9 +22,10 @@ pub fn context(
     as_of: Option<&str>,
 ) -> Outcome {
     let found = workspace(root)?;
-    let normalised = RepoPath::parse(file)
+    let file = crate::repo_relative(&found, file, root);
+    let normalised = RepoPath::parse(&file)
         .map(|path| path.as_str().to_owned())
-        .unwrap_or_else(|_| file.to_owned());
+        .unwrap_or_else(|_| file.clone());
 
     let mut records = Vec::new();
     for ledger in found.ledgers() {
@@ -94,7 +95,8 @@ pub fn brief(
     let mut targets: Vec<String> = files
         .iter()
         .map(|name| {
-            RepoPath::parse(name)
+            let name = crate::repo_relative(&found, name, root);
+            RepoPath::parse(&name)
                 .map(|path| path.as_str().to_owned())
                 .unwrap_or_else(|_| name.clone())
         })
