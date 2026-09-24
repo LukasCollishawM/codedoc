@@ -141,3 +141,33 @@ fn an_opaque_anchor_reports_no_drift_rather_than_a_number_it_cannot_measure() {
         "there is no shape to compare, so the honest answer is no answer: {entry}"
     );
 }
+
+#[test]
+fn a_claim_on_an_opaque_file_can_be_superseded_affirmed_and_retracted() {
+    let root = project();
+    let written = attach(root.path(), "Dockerfile", None, None).unwrap();
+    let record = written["record"].as_str().expect("a record id").to_owned();
+
+    let revised = codedoc_ops::supersede(
+        root.path(),
+        None,
+        &record,
+        Some("The base image is pinned because the newer one moves the CA bundle."),
+        None,
+        None,
+    )
+    .expect("an opaque anchor can be re-captured, so it can be superseded");
+    let revised_id = revised["record"].as_str().expect("a new record id").to_owned();
+
+    codedoc_ops::affirm(
+        root.path(),
+        None,
+        &revised_id,
+        &codedoc_ops::Attribution::human("t"),
+        None,
+    )
+    .expect("and affirmed");
+
+    codedoc_ops::retract(root.path(), None, &revised_id, Some("no longer pinned"))
+        .expect("and retracted");
+}

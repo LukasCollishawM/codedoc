@@ -34,11 +34,14 @@ pub(crate) fn find_in_scope(root: &Path, reference: &str) -> Result<(Record, Sco
 }
 
 fn current_position(root: &Path, anchor: &Anchor) -> Result<Anchor, OpsError> {
-    let adapter = Registry::for_path(&anchor.file)
-        .map_err(|source| OpsError::Language { detail: source.to_string() })?;
     let source = fs::read_to_string(root.join(anchor.file.as_str())).map_err(|source| {
         OpsError::Unreadable { path: anchor.file.to_string(), detail: source.to_string() }
     })?;
+    if anchor.is_opaque() {
+        return Ok(Anchor::capture_opaque_file(anchor.file.clone(), &source));
+    }
+    let adapter = Registry::for_path(&anchor.file)
+        .map_err(|source| OpsError::Language { detail: source.to_string() })?;
     let tree = adapter
         .parse(&source)
         .map_err(|source| OpsError::Language { detail: source.to_string() })?;
