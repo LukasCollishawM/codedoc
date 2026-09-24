@@ -46,6 +46,7 @@ codedoc_context  →  agent reads, then changes code  →  codedoc_attach / code
 
 | tool | when |
 | --- | --- |
+| `codedoc_init` | when another tool says no ledger was found |
 | `codedoc_search` | when you don't yet know which file holds what you need |
 | `codedoc_context` | before touching unfamiliar code, once you know the file or symbol |
 | `codedoc_attach` | after working something out that the source doesn't say |
@@ -142,6 +143,12 @@ handler, and pinning it to whichever one you happened to be reading makes it inv
 from the others. Call `codedoc_attach` with a `file` and no `symbol` or `line` and the
 claim is recorded against the file itself. It then reaches anyone asking about any
 symbol in that file, and it goes stale when the file is substantially rewritten.
+
+**Starting on a repository with no ledger.** Any tool will tell you none was found
+and name `codedoc_init`. Unless the people who own the repository have decided to adopt
+codedoc, initialise it `local`: the ledger goes inside `.git/`, where the repository
+cannot track it, so nothing you record shows up in their `git status` or their diffs.
+Use `shared` only when adopting codedoc is their decision, not yours.
 
 **Cite what convinced you.** `evidence` takes `test:<name>`, `doc:<path>`,
 `record:<id>`, `git:<rev>` or a URL, and it is the difference between a claim someone

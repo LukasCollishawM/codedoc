@@ -9,6 +9,7 @@ mod query;
 mod record;
 mod repair;
 mod revision;
+mod setup;
 
 pub use author::Attribution;
 pub use coverage::coverage;
@@ -22,6 +23,7 @@ pub use query::{
 pub use record::{AttachRequest, Provenance, RelateRequest, Target, attach, relate};
 pub use repair::repair;
 pub use revision::head_revision;
+pub use setup::initialise;
 
 use std::path::Path;
 
@@ -31,7 +33,11 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum OpsError {
-    #[error("no ledger found at {root}; run codedoc init")]
+    #[error(
+        "no ledger found at {root} — create one with codedoc_init, or `codedoc init --scope \
+         local` to keep it inside .git/ where the repository cannot track it, or `--scope \
+         shared` to commit it"
+    )]
     NoLedger { root: String },
 
     #[error("{detail}")]

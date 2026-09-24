@@ -424,20 +424,7 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
 fn command_init(root: &Path, scope: &str) -> Result<(Value, i32)> {
     let scope =
         Scope::parse(scope).ok_or_else(|| anyhow!("scope must be shared, local or global"))?;
-    let ledger = Ledger::initialise_scope(root, scope)
-        .with_context(|| format!("initialising the {} ledger", scope.as_str()))?;
-    Index::rebuild(&ledger).context("building the index")?;
-    Ok((
-        json!({
-            "command": "init",
-            "root": root.display().to_string(),
-            "scope": scope.as_str(),
-            "location": ledger.base().display().to_string(),
-            "describes": scope.describe(),
-            "leaves_repository_evidence": scope.leaves_repository_evidence(),
-        }),
-        0,
-    ))
+    Ok((ops::initialise(root, scope)?, 0))
 }
 
 fn command_attach(root: &Path, scope: Option<Scope>, args: &AttachArgs) -> Result<(Value, i32)> {

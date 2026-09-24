@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use codedoc_ledger::{Assurance, Scope};
 use codedoc_ops::{
     AttachRequest, Attribution, Provenance, RelateRequest, Target, affirm, attach, conflicts,
-    context, coverage, detached, evidence, history, import, list, relate, render, resolve, retract,
-    review, search, stats, supersede, verify_scoped,
+    context, coverage, detached, evidence, history, import, initialise, list, relate, render,
+    resolve, retract, review, search, stats, supersede, verify_scoped,
 };
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
@@ -113,6 +113,14 @@ pub struct SearchArgs {
     pub file: Option<String>,
     /// How many records to return. Defaults to 20.
     pub limit: Option<usize>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct InitArgs {
+    /// `local` keeps the ledger inside `.git/`, where the repository cannot track it.
+    /// `shared` puts it in `.codedoc/` to be committed. `global` keeps it outside the
+    /// repository entirely. Defaults to `local`.
+    pub scope: Option<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -344,6 +352,18 @@ impl Codedoc {
         Parameters(args): Parameters<RecordArgs>,
     ) -> Result<CallToolResult, McpError> {
         respond(retract(&self.root, scope_of(&args.scope), &args.record, args.reason.as_deref()))
+    }
+
+    #[tool(
+        description = "Create a ledger in this repository. Call this when another tool reports that no ledger was found. The scope defaults to `local`, which keeps everything inside `.git/` where the repository cannot track it, so using codedoc on a repository leaves no trace in it — the right choice unless the people who own the repository have decided to adopt codedoc. Pass `shared` when they have, and the ledger goes in `.codedoc/` to be committed and shared."
+    )]
+    async fn codedoc_init(
+        &self,
+        Parameters(args): Parameters<InitArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        let scope =
+            args.scope.as_deref().map_or(Some(Scope::Local), Scope::parse).unwrap_or(Scope::Local);
+        respond(initialise(&self.root, scope))
     }
 
     #[tool(

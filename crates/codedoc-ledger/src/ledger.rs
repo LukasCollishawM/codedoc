@@ -17,7 +17,11 @@ pub const SHARD_EXTENSION: &str = "jsonl";
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum LedgerError {
-    #[error("no ledger found at {root}; run codedoc init")]
+    #[error(
+        "no ledger found at {root} — create one with codedoc_init, or `codedoc init \
+         --scope local` to keep it inside .git/ where the repository cannot track it, \
+         or `--scope shared` to commit it"
+    )]
     Absent { root: String },
 
     #[error("a ledger already exists at {root}")]
