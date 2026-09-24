@@ -60,6 +60,13 @@ nearly every file in a licensed repository. A licence notice says nothing about 
 construct beneath it and repeats once per file, so importing it buries the claims
 that do — it was 10.6% of gson's records and 7.6% of gin's.
 
+Inside a git repository the walk covers what git considers part of the project: files
+it tracks, plus untracked ones it is not ignoring. Anything `.gitignore` excludes is
+left alone, so running `import .` in a working tree with dependencies installed takes
+the project and not its dependencies. Outside a git repository there is nothing to
+consult, and a fixed list of `node_modules`, `vendor`, `target`, `dist` and `build`
+applies instead.
+
 Attributes, decorators and annotations between a comment and what it documents are
 stepped over, so a doc comment above `#[cfg(...)]` above `pub fn` anchors to the
 function. Anchoring to the attribute instead produces a record that cannot be

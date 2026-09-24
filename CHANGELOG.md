@@ -8,6 +8,8 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Fixed
 
+- **`import` and `coverage` ignored `.gitignore` and skipped a hardcoded list of directory names instead.** `node_modules`, `vendor`, `target`, `dist` and `build` were skipped; a project ignoring `thirdparty/`, `third_party/`, `deps/`, `.venv/`, `out/`, `Pods/` or anything else of its own choosing had it imported as though it were the project's own knowledge. Running `import` in a working tree is the first thing an adopter does, and a working tree usually has dependencies in it. Inside a git repository the walk now takes the files git considers part of the project, tracked or untracked but not ignored; outside one the hardcoded list still applies, because there is nothing else to go on. gin and traefik import to the same record counts as before, in the same time.
+
 - **`codedoc render` reported a bad argument as an unknown record kind.** Every other command takes a file first, so `codedoc render tree.go` is the obvious mistake, and it answered "unknown record kind tree.go; the vocabulary is markdown, mermaid" — a different vocabulary, belonging to `attach`. It now says it wanted a format rather than a file and names the two. The `FORMAT` argument says so in `--help` as well, and a record with no symbol no longer renders a trailing space where the symbol would go.
 
 - **A mistyped command exited `2`, which is the code reserved for an anchor needing adjudication.** clap exits `2` on a usage error by default, so `codedoc attach` with a missing argument, or an unknown subcommand, told a CI job or an agent that the corpus held detached anchors or a broken citation. Usage errors exit `4`; `--help` and `--version` exit `0`.

@@ -236,3 +236,54 @@ fn a_comment_below_a_nested_declaration_is_not_called_a_claim_about_the_file() {
          function: {about_the_file:?}"
     );
 }
+
+#[test]
+fn a_directory_the_repository_ignores_is_not_imported() {
+    let workspace = project(&[
+        (
+            "src/app.ts",
+            "// Tokens are validated before tenant resolution.
+export function a() {}
+",
+        ),
+        (
+            "thirdparty/dep.ts",
+            "// A comment nobody on this project wrote.
+export function b() {}
+",
+        ),
+        (
+            ".gitignore",
+            "thirdparty/
+",
+        ),
+    ]);
+    let root = workspace.path();
+    for args in [
+        vec!["init", "-q"],
+        vec!["config", "user.email", "t@example.invalid"],
+        vec!["config", "user.name", "tester"],
+    ] {
+        let done =
+            std::process::Command::new("git").args(&args).current_dir(root).output().expect("git");
+        assert!(done.status.success(), "git {args:?}");
+    }
+
+    codedoc_ops::import(root, None, &[".".to_owned()], true, None).unwrap();
+    let listing = codedoc_ops::list(root, None, None, None, None, None, None).unwrap();
+    let files: Vec<String> = listing["records"]
+        .as_array()
+        .expect("records")
+        .iter()
+        .filter_map(|record| record["file"].as_str().map(str::to_owned))
+        .collect();
+
+    assert!(
+        files.iter().any(|file| file == "src/app.ts"),
+        "the project's own source still imports: {files:?}"
+    );
+    assert!(
+        !files.iter().any(|file| file.starts_with("thirdparty/")),
+        "the hardcoded skip list covers node_modules, vendor, target, dist and build, so a directory a project ignores under any other name was imported as though it were the project's own knowledge. Running import in a working tree is the first thing an adopter does, and the tree usually has dependencies in it: {files:?}"
+    );
+}

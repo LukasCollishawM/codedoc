@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 
 use codedoc_anchor::symbol_path_of;
 use codedoc_core::RepoPath;
@@ -21,6 +22,38 @@ pub(crate) struct Declaration {
     pub(crate) symbol: String,
     pub(crate) first_line: usize,
     pub(crate) last_line: usize,
+}
+
+pub(crate) struct ProjectFiles {
+    listed: Option<BTreeSet<String>>,
+}
+
+impl ProjectFiles {
+    pub(crate) fn of(root: &Path) -> Self {
+        let listed = Command::new("git")
+            .arg("-C")
+            .arg(root)
+            .args(["ls-files", "-z", "--cached", "--others", "--exclude-standard"])
+            .output()
+            .ok()
+            .filter(|output| output.status.success())
+            .map(|output| {
+                String::from_utf8_lossy(&output.stdout)
+                    .split(char::from(0))
+                    .filter(|line| !line.is_empty())
+                    .map(str::to_owned)
+                    .collect()
+            });
+        Self { listed }
+    }
+
+    pub(crate) fn excludes(&self, relative: &Path) -> bool {
+        let Some(listed) = &self.listed else {
+            return false;
+        };
+        let rendered = relative.to_string_lossy().replace('\\', "/");
+        !listed.contains(&rendered)
+    }
 }
 
 fn is_excluded(path: &Path) -> bool {
@@ -58,6 +91,7 @@ pub(crate) fn source_files(root: &Path, paths: &[String], invoked_from: &Path) -
     } else {
         paths.iter().map(|given| crate::repo_relative_from(root, given, invoked_from)).collect()
     };
+    let project = ProjectFiles::of(root);
     let mut candidates = Vec::new();
     for target in &targets {
         for entry in WalkDir::new(root.join(target)).into_iter().filter_map(Result::ok) {
@@ -68,6 +102,9 @@ pub(crate) fn source_files(root: &Path, paths: &[String], invoked_from: &Path) -
             let Ok(relative) = path.strip_prefix(root) else {
                 continue;
             };
+            if project.excludes(relative) {
+                continue;
+            }
             let Ok(repo_path) = RepoPath::parse(&relative.to_string_lossy()) else {
                 continue;
             };

@@ -100,6 +100,7 @@ pub fn import(
     };
 
     let revision = crate::revision::head_revision(root);
+    let project = crate::coverage::ProjectFiles::of(root);
     let mut harvested = Vec::new();
     let mut files_scanned = 0usize;
     let mut files_unreadable = 0usize;
@@ -113,6 +114,9 @@ pub fn import(
             let Ok(relative) = path.strip_prefix(root) else {
                 continue;
             };
+            if project.excludes(relative) {
+                continue;
+            }
             let Ok(repo_path) = RepoPath::parse(&relative.to_string_lossy()) else {
                 continue;
             };
