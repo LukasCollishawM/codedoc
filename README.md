@@ -137,6 +137,15 @@ the repository entirely.
 Rust, Python, TypeScript, TSX, Go, Java, C# and C/C++ — via tree-sitter. Adding one
 is an adapter, not a rewrite.
 
+Two adapters have known gaps, both recorded with a failing-when-fixed test
+(`cargo test --workspace -- --ignored`). In C#, a file-scoped namespace
+(`namespace Acme;`, the default since C# 10) contributes nothing to a symbol path, so
+types in those files are recorded unqualified. In TypeScript, an arrow function or
+constant bound with `const` is not treated as a declaration, so claims attached to one
+resolve only while their file is unedited. Neither can cause a claim to attach to the
+wrong code — anchors that cannot be named detach instead — but both narrow what can be
+tracked, and [CLAUDE.md](CLAUDE.md) measures by how much.
+
 ## Status
 
 Early. The format is **not yet stable**: before 1.0 it may change, always with a
