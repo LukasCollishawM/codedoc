@@ -61,3 +61,13 @@ pub fn is_available(root: &Path) -> bool {
         .output()
         .is_ok_and(|output| output.status.success())
 }
+
+pub fn is_ancestor(root: &Path, revision: &str, descendant: &str) -> bool {
+    Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(["merge-base", "--is-ancestor", revision, descendant])
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}

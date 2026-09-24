@@ -274,8 +274,10 @@ codedoc review origin/main --out review.md
 ```
 
 It lists claims whose anchors detached (the code they described could not be found)
-and claims that resolved but whose code drifted, with the percentage. Exit codes are
-the same as `verify`, so a workflow can fail or comment on `1` and `2`.
+and claims that resolved but whose code drifted, with the percentage. It also reports how many claims the change itself recorded, counted from the revision
+each record was written against, so the comment says what was learned as well as what
+was put in doubt. Exit codes are the same as `verify`, so a workflow can fail or
+comment on `1` and `2`.
 
 It closes with a footnote counting the declarations the change touched that carry no
 recorded knowledge. That is a prompt at the one moment someone has the context to act

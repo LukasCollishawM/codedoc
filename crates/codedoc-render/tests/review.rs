@@ -7,6 +7,7 @@ fn input<'a>(base: &'a str) -> ReviewInput<'a> {
         stale: Vec::new(),
         detached: Vec::new(),
         unchanged: 0,
+        recorded_here: 0,
         touched_declarations: 0,
         undocumented_declarations: 0,
     }
@@ -139,4 +140,18 @@ fn a_change_no_claim_covers_says_that_rather_than_counting_to_zero() {
          none survived, which is the opposite of what happened: {rendered}"
     );
     assert!(!rendered.contains("0 recorded"), "{rendered}");
+}
+
+#[test]
+fn a_change_that_recorded_something_gets_credit_for_it() {
+    let mut given = input("origin/main");
+    given.unchanged = 2;
+    given.recorded_here = 3;
+    let rendered = review_markdown(&given);
+    assert!(
+        rendered.contains("recorded 3 new claims"),
+        "a review that only ever reports what a change broke teaches people that \
+         this tool is a complaint. Recording something is the behaviour it is \
+         trying to produce, so it should be visible in the same place: {rendered}"
+    );
 }

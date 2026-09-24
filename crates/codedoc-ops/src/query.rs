@@ -549,6 +549,15 @@ pub fn review(root: &Path, base: &str) -> Result<(Value, i32), OpsError> {
         serde_json::from_value(payload["findings"].clone()).unwrap_or_default();
 
     let review_graph = Graph::across(&found)?;
+    let recorded_here = review_graph
+        .active()
+        .iter()
+        .filter(|record| {
+            record.content().code_revision.as_ref().is_some_and(|revision| {
+                !codedoc_verify::history::is_ancestor(found.root(), revision.as_str(), base)
+            })
+        })
+        .count();
     let mut stale = Vec::new();
     let mut detached = Vec::new();
     let mut unchanged = 0usize;
@@ -578,6 +587,7 @@ pub fn review(root: &Path, base: &str) -> Result<(Value, i32), OpsError> {
         stale,
         detached,
         unchanged,
+        recorded_here,
         touched_declarations: touched,
         undocumented_declarations: undocumented,
     });

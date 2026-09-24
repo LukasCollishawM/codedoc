@@ -216,6 +216,7 @@ pub struct ReviewInput<'a> {
     pub stale: Vec<(String, String, String, Option<u32>)>,
     pub detached: Vec<(String, String, String, Option<String>)>,
     pub unchanged: usize,
+    pub recorded_here: usize,
     pub touched_declarations: usize,
     pub undocumented_declarations: usize,
 }
@@ -241,6 +242,7 @@ pub fn review_markdown(input: &ReviewInput<'_>) -> String {
                 if input.unchanged == 1 { " still holds" } else { "s still hold" }
             ));
         }
+        out.push_str(&recorded_note(input));
         out.push_str(&undocumented_note(input));
         return out;
     }
@@ -301,8 +303,23 @@ pub fn review_markdown(input: &ReviewInput<'_>) -> String {
          A claim nobody answers for keeps appearing here until everyone stops reading \
          this comment.\n",
     );
+    out.push_str(&recorded_note(input));
     out.push_str(&undocumented_note(input));
     out
+}
+
+fn recorded_note(input: &ReviewInput<'_>) -> String {
+    if input.recorded_here == 0 {
+        return String::new();
+    }
+    format!(
+        "
+<sub>This change also recorded {} new claim{}, which will be here for \
+         whoever reads this code next.</sub>
+",
+        input.recorded_here,
+        if input.recorded_here == 1 { "" } else { "s" }
+    )
 }
 
 fn undocumented_note(input: &ReviewInput<'_>) -> String {
