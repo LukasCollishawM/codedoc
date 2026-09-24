@@ -229,7 +229,13 @@ fn render_section(pack: &Value, key: &str, heading: &str, out: &mut String) {
                 let _ = writeln!(out, "    {line}");
             }
         }
-        let _ = writeln!(out, "    [{}]", claim["assurance"].as_str().unwrap_or(""));
+        let kind = claim["kind"].as_str().unwrap_or("");
+        let assurance = claim["assurance"].as_str().unwrap_or("");
+        if heading == "OTHER" && !kind.is_empty() {
+            let _ = writeln!(out, "    [{} · {}]", kind.replace('_', " "), assurance);
+        } else {
+            let _ = writeln!(out, "    [{assurance}]");
+        }
     }
 }
 
