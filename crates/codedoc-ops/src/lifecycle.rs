@@ -86,6 +86,50 @@ fn emit(
     append(&ledger, content)
 }
 
+pub fn affirm(
+    root: &Path,
+    scope: Option<Scope>,
+    reference: &str,
+    attribution: &Attribution,
+    assurance: Option<codedoc_ledger::Assurance>,
+) -> Outcome {
+    let original = find(root, reference)?;
+    let anchor = original
+        .subject()
+        .ok_or_else(|| OpsError::NoSubject { reference: reference.to_owned() })?;
+    let relocated = current_position(root, anchor)?;
+    let drift = codedoc_verify::drift_between(&anchor.shape, &relocated.shape);
+
+    let ledger = writable(root, scope)?;
+    let attribution =
+        attribution.clone().with_assurance(assurance.or(Some(original.content().assurance)));
+    let mut content = draft(
+        original.kind(),
+        vec![codedoc_ledger::AnchorRole {
+            role: codedoc_ledger::Role::Subject,
+            anchor: relocated.clone(),
+        }],
+        &original.content().body.claim,
+        original.content().body.detail.as_deref(),
+        &attribution,
+        original.content().evidence.clone(),
+        crate::head_revision(root),
+    );
+    content.parent = Some(original.id());
+    let record = append(&ledger, content)?;
+
+    Ok(json!({
+        "command": "affirm",
+        "record": record.id().to_string(),
+        "affirms": original.id().to_string(),
+        "kind": record.kind().as_str(),
+        "drift_cleared": drift,
+        "range": relocated.range.to_string(),
+        "assurance": record.content().assurance.as_str(),
+        "claim": record.content().body.claim,
+    }))
+}
+
 pub fn supersede(
     root: &Path,
     scope: Option<Scope>,

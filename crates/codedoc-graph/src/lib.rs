@@ -81,6 +81,36 @@ impl Graph {
         chain
     }
 
+    pub fn revision_history(&self, id: RecordId) -> Vec<&Record> {
+        let mut lineage: BTreeSet<String> =
+            self.supersession_chain(id).iter().map(|record| record.id().to_string()).collect();
+        if lineage.is_empty() {
+            return Vec::new();
+        }
+        loop {
+            let grown: Vec<String> = self
+                .all()
+                .iter()
+                .filter(|record| {
+                    record
+                        .content()
+                        .parent
+                        .is_some_and(|parent| lineage.contains(&parent.to_string()))
+                })
+                .map(|record| record.id().to_string())
+                .filter(|found| !lineage.contains(found))
+                .collect();
+            if grown.is_empty() {
+                break;
+            }
+            lineage.extend(grown);
+        }
+        let mut found: Vec<&Record> =
+            self.all().iter().filter(|record| lineage.contains(&record.id().to_string())).collect();
+        found.sort_by_key(|record| (record.content().created, record.id().to_string()));
+        found
+    }
+
     pub fn for_symbol(&self, symbol: &str) -> Vec<&Record> {
         self.active()
             .into_iter()

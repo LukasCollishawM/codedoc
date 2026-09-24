@@ -4,9 +4,9 @@ use std::path::PathBuf;
 
 use codedoc_ledger::{Assurance, Scope};
 use codedoc_ops::{
-    AttachRequest, Attribution, Provenance, RelateRequest, Target, attach, conflicts, context,
-    coverage, detached, history, import, list, relate, render, resolve, retract, review, search,
-    stats, supersede, verify_scoped,
+    AttachRequest, Attribution, Provenance, RelateRequest, Target, affirm, attach, conflicts,
+    context, coverage, detached, history, import, list, relate, render, resolve, retract, review,
+    search, stats, supersede, verify_scoped,
 };
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
@@ -324,6 +324,16 @@ impl Codedoc {
             args.detail.as_deref(),
             None,
         ))
+    }
+
+    #[tool(
+        description = "Record that a claim still holds against the code as it now is. Use this when codedoc_verify reports a record as stale, you have re-read the code, and the claim is still true: it re-anchors the claim to the current shape so the staleness clears, and records that you were the one who checked. If the claim is no longer true, codedoc_supersede or codedoc_retract it instead."
+    )]
+    async fn codedoc_affirm(
+        &self,
+        Parameters(args): Parameters<RecordArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        respond(affirm(&self.root, scope_of(&args.scope), &args.record, &self.attribution(), None))
     }
 
     #[tool(

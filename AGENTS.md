@@ -54,6 +54,7 @@ codedoc_context  →  agent reads, then changes code  →  codedoc_attach / code
 | `codedoc_verify` | after making changes — pass `files` or `since` to check only what you touched |
 | `codedoc_detached` | when verify reports detachments; it suggests where the code may have gone |
 | `codedoc_resolve` | to place a detached record explicitly |
+| `codedoc_affirm` | when verify says a record is stale, you re-read the code, and it still holds |
 | `codedoc_supersede` | when an existing record turns out to be wrong |
 | `codedoc_retract` | when a record is no longer true at all |
 | `codedoc_list` | to survey what is recorded |
@@ -120,6 +121,13 @@ function validates the token" is worthless — the code says that. "Validation m
 precede tenant resolution, because resolving a tenant from an unvalidated token
 allows tenant confusion across trust boundaries" is the thing that dies in a commit
 message otherwise.
+
+**Staleness is a question, not a verdict.** When `codedoc_verify` reports a record as
+stale, the code beneath a claim changed enough to be worth re-reading. It does not mean
+the claim is wrong. Read the code and then say which it was: `codedoc_affirm` if it
+still holds, `codedoc_supersede` if it needs rewording, `codedoc_retract` if it is gone.
+Leaving it unanswered is the one bad option — a corpus where everything reads stale is
+a corpus nobody reads.
 
 **Some knowledge is about a file, not a declaration.** "Every handler in this module
 assumes the request has already been authenticated" is not a fact about any one

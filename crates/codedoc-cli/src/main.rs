@@ -156,6 +156,22 @@ enum Command {
         limit: usize,
     },
 
+    Affirm {
+        record: String,
+
+        #[arg(long)]
+        assurance: Option<String>,
+
+        #[arg(long, value_enum, default_value_t = AuthorKind::Human)]
+        author: AuthorKind,
+
+        #[arg(long, default_value = "unattributed")]
+        identity: String,
+
+        #[arg(long)]
+        session: Option<String>,
+    },
+
     History {
         record: String,
     },
@@ -321,6 +337,25 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
             ops::search(&cli.root, &query.join(" "), kind.as_deref(), file.as_deref(), *limit)?,
             0,
         )),
+        Command::Affirm { record, assurance, author, identity, session } => {
+            let attribution = match author {
+                AuthorKind::Human => ops::Attribution::human(identity),
+                AuthorKind::Agent => {
+                    ops::Attribution::agent(identity, session.as_deref().unwrap_or("unrecorded"))
+                }
+                AuthorKind::Analyzer | AuthorKind::Runtime => ops::Attribution::analyzer(identity),
+            };
+            Ok((
+                ops::affirm(
+                    &cli.root,
+                    scope,
+                    record,
+                    &attribution,
+                    assurance.as_deref().and_then(Assurance::parse),
+                )?,
+                0,
+            ))
+        }
         Command::History { record } => command_history(&cli.root, record),
         Command::Stats => command_stats(&cli.root),
         Command::Kinds => Ok((json!({"command": "kinds", "kinds": Kind::vocabulary()}), 0)),

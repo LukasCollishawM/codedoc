@@ -240,6 +240,28 @@ Nothing available at resolution time distinguishes a rename from a deletion foll
 by a similar addition — position, shape and body identity were each tried and each
 conflated the two. See [ADR-0011](decisions/0011-renames-detach.md).
 
+### `codedoc affirm <record>`
+
+Records that a claim still holds against the code as it now is. Use it when `codedoc
+verify` reports a record as stale, you have re-read the code, and the claim is still
+true.
+
+```bash
+codedoc affirm 638bd987 --author human --identity "a reviewer"
+```
+
+It re-anchors the claim to the current shape, so the drift that made it stale clears,
+and it records who did the re-reading and at which revision. The claim itself is not
+reworded — an affirmation that changed the words would be a supersede. `codedoc
+history` marks these entries `affirmation: true`, which is how a chain distinguishes
+"someone checked this again" from "someone changed their mind".
+
+A detached record cannot be affirmed: affirming means the code was re-read, and if the
+code cannot be found there was nothing to read. Place it with `codedoc resolve` first.
+
+Options: `--assurance` (defaults to the original's), `--author`, `--identity`,
+`--session`.
+
 ### `codedoc supersede <record> [--claim "..."] [--detail "..."] [--kind <kind>]`
 
 Revises a record. Writes a superseding record and re-anchors it to the code's current

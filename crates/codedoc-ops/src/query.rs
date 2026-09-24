@@ -299,16 +299,22 @@ pub fn history(root: &Path, reference: &str) -> Outcome {
     let original = find(root, reference)?;
     let found = workspace(root)?;
     let graph = Graph::across(&found)?;
-    let chain = graph.supersession_chain(original.id());
+    let chain = graph.revision_history(original.id());
     let rows: Vec<Value> = chain
         .iter()
-        .map(|entry| {
+        .enumerate()
+        .map(|(position, entry)| {
+            let restates_its_parent = position
+                .checked_sub(1)
+                .and_then(|previous| chain.get(previous))
+                .is_some_and(|parent| parent.content().body == entry.content().body);
             json!({
                 "record": entry.id().to_string(),
                 "kind": entry.kind().as_str(),
                 "claim": entry.content().body.claim,
                 "created": entry.content().created.to_rfc3339(),
                 "code_revision": entry.content().code_revision.as_ref().map(ToString::to_string),
+                "affirmation": restates_its_parent,
             })
         })
         .collect();

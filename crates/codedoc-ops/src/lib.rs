@@ -12,7 +12,7 @@ mod revision;
 pub use author::Attribution;
 pub use coverage::coverage;
 pub use import::import;
-pub use lifecycle::{Relocation, resolve, retract, supersede};
+pub use lifecycle::{Relocation, affirm, resolve, retract, supersede};
 pub use query::{
     conflicts, context, detached, history, list, render, review, search, stats, verify,
     verify_scoped,
