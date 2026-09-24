@@ -23,6 +23,7 @@ pub fn human(payload: &Value) -> String {
         Some("detached") => render_detached(payload, &mut out),
         Some("conflicts") => render_conflicts(payload, &mut out),
         Some("coverage") => render_coverage(payload, &mut out),
+        Some("gaps") => render_gaps(payload, &mut out),
         Some("doctor") => render_doctor(payload, &mut out),
         Some("search") => render_search(payload, &mut out),
         Some("brief") => render_brief(payload, &mut out),
@@ -536,6 +537,58 @@ fn render_coverage(payload: &Value, out: &mut String) {
     let _ = writeln!(out);
     let _ = writeln!(out, "Coverage is a prompt, not a target. A codebase where every");
     let _ = writeln!(out, "declaration carries a record has mostly restated its own code.");
+}
+
+fn render_gaps(payload: &Value, out: &mut String) {
+    if payload["git"].as_bool() != Some(true) {
+        let _ = writeln!(out, "no git history here, so there is nothing to rank against");
+        return;
+    }
+    let empty = Vec::new();
+    let gaps = payload["gaps"].as_array().unwrap_or(&empty);
+    if gaps.is_empty() {
+        let _ = writeln!(
+            out,
+            "nothing undocumented in the last {} commits has been revisited",
+            count(payload, "commits_scanned")
+        );
+        return;
+    }
+
+    let _ = writeln!(
+        out,
+        "{} undocumented declaration{} the last {} commits came back to:",
+        gaps.len(),
+        if gaps.len() == 1 { "" } else { "s" },
+        count(payload, "commits_scanned")
+    );
+    for gap in gaps {
+        let _ = writeln!(out);
+        let _ = writeln!(
+            out,
+            "  {}:{} — {}",
+            gap["file"].as_str().unwrap_or(""),
+            gap["first_line"].as_u64().unwrap_or(0),
+            gap["symbol"].as_str().unwrap_or("")
+        );
+        let corrections = gap["corrections"].as_u64().unwrap_or(0);
+        let commits = gap["commits"].as_u64().unwrap_or(0);
+        let authors = gap["authors"].as_u64().unwrap_or(0);
+        let _ = writeln!(
+            out,
+            "    {commits} commit{}, {corrections} corrective, {authors} author{}",
+            if commits == 1 { "" } else { "s" },
+            if authors == 1 { "" } else { "s" }
+        );
+        if let Some(latest) = gap["latest_correction"].as_str() {
+            let _ = writeln!(out, "    latest correction: {latest}");
+        }
+    }
+
+    let _ = writeln!(out);
+    let _ = writeln!(out, "A correction is evidence that the code did not say enough, because");
+    let _ = writeln!(out, "code that said enough would not have needed correcting. Read those");
+    let _ = writeln!(out, "commits rather than the code: the code is only what was left after.");
 }
 
 fn render_conflicts(payload: &Value, out: &mut String) {

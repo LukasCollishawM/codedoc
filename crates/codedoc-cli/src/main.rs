@@ -250,6 +250,16 @@ enum Command {
         limit: usize,
     },
 
+    Gaps {
+        paths: Vec<String>,
+
+        #[arg(long, default_value_t = 10)]
+        limit: usize,
+
+        #[arg(long, default_value_t = 400)]
+        commits: usize,
+    },
+
     Review {
         #[arg(default_value = "HEAD")]
         base: String,
@@ -433,6 +443,9 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
             Ok((ops::brief(&cli.root, files, since.as_deref(), *depth, *budget)?, 0))
         }
         Command::Coverage { paths, limit } => Ok((ops::coverage(&cli.root, paths, *limit)?, 0)),
+        Command::Gaps { paths, limit, commits } => {
+            Ok((ops::gaps(&cli.root, paths, *limit, *commits)?, 0))
+        }
         Command::Review { base, out } => {
             let (payload, code) = ops::review(&cli.root, base)?;
             if let Some(path) = out {

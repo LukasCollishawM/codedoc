@@ -75,7 +75,8 @@ fn nearest_symbols(root: &Path, relative: &RepoPath, wanted: &str) -> String {
     let mut ranked: Vec<(usize, &String)> = found
         .declared
         .iter()
-        .map(|candidate| {
+        .map(|declaration| {
+            let candidate = &declaration.symbol;
             let terminal =
                 candidate.rsplit(['/', ':']).find(|part| !part.is_empty()).unwrap_or(candidate);
             let shared = terminal

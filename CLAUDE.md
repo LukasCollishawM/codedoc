@@ -222,6 +222,8 @@ Measured, not aspirational, and on the large corpus only — a figure from a sma
 | `context` (depth 2) | 40ms | 100ms |
 | `brief` | 38ms | 100ms |
 
+`gaps` is missing from that table on purpose. The scale corpus is 120 vendored crates with no git history, and `gaps` reads nothing else, so measuring it there would measure nothing. On codedoc's own repository it is **4.8s** for 502 declarations across 24 files — one `git log -L` process per declaration, in parallel. The cost is bounded by `FILES_EXAMINED`, not by corpus size, so a million-line repository costs the same as this one; what moves it is history depth. It is not yet bounded the way it could be: a range cannot be corrected more often than the file containing it, so once enough results are in hand whose correction counts beat the next file's, the remaining files need not be opened at all. That bound is sound and unimplemented.
+
 Everything is inside budget at a million lines, but only after the scale test found something a smaller corpus could not. `context` was **1.98s** at 1M LOC while passing comfortably at 50k, because relation lookup ran one query per symbol, used a `LIKE 'relation.%'` that the kind index cannot serve, and an unindexed `NOT IN` subquery — a cost invisible until a file carried enough claims for the per-symbol loop to matter. One query with a bound `IN` list, a range predicate the index can use, and an index on `parent` took it to 33ms.
 
 The lesson is worth more than the number: a budget met on a small corpus says nothing about an algorithm that is linear in the wrong variable. Measure on the large corpus before claiming a budget is met.

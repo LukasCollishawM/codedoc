@@ -13,8 +13,14 @@ use walkdir::WalkDir;
 use crate::{Outcome, workspace};
 
 pub(crate) struct FileCoverage {
-    file: String,
-    pub(crate) declared: Vec<String>,
+    pub(crate) file: String,
+    pub(crate) declared: Vec<Declaration>,
+}
+
+pub(crate) struct Declaration {
+    pub(crate) symbol: String,
+    pub(crate) first_line: usize,
+    pub(crate) last_line: usize,
 }
 
 fn is_excluded(path: &Path) -> bool {
@@ -46,12 +52,44 @@ fn is_excluded(path: &Path) -> bool {
     vendored || named_as_test
 }
 
+pub(crate) fn source_files(root: &Path, paths: &[String]) -> Vec<RepoPath> {
+    let targets: Vec<String> = if paths.is_empty() { vec![".".to_owned()] } else { paths.to_vec() };
+    let mut candidates = Vec::new();
+    for target in &targets {
+        for entry in WalkDir::new(root.join(target)).into_iter().filter_map(Result::ok) {
+            let path = entry.path();
+            if !path.is_file() || is_excluded(path) {
+                continue;
+            }
+            let Ok(relative) = path.strip_prefix(root) else {
+                continue;
+            };
+            let Ok(repo_path) = RepoPath::parse(&relative.to_string_lossy()) else {
+                continue;
+            };
+            if Registry::for_path(&repo_path).is_ok() {
+                candidates.push(repo_path);
+            }
+        }
+    }
+    candidates
+}
+
+pub(crate) fn documented_symbols(graph: &Graph) -> BTreeSet<String> {
+    graph
+        .active()
+        .iter()
+        .flat_map(|record| record.content().anchors.iter())
+        .filter_map(|entry| entry.anchor.symbol.as_ref().map(ToString::to_string))
+        .collect()
+}
+
 pub(crate) fn declarations_in(root: &Path, relative: &RepoPath) -> Option<FileCoverage> {
     let adapter = Registry::for_path(relative).ok()?;
     let source = fs::read_to_string(root.join(relative.as_str())).ok()?;
     let tree = adapter.parse(&source).ok()?;
 
-    let mut declared = BTreeSet::new();
+    let mut declared: BTreeMap<String, (usize, usize)> = BTreeMap::new();
     let mut cursor = tree.root_node().walk();
     let mut descending = true;
     loop {
@@ -60,7 +98,9 @@ pub(crate) fn declarations_in(root: &Path, relative: &RepoPath) -> Option<FileCo
             if adapter.declares_symbol(node.kind())
                 && let Some(path) = symbol_path_of(node, adapter, &source)
             {
-                declared.insert(path.to_string());
+                declared
+                    .entry(path.to_string())
+                    .or_insert((node.start_position().row + 1, node.end_position().row + 1));
             }
             if cursor.goto_first_child() {
                 continue;
@@ -78,19 +118,17 @@ pub(crate) fn declarations_in(root: &Path, relative: &RepoPath) -> Option<FileCo
 
     Some(FileCoverage {
         file: relative.as_str().to_owned(),
-        declared: declared.into_iter().collect(),
+        declared: declared
+            .into_iter()
+            .map(|(symbol, (first_line, last_line))| Declaration { symbol, first_line, last_line })
+            .collect(),
     })
 }
 
 pub(crate) fn touched_declarations(root: &Path, files: &[String]) -> Option<(usize, usize)> {
     let found = workspace(root).ok()?;
     let graph = Graph::across(&found).ok()?;
-    let documented: BTreeSet<String> = graph
-        .active()
-        .iter()
-        .flat_map(|record| record.content().anchors.iter())
-        .filter_map(|entry| entry.anchor.symbol.as_ref().map(ToString::to_string))
-        .collect();
+    let documented = documented_symbols(&graph);
 
     let mut total = 0usize;
     let mut missing = 0usize;
@@ -101,9 +139,9 @@ pub(crate) fn touched_declarations(root: &Path, files: &[String]) -> Option<(usi
         let Some(entry) = declarations_in(found.root(), &relative) else {
             continue;
         };
-        for symbol in &entry.declared {
+        for declaration in &entry.declared {
             total += 1;
-            if !documented.contains(symbol) {
+            if !documented.contains(&declaration.symbol) {
                 missing += 1;
             }
         }
@@ -115,12 +153,7 @@ pub fn coverage(root: &Path, paths: &[String], limit: usize) -> Outcome {
     let found = workspace(root)?;
     let graph = Graph::across(&found)?;
 
-    let documented: BTreeSet<String> = graph
-        .active()
-        .iter()
-        .flat_map(|record| record.content().anchors.iter())
-        .filter_map(|entry| entry.anchor.symbol.as_ref().map(ToString::to_string))
-        .collect();
+    let documented = documented_symbols(&graph);
 
     let mut about_the_file: BTreeMap<String, usize> = BTreeMap::new();
     for entry in graph.active().iter().flat_map(|record| record.content().anchors.iter()) {
@@ -129,26 +162,7 @@ pub fn coverage(root: &Path, paths: &[String], limit: usize) -> Outcome {
         }
     }
 
-    let targets: Vec<String> = if paths.is_empty() { vec![".".to_owned()] } else { paths.to_vec() };
-
-    let mut candidates = Vec::new();
-    for target in &targets {
-        for entry in WalkDir::new(found.root().join(target)).into_iter().filter_map(Result::ok) {
-            let path = entry.path();
-            if !path.is_file() || is_excluded(path) {
-                continue;
-            }
-            let Ok(relative) = path.strip_prefix(found.root()) else {
-                continue;
-            };
-            let Ok(repo_path) = RepoPath::parse(&relative.to_string_lossy()) else {
-                continue;
-            };
-            if Registry::for_path(&repo_path).is_ok() {
-                candidates.push(repo_path);
-            }
-        }
-    }
+    let candidates = source_files(found.root(), paths);
 
     let scanned: Vec<FileCoverage> = candidates
         .par_iter()
@@ -163,12 +177,12 @@ pub fn coverage(root: &Path, paths: &[String], limit: usize) -> Outcome {
     for entry in &scanned {
         let mut file_total = 0usize;
         let mut file_covered = 0usize;
-        for symbol in &entry.declared {
+        for declaration in &entry.declared {
             file_total += 1;
-            if documented.contains(symbol) {
+            if documented.contains(&declaration.symbol) {
                 file_covered += 1;
             } else {
-                uncovered.push((entry.file.clone(), symbol.clone()));
+                uncovered.push((entry.file.clone(), declaration.symbol.clone()));
             }
         }
         total += file_total;

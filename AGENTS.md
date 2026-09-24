@@ -87,6 +87,7 @@ Every MCP client receives these instructions when it connects:
 | `codedoc_doctor` | to ask, in one call, whether the recorded knowledge here is in good order |
 | `codedoc_review` | after finishing a change, to report what you may have invalidated |
 | `codedoc_coverage` | to find where knowledge is missing, not as a number to maximise |
+| `codedoc_gaps` | to decide what to record first: what the history kept correcting |
 | `codedoc_render` | when asked for onboarding notes or architecture docs |
 | `codedoc_import` | once, when adopting codedoc on a repository that already has comments |
 | `codedoc_stats` | to check ledger health and coverage |

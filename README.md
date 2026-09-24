@@ -57,7 +57,7 @@ Then add the server to your MCP client:
 }
 ```
 
-That's the setup. The agent gets twenty-two tools, discovers them itself, and is told
+That's the setup. The agent gets twenty-three tools, discovers them itself, and is told
 when to use them. See [AGENTS.md](AGENTS.md) for what it is told and how to make
 your agent use it well.
 
@@ -65,6 +65,12 @@ your agent use it well.
 already have, anchors each to the construct it documents, and classifies it — `TODO`
 becomes a warning, `SAFETY:` becomes a security record. Dry run by default. It never
 modifies your source.
+
+**Starting from nothing?** `codedoc gaps` reads the git history and ranks the
+declarations it kept correcting — how many commits touched those exact lines, how
+many were corrective, and what the latest one said. A correction is evidence the
+code did not say enough, because code that said enough would not have needed
+correcting. It is the shortest list of places worth asking someone about.
 
 ## How it works
 

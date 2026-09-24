@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use codedoc_ledger::{Assurance, Scope};
 use codedoc_ops::{
     AttachRequest, Attribution, Provenance, RelateRequest, Target, affirm, attach, brief,
-    conflicts, context, coverage, detached, evidence, health, history, import, initialise, list,
-    relate, render, resolve, retract, review, search, stats, supersede, verify_scoped,
+    conflicts, context, coverage, detached, evidence, gaps, health, history, import, initialise,
+    list, relate, render, resolve, retract, review, search, stats, supersede, verify_scoped,
 };
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
@@ -203,6 +203,16 @@ pub struct CoverageArgs {
     pub paths: Option<Vec<String>>,
     /// How many of the thinnest files to list.
     pub limit: Option<usize>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct GapsArgs {
+    /// Repository-relative paths to scan. Defaults to the whole repository.
+    pub paths: Option<Vec<String>>,
+    /// How many declarations to list.
+    pub limit: Option<usize>,
+    /// How far back to read the history. Defaults to 400 commits.
+    pub commits: Option<usize>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -581,6 +591,21 @@ impl Codedoc {
         Parameters(args): Parameters<CoverageArgs>,
     ) -> Result<CallToolResult, McpError> {
         respond(coverage(&self.root, &args.paths.unwrap_or_default(), args.limit.unwrap_or(10)))
+    }
+
+    #[tool(
+        description = "Rank undocumented declarations by the evidence in the git history that somebody once knew something about them: how often the lines were corrected, by how many authors, and what the latest corrective commit said. Use it to decide WHAT to record first, where coverage only says where records are absent. A declaration that has been corrected repeatedly is one whose code demonstrably does not say enough."
+    )]
+    async fn codedoc_gaps(
+        &self,
+        Parameters(args): Parameters<GapsArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        respond(gaps(
+            &self.root,
+            &args.paths.unwrap_or_default(),
+            args.limit.unwrap_or(10),
+            args.commits.unwrap_or(400),
+        ))
     }
 
     #[tool(

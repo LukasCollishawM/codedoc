@@ -230,6 +230,47 @@ record has mostly restated its own code, which is the failure mode this project
 exists to avoid. It is useful for the opposite question: after importing a few
 thousand comments, which parts of the system got nothing?
 
+### `codedoc gaps [<path>...] [--limit N] [--commits N]`
+
+Which undocumented declarations does the history say somebody once knew something
+about? `coverage` ranks files by how little of them is documented, which mostly
+rewards whichever file is largest. This ranks declarations by evidence: how many
+commits touched those exact lines, how many of those commits were corrective, by
+how many authors, and what the most recent corrective commit said.
+
+```
+$ codedoc gaps --limit 2
+2 undocumented declarations the last 400 commits came back to:
+
+  crates/codedoc-cli/src/main.rs:510 - rust://parse_target
+    3 commits, 2 corrective, 1 author
+    latest correction: Pass the scope flag through, and repair a chain broken by history surgery
+```
+
+The ranking is corrections first, then the share of commits that were corrective,
+then authors, then commits. A range corrected twice in four commits outranks one
+corrected twice in twenty, because the second is usually a declaration everybody
+has to edit — the enum a new subcommand is added to — rather than one that keeps
+going wrong. A range touched by a single commit has no rate to speak of and is
+ranked as though its share were zero.
+
+A commit counts as corrective when its subject contains one of a short list of
+whole words: `fix`, `bug`, `regression`, `revert`, `broke`, `crash`, `hang`,
+`deadlock`, `leak`, `race` and their inflections. They are matched as words and
+not as prefixes, so `fixture` is not `fix`. The list is English only. It is
+deliberately narrow: a false positive promotes a declaration that did not earn
+its place, which is worse than missing one.
+
+`--commits` sets how far back to read, defaulting to 400. Line ranges are followed
+backwards through the diffs with `git log -L`, so a declaration that moved is still
+credited with what happened to it before it moved. Without a git repository the
+command reports nothing rather than guessing.
+
+**The argument for the command.** A correction is evidence that the code as written
+did not say enough, because code that said enough would not have needed correcting.
+Whatever was learnt in that commit is, at best, in a commit message nobody will
+read again. `gaps` is the list of places to go and ask.
+
 ### `codedoc stats`
 
 Record counts by kind, relation count, ledger integrity, and which scopes are present.
