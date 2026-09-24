@@ -163,9 +163,14 @@ Claims are ranked by trust — assurance, then authorship, then age — and `--b
 caps the assembled size by dropping the least trustworthy first. `--as-of` answers as
 of a past moment; see `codedoc list` below.
 
-### `codedoc list [--file <path>] [--symbol <path>] [--as-of <date>]`
+### `codedoc list [--file <path>] [--symbol <path>] [--as-of <date>] [--author <text>]`
 
 Active records, optionally narrowed.
+
+`--author` matches against a human's identity, or an agent's model and session, so
+`--author session-4f2a` answers what one agent run recorded and `--author "a reviewer"`
+answers what one person did. Reviewing an agent's output is the step that keeps a
+corpus worth reading, and it needs a way to ask.
 
 `--as-of` answers what was recorded as of a moment rather than now: pass `2026-03-01`
 or a full RFC 3339 instant. Records written later are excluded and revisions made later

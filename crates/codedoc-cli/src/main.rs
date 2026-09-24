@@ -147,6 +147,9 @@ enum Command {
 
         #[arg(long)]
         as_of: Option<String>,
+
+        #[arg(long)]
+        author: Option<String>,
     },
 
     Search {
@@ -353,9 +356,14 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
             command_context(&cli.root, target, symbol.as_deref(), *depth, *budget, as_of.as_deref())
         }
         Command::Reindex => command_reindex(&cli.root),
-        Command::List { file, symbol, as_of } => {
-            command_list(&cli.root, scope, file.as_deref(), symbol.as_deref(), as_of.as_deref())
-        }
+        Command::List { file, symbol, as_of, author } => command_list(
+            &cli.root,
+            scope,
+            file.as_deref(),
+            symbol.as_deref(),
+            as_of.as_deref(),
+            author.as_deref(),
+        ),
         Command::Search { query, kind, file, limit } => Ok((
             ops::search(
                 &cli.root,
@@ -571,8 +579,9 @@ fn command_list(
     file: Option<&str>,
     symbol: Option<&str>,
     as_of: Option<&str>,
+    author: Option<&str>,
 ) -> Result<(Value, i32)> {
-    Ok((ops::list(root, scope, file, symbol, as_of)?, 0))
+    Ok((ops::list(root, scope, file, symbol, as_of, author)?, 0))
 }
 
 fn command_history(root: &Path, record: &str) -> Result<(Value, i32)> {

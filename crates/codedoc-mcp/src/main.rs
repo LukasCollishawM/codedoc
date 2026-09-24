@@ -138,6 +138,9 @@ pub struct FilterArgs {
     pub file: Option<String>,
     /// Restrict to records anchored to this symbol path.
     pub symbol: Option<String>,
+    /// Restrict to records written by an author whose identity, model or session
+    /// contains this text — for reviewing what one agent or one session recorded.
+    pub author: Option<String>,
     /// A date such as 2026-03-01, to see what was recorded as of then.
     pub as_of: Option<String>,
     /// Restrict to one ledger: `local`, `shared` or `global`. Omit to read across all.
@@ -486,6 +489,7 @@ impl Codedoc {
             args.file.as_deref(),
             args.symbol.as_deref(),
             args.as_of.as_deref(),
+            args.author.as_deref(),
         ))
     }
 

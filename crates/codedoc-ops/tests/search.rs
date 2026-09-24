@@ -124,7 +124,7 @@ fn a_retracted_claim_does_not_come_back_from_search() {
         "invariant",
         "Tokens are validated exactly once.",
     );
-    let listed = codedoc_ops::list(root.path(), None, None, None, None).unwrap();
+    let listed = codedoc_ops::list(root.path(), None, None, None, None, None).unwrap();
     let id = listed["records"][0]["record"].as_str().unwrap().to_owned();
 
     codedoc_ops::retract(root.path(), None, &id, Some("no longer true")).unwrap();

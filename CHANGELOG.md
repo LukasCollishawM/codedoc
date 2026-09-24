@@ -8,6 +8,7 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Added
 
+- **`codedoc list --author`** answers what one person, one agent or one session recorded. Records have carried their author and session since the beginning and nothing could filter on it, so reviewing an agent's output — the step that keeps a corpus worth reading — meant scanning everything.
 - **`codedoc doctor` reports records sitting on a construct that cannot be named.** They resolve only while their file is byte-identical, so they are the ones that vanish on an edit nobody thought was risky. Advisory rather than blocking: it is a thing to know, not a thing to fail a build on.
 - **`codedoc import` reports how many of the comments it anchored cannot be named.** Tonight's measurement established that an unnamed anchor is the one that detaches — across five corpora, every record that detached immediately after import had no symbol. Import now says so at the point it matters, before the ledger is committed rather than after: Java 0%, Go 2%, C++ 10%, TypeScript 33%.
 - **The ledger merge driver is tested.** It is what stops two branches conflicting over the same shard, and what a team silently depends on; nothing exercised it. Both documented behaviours are now asserted: it unions the records from both sides, and when any input line is not a valid record it refuses with exit 4 and leaves the existing file untouched rather than half-writing a ledger nothing can read.

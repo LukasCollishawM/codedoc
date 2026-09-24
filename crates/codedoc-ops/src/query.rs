@@ -293,12 +293,25 @@ pub fn detached(root: &Path) -> Result<(Value, i32), OpsError> {
     Ok((json!({"command": "detached", "count": rows.len(), "records": rows}), code))
 }
 
+fn written_by(record: &codedoc_ledger::Record, wanted: &str) -> bool {
+    let needle = wanted.to_ascii_lowercase();
+    let haystack = match &record.content().author {
+        codedoc_ledger::Author::Human { identity } => identity.clone(),
+        codedoc_ledger::Author::Agent { model, session } => format!("{model} {session}"),
+        codedoc_ledger::Author::Analyzer { name } => name.clone(),
+        codedoc_ledger::Author::Runtime { name } => name.clone(),
+        _ => String::new(),
+    };
+    haystack.to_ascii_lowercase().contains(&needle)
+}
+
 pub fn list(
     root: &Path,
     scope: Option<Scope>,
     file: Option<&str>,
     symbol: Option<&str>,
     as_of: Option<&str>,
+    author: Option<&str>,
 ) -> Outcome {
     let found = workspace_in(root, scope)?;
     let graph = at_moment(Graph::across(&found)?, as_of)?;
@@ -307,6 +320,11 @@ pub fn list(
         (Some(wanted), None) => graph.in_file(wanted),
         (None, None) => graph.active(),
     };
+    let records: Vec<_> = match author {
+        Some(wanted) => records.into_iter().filter(|record| written_by(record, wanted)).collect(),
+        None => records,
+    };
+
     let rows: Vec<Value> = records
         .iter()
         .map(|record| {
@@ -314,6 +332,7 @@ pub fn list(
                 "record": record.id().to_string(),
                 "kind": record.kind().as_str(),
                 "claim": record.content().body.claim,
+                "author": serde_json::to_value(&record.content().author).unwrap_or(Value::Null),
                 "file": record.subject().map(|anchor| anchor.file.as_str().to_owned()),
                 "symbol": record
                     .subject()
@@ -326,6 +345,7 @@ pub fn list(
         "command": "list",
         "count": rows.len(),
         "as_of": as_of,
+        "author": author,
         "scopes": found.scopes().iter().map(|entry| entry.as_str()).collect::<Vec<_>>(),
         "records": rows,
     }))

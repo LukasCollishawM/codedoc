@@ -91,7 +91,7 @@ fn an_affirmation_keeps_the_claim_and_records_who_checked_it() {
     );
     assert_eq!(chain[1]["claim"], chain[0]["claim"], "an affirmation does not reword the claim");
 
-    let listed = codedoc_ops::list(root.path(), None, None, None, None).unwrap();
+    let listed = codedoc_ops::list(root.path(), None, None, None, None, None).unwrap();
     assert_eq!(listed["count"], 1, "the superseded original leaves the active set: {listed}");
 }
 
@@ -310,11 +310,12 @@ fn a_moment_before_anything_was_recorded_reports_that_nothing_was_known() {
     )
     .unwrap();
 
-    let now = codedoc_ops::list(root.path(), None, None, None, None).unwrap();
+    let now = codedoc_ops::list(root.path(), None, None, None, None, None).unwrap();
     assert_eq!(now["count"], 1, "{now}");
     assert!(now.to_string().contains("never a partial one"), "{now}");
 
-    let before = codedoc_ops::list(root.path(), None, None, None, Some("2000-01-01")).unwrap();
+    let before =
+        codedoc_ops::list(root.path(), None, None, None, Some("2000-01-01"), None).unwrap();
     assert_eq!(
         before["count"], 0,
         "the README promises that what was believed at some past moment is a query \
@@ -341,10 +342,54 @@ fn a_date_nobody_can_parse_is_refused_rather_than_read_as_the_epoch() {
     let root = project("pub fn compute(d: &[u8]) -> u32 {\n    d.len() as u32\n}\n");
     attach(root.path(), "Callers pass at most one frame.");
 
-    let refused = codedoc_ops::list(root.path(), None, None, None, Some("last Tuesday"));
+    let refused = codedoc_ops::list(root.path(), None, None, None, Some("last Tuesday"), None);
     assert!(
         refused.is_err(),
         "falling back to the epoch would answer 'nothing was known' for a question \
          the caller mistyped, which is a lie rather than an error"
     );
+}
+
+#[test]
+fn records_can_be_listed_by_who_wrote_them() {
+    let root = project("pub fn compute(d: &[u8]) -> u32 {\n    d.len() as u32\n}\n");
+    let request = |claim: &str| codedoc_ops::AttachRequest {
+        target: codedoc_ops::Target::symbol("src/lib.rs", "rust://compute"),
+        kind: "invariant".to_owned(),
+        claim: claim.to_owned(),
+        detail: None,
+    };
+    codedoc_ops::attach(
+        root.path(),
+        None,
+        &request("Recorded by an agent during one session."),
+        &codedoc_ops::Attribution::agent("some-model", "session-alpha"),
+        codedoc_ops::Provenance::default(),
+    )
+    .unwrap();
+    codedoc_ops::attach(
+        root.path(),
+        None,
+        &request("Recorded by a person who read the code."),
+        &codedoc_ops::Attribution::human("a reviewer"),
+        codedoc_ops::Provenance::default(),
+    )
+    .unwrap();
+
+    let by_session =
+        codedoc_ops::list(root.path(), None, None, None, None, Some("session-alpha")).unwrap();
+    assert_eq!(
+        by_session["count"], 1,
+        "reviewing what one agent run recorded is the human-in-the-loop step, and it \
+         needs a way to ask: {by_session}"
+    );
+    assert!(by_session.to_string().contains("during one session"));
+
+    let by_person =
+        codedoc_ops::list(root.path(), None, None, None, None, Some("a reviewer")).unwrap();
+    assert_eq!(by_person["count"], 1, "{by_person}");
+    assert!(by_person.to_string().contains("who read the code"));
+
+    let nobody = codedoc_ops::list(root.path(), None, None, None, None, Some("nobody")).unwrap();
+    assert_eq!(nobody["count"], 0, "{nobody}");
 }
