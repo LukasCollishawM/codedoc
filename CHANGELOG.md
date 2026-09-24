@@ -8,6 +8,8 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Added
 
+- **The server instructions tell an agent when to call `codedoc_gaps`.** A tool an agent has to discover the use of is a tool it will not reach for on the one task it was built for — arriving at an undocumented repository and being asked to fix that.
+
 - **`parse_target` is tested, and what it does is recorded.** Found by running `codedoc gaps` on codedoc: two of its four commits were corrective and nothing exercised it. The ranking was right. Two facts lived only in the code — the colon branch is tried first, and only the number parse stops `file@rust://symbol` being split at the symbol's own scheme separator; and writing both forms at once silently drops the symbol into the file name rather than failing. Five tests now hold both, including the second one as it actually behaves rather than as it should.
 
 - **`codedoc gaps` ranks undocumented declarations by what the history did to them.** `coverage` answers where records are absent, which mostly points at whichever file is largest. This answers which absence is costing something: how many commits touched those exact lines, how many were corrective, by how many authors, and what the latest corrective commit said. Line ranges are followed backwards through the diffs, so a declaration that moved keeps its history. The argument is that a correction is evidence the code did not say enough, because code that said enough would not have needed correcting — and whatever was learnt in that commit is at best in a message nobody will read again. Exposed as `codedoc_gaps` over MCP.

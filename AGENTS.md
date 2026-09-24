@@ -38,6 +38,14 @@ Every MCP client receives these instructions when it connects:
 > `codedoc_verify` reports detached anchors, `codedoc_detached` lists them and
 > `codedoc_resolve` places one explicitly.
 >
+> Call `codedoc_gaps` when you are asked to document a repository and do not know
+> where to start. It ranks undocumented declarations by what the history did to
+> them: how often those exact lines were corrected, by how many authors, and what
+> the latest corrective commit said. Read those commits and not only the code — the
+> code is what was left after the correction and does not say what it was corrected
+> from. For deciding WHAT to record it is the sharper tool; `codedoc_coverage` only
+> says where records are absent.
+>
 > Your records are attributed to you and default to assurance 'inferred'. Claim
 > 'asserted' only for something you verified, such as by a test you ran.
 
