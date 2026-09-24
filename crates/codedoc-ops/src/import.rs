@@ -547,7 +547,7 @@ fn infer_kind(claim: &str) -> Kind {
     if marker("safety:") || marker("security") || marker("vulnerab") || marker("attack") {
         return Kind::Security;
     }
-    if marker("todo") || marker("fixme") || marker("xxx:") {
+    if marker("todo") || marker("fixme") || marker("xxx:") || marker("deprecat") {
         return Kind::Warning;
     }
     if marker("hack") || marker("workaround") || marker("kludge") || marker("for now") {
@@ -561,6 +561,9 @@ fn infer_kind(claim: &str) -> Kind {
     }
     if marker("panic") || marker("fails if") || marker("race") || marker("deadlock") {
         return Kind::KnownFailureMode;
+    }
+    if marker("assume") || marker("assuming") || marker("assumption") {
+        return Kind::Assumption;
     }
     if marker("performance") || marker("slow") || marker("o(n") || marker("allocat") {
         return Kind::Performance;

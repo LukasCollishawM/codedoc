@@ -197,3 +197,28 @@ fn a_real_sentence_in_quotes_is_kept() {
     )]);
     assert!(!imported(root.path()).is_empty(), "quotes inside a sentence are not a quoted sample",);
 }
+
+#[test]
+fn a_comment_that_states_an_assumption_is_filed_as_one() {
+    let root = project(&[(
+        "src/geo.py",
+        "def area(shape):\n    # GeoJSON assumes WGS84, so the map SRID is used instead.\n    return 0\n",
+    )]);
+    codedoc_ops::import(root.path(), None, &["src".to_owned()], true, None).unwrap();
+    let listing = codedoc_ops::list(root.path(), None, None, None, None, None, None).unwrap();
+    assert_eq!(
+        listing["records"][0]["kind"], "assumption",
+        "assumption is in the closed vocabulary and import could never produce it: {listing}"
+    );
+}
+
+#[test]
+fn a_deprecation_note_is_a_warning() {
+    let root = project(&[(
+        "src/old.py",
+        "def legacy():\n    # Deprecated since 4.2; remove when the transition ends.\n    return 0\n",
+    )]);
+    codedoc_ops::import(root.path(), None, &["src".to_owned()], true, None).unwrap();
+    let listing = codedoc_ops::list(root.path(), None, None, None, None, None, None).unwrap();
+    assert_eq!(listing["records"][0]["kind"], "warning", "{listing}");
+}

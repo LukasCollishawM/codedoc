@@ -8,6 +8,8 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Fixed
 
+- **`assumption` was in the closed vocabulary and import could never produce it.** A comment saying "GeoJSON assumes WGS84" is an assumption, and it was filed as a plain explanation along with everything else the classifier had no marker for. Deprecation notes now file as warnings rather than explanations too. On django that moved 35 records to `assumption` and took `warning` from 26 to 91, out of 6,221.
+
 - **`codedoc detached` offered the same symbol twice as different choices.** Candidates were the top-scoring nodes, and several nodes inside one declaration all surface under that declaration's name, so django produced a list reading "possibly now `SQLiteNumericMixin/as_sqlite`, or `SQLiteNumericMixin/as_sqlite`". Adjudication happens with `resolve --to-symbol`, so two entries under one name are two things the reader cannot tell apart and cannot act on differently. Candidates are now distinct by name.
 
 - **A path that is not in the repository was answered with zero rather than named.** Following the README literally on chalk, whose sources live in `source/`, `codedoc import src/` reported "scanned 0 files, found 0 documentable comments" and exited 0. That reads as an answer about the code. `import`, `coverage` and `gaps` now name the path and exit non-zero.
