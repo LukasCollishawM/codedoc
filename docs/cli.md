@@ -136,23 +136,23 @@ codedoc relate src/auth.rs@rust://validate_signature must_execute_after \
 Verbs: `must_execute_after`, `guarded_by`, `constrained_by`, `invalidates`,
 `tested_by`, `derived_from`, `contradicts`, `supersedes`, `owns`.
 
+Options: `--claim` (one is generated from the verb if omitted), `--detail`,
+`--assurance`, `--author human|agent|analyzer|runtime`, `--identity`, `--session`.
+
 ### `codedoc kinds`
 
 Prints the record kind vocabulary.
 
 ## Reading
 
-### `codedoc context <file>[:line] [--symbol <path>] [--depth N] [--budget N]`
+### `codedoc context <file>[:line] [--symbol <path>] [--depth N] [--budget N] [--as-of <date>]`
 
 Retrieves what is known about a location: invariants, security, known failure modes,
 rationale, and relations at `--depth` (default 2).
 
 Claims are ranked by trust — assurance, then authorship, then age — and `--budget`
-caps the assembled size by dropping the least trustworthy first.
-
-### `codedoc list [--file <path>] [--symbol <path>]`
-
-Active records.
+caps the assembled size by dropping the least trustworthy first. `--as-of` answers as
+of a past moment; see `codedoc list` below.
 
 ### `codedoc list [--file <path>] [--symbol <path>] [--as-of <date>]`
 

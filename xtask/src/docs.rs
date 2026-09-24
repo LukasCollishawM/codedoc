@@ -22,6 +22,10 @@ pub fn run() -> ExitCode {
 
     if undocumented.is_empty() {
         println!("lint-docs: {} subcommands, all documented in docs/cli.md", declared.len());
+        let options = options_are_documented(&declared, &reference);
+        if options != ExitCode::SUCCESS {
+            return options;
+        }
         return instructions_match_agents_md();
     }
 
@@ -34,6 +38,79 @@ pub fn run() -> ExitCode {
     eprintln!("A command that exists but is undocumented may as well not exist.");
     eprintln!("Add it to docs/cli.md, in this commit.");
     ExitCode::from(1)
+}
+
+fn options_are_documented(declared: &BTreeSet<String>, reference: &str) -> ExitCode {
+    let mut orphaned = Vec::new();
+    let mut counted = 0usize;
+
+    for name in declared {
+        let Some(help) = help_for(name) else {
+            continue;
+        };
+        let Some(section) = section_for(name, reference) else {
+            continue;
+        };
+        for flag in flags_in(&help) {
+            if matches!(flag.as_str(), "help" | "version" | "root" | "json" | "scope") {
+                continue;
+            }
+            counted += 1;
+            if !section.contains(&format!("--{flag}")) {
+                orphaned.push(format!("codedoc {name} --{flag}"));
+            }
+        }
+    }
+
+    if orphaned.is_empty() {
+        println!("lint-docs: {counted} options, all named in their own section");
+        return ExitCode::SUCCESS;
+    }
+
+    eprintln!("lint-docs: {} option(s) that docs/cli.md never mentions", orphaned.len());
+    eprintln!();
+    for entry in &orphaned {
+        eprintln!("  {entry}");
+    }
+    eprintln!();
+    eprintln!("An option nobody documents is one nobody finds. Name it in that command's");
+    eprintln!("own section, in this commit.");
+    ExitCode::from(1)
+}
+
+fn help_for(name: &str) -> Option<String> {
+    let output = Command::new("cargo")
+        .args(["run", "--quiet", "-p", "codedoc-cli", "--", name, "--help"])
+        .output()
+        .ok()?;
+    Some(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
+fn section_for(name: &str, reference: &str) -> Option<String> {
+    let heading = format!("### `codedoc {name}");
+    let start = reference.find(&heading)?;
+    let rest = &reference[start + heading.len()..];
+    let end = rest
+        .find(
+            "
+### ",
+        )
+        .unwrap_or(rest.len());
+    Some(rest[..end].to_owned())
+}
+
+fn flags_in(help: &str) -> BTreeSet<String> {
+    let mut found = BTreeSet::new();
+    let mut rest = help;
+    while let Some(position) = rest.find("--") {
+        rest = &rest[position + 2..];
+        let name: String =
+            rest.chars().take_while(|glyph| glyph.is_ascii_lowercase() || *glyph == '-').collect();
+        if name.len() > 1 {
+            found.insert(name);
+        }
+    }
+    found
 }
 
 fn instructions_match_agents_md() -> ExitCode {
