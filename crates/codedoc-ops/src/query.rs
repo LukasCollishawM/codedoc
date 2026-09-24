@@ -576,10 +576,15 @@ pub fn review(root: &Path, base: &str) -> Result<(Value, i32), OpsError> {
             moved += 1;
         }
         let symbol = finding.symbol.clone().unwrap_or_else(|| finding.file.clone());
+        let unresolved = || codedoc_render::StaleClaim {
+            file: finding.file.clone(),
+            symbol: symbol.clone(),
+            claim: finding.claim.clone(),
+            drift: finding.drift,
+            relocated_to: finding.relocated_to.clone(),
+        };
         match finding.status {
-            codedoc_verify::Status::Stale => {
-                stale.push((finding.file.clone(), symbol, finding.claim.clone(), finding.drift))
-            }
+            codedoc_verify::Status::Stale => stale.push(unresolved()),
             codedoc_verify::Status::Detached => {
                 let hint = suggestions_for(found.root(), finding, &review_graph).first().and_then(
                     |value| value.get("symbol").and_then(|name| name.as_str()).map(str::to_owned),
@@ -587,7 +592,7 @@ pub fn review(root: &Path, base: &str) -> Result<(Value, i32), OpsError> {
                 detached.push((finding.file.clone(), symbol, finding.claim.clone(), hint))
             }
             codedoc_verify::Status::Fresh | codedoc_verify::Status::Migrated => unchanged += 1,
-            _ => stale.push((finding.file.clone(), symbol, finding.claim.clone(), finding.drift)),
+            _ => stale.push(unresolved()),
         }
     }
 

@@ -210,10 +210,25 @@ fn identifier(label: &str) -> String {
     format!("n{}", &cleaned[..cleaned.len().min(48)])
 }
 
+fn drift_note(drift: Option<u32>) -> String {
+    match drift {
+        Some(amount) if amount > 0 => format!(" ({amount}% changed)"),
+        _ => String::new(),
+    }
+}
+
+pub struct StaleClaim {
+    pub file: String,
+    pub symbol: String,
+    pub claim: String,
+    pub drift: Option<u32>,
+    pub relocated_to: Option<String>,
+}
+
 pub struct ReviewInput<'a> {
     pub base: &'a str,
     pub files: &'a [String],
-    pub stale: Vec<(String, String, String, Option<u32>)>,
+    pub stale: Vec<StaleClaim>,
     pub detached: Vec<(String, String, String, Option<String>)>,
     pub unchanged: usize,
     pub moved: usize,
@@ -272,14 +287,39 @@ pub fn review_markdown(input: &ReviewInput<'_>) -> String {
         out.push('\n');
     }
 
-    if !input.stale.is_empty() {
+    let relocated: Vec<&StaleClaim> =
+        input.stale.iter().filter(|entry| entry.relocated_to.is_some()).collect();
+    let rewritten: Vec<&StaleClaim> =
+        input.stale.iter().filter(|entry| entry.relocated_to.is_none()).collect();
+
+    if !relocated.is_empty() {
+        out.push_str(
+            "**The code these describe is in a different file now.**
+
+",
+        );
+        for entry in &relocated {
+            let destination = entry.relocated_to.as_deref().unwrap_or_default();
+            let (file, symbol, claim) = (&entry.file, &entry.symbol, &entry.claim);
+            let measured = drift_note(entry.drift);
+            out.push_str(&format!(
+                "- `{file}` → `{destination}` — `{symbol}`{measured}
+  > {claim}
+"
+            ));
+        }
+        out.push('\n');
+    }
+
+    if !rewritten.is_empty() {
         out.push_str(
             "**These resolved, but the code beneath them changed.**
 
 ",
         );
-        for (file, symbol, claim, drift) in &input.stale {
-            let measured = drift.map(|amount| format!(" ({amount}% changed)")).unwrap_or_default();
+        for entry in &rewritten {
+            let (file, symbol, claim) = (&entry.file, &entry.symbol, &entry.claim);
+            let measured = drift_note(entry.drift);
             out.push_str(&format!(
                 "- `{file}` — `{symbol}`{measured}
   > {claim}

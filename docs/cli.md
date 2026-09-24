@@ -366,8 +366,11 @@ pull request. `base` defaults to `HEAD`; in CI use the merge base.
 codedoc review origin/main --out review.md
 ```
 
-It lists claims whose anchors detached (the code they described could not be found)
-and claims that resolved but whose code drifted, with the percentage. It also reports how many claims the change itself recorded, counted from the revision
+It lists claims whose anchors detached (the code they described could not be found),
+claims whose code was lifted into another file, naming that file, and claims that
+resolved but whose code drifted, with the percentage. Moving and editing are listed
+apart: a construct carried into another file has not changed, and a reviewer sent to
+the file a claim was recorded against finds nothing there. It also reports how many claims the change itself recorded, counted from the revision
 each record was written against, so the comment says what was learned as well as what
 was put in doubt. Exit codes are the same as `verify`, so a workflow can fail or
 comment on `1` and `2`.

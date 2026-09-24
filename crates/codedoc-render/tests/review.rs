@@ -1,4 +1,4 @@
-use codedoc_render::{ReviewInput, review_markdown};
+use codedoc_render::{ReviewInput, StaleClaim, review_markdown};
 
 fn input<'a>(base: &'a str) -> ReviewInput<'a> {
     ReviewInput {
@@ -65,12 +65,13 @@ fn a_detached_claim_offers_its_best_candidate() {
 #[test]
 fn stale_claims_carry_their_drift() {
     let mut given = input("origin/main");
-    given.stale = vec![(
-        "src/pay.rs".to_owned(),
-        "rust://settle".to_owned(),
-        "The fee is deducted.".to_owned(),
-        Some(36),
-    )];
+    given.stale = vec![StaleClaim {
+        file: "src/pay.rs".to_owned(),
+        symbol: "rust://settle".to_owned(),
+        claim: "The fee is deducted.".to_owned(),
+        drift: Some(36),
+        relocated_to: None,
+    }];
     let rendered = review_markdown(&given);
     assert!(rendered.contains("(36% changed)"));
     assert!(
@@ -102,12 +103,13 @@ fn fully_documented_changes_get_no_prompt() {
 #[test]
 fn a_flagged_claim_names_the_three_ways_to_answer_for_it() {
     let mut given = input("origin/main");
-    given.stale = vec![(
-        "src/auth.rs".to_owned(),
-        "rust://validate".to_owned(),
-        "Validation precedes tenant resolution.".to_owned(),
-        Some(41),
-    )];
+    given.stale = vec![StaleClaim {
+        file: "src/auth.rs".to_owned(),
+        symbol: "rust://validate".to_owned(),
+        claim: "Validation precedes tenant resolution.".to_owned(),
+        drift: Some(41),
+        relocated_to: None,
+    }];
     let rendered = review_markdown(&given);
 
     for action in ["codedoc affirm", "codedoc supersede", "codedoc retract"] {
@@ -185,4 +187,50 @@ fn nothing_is_said_about_drift_when_nothing_drifted() {
     given.unchanged = 5;
     given.moved = 0;
     assert!(!review_markdown(&given).contains("sit on code this change touched"));
+}
+
+#[test]
+fn a_claim_whose_code_moved_names_the_file_it_moved_to() {
+    let mut given = input("origin/main");
+    given.stale = vec![StaleClaim {
+        file: "auth.go".to_owned(),
+        symbol: "go://BasicAuthForProxy".to_owned(),
+        claim: "If the realm is empty, Proxy Authorization Required is used.".to_owned(),
+        drift: Some(0),
+        relocated_to: Some("proxyauth.go".to_owned()),
+    }];
+    let rendered = review_markdown(&given);
+
+    assert!(
+        rendered.contains("proxyauth.go"),
+        "a reviewer sent to auth.go for a function that is no longer in auth.go stops \
+         trusting the comment. verify already resolved it across the file boundary and \
+         reported where it went: {rendered}"
+    );
+    assert!(
+        !rendered.contains("(0% changed)"),
+        "a construct lifted into another file has not changed, and saying it changed by \
+         zero percent under a heading that says it changed reads as a defect: {rendered}"
+    );
+    assert!(
+        !rendered.contains("the code beneath them changed"),
+        "moving is not editing, and the two need different headings or the reviewer \
+         goes looking for an edit that was never made: {rendered}"
+    );
+}
+
+#[test]
+fn a_claim_whose_code_was_edited_in_place_still_reads_as_edited() {
+    let mut given = input("origin/main");
+    given.stale = vec![StaleClaim {
+        file: "auth.go".to_owned(),
+        symbol: "go://BasicAuthForRealm".to_owned(),
+        claim: "Search user in the slice of allowed credentials.".to_owned(),
+        drift: Some(36),
+        relocated_to: None,
+    }];
+    let rendered = review_markdown(&given);
+    assert!(rendered.contains("the code beneath them changed"), "{rendered}");
+    assert!(rendered.contains("(36% changed)"), "{rendered}");
+    assert!(!rendered.contains("different file"), "{rendered}");
 }
