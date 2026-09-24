@@ -63,11 +63,34 @@ pub fn is_available(root: &Path) -> bool {
 }
 
 pub fn is_ancestor(root: &Path, revision: &str, descendant: &str) -> bool {
-    Command::new("git")
+    let Ok(output) = Command::new("git")
         .arg("-C")
         .arg(root)
         .args(["merge-base", "--is-ancestor", revision, descendant])
         .output()
-        .map(|output| output.status.success())
-        .unwrap_or(false)
+    else {
+        return true;
+    };
+    match output.status.code() {
+        Some(0) => true,
+        Some(1) => false,
+        _ => true,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_revision_git_cannot_place_is_treated_as_already_there() {
+        let root = Path::new(".");
+        assert!(
+            is_ancestor(root, "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef", "HEAD"),
+            "git exits 128 for a revision it does not know, and the only use of this \
+             is deciding whether a record was written during a change. Reading the \
+             failure as `not an ancestor` would credit an author with recording \
+             things they did not."
+        );
+    }
 }
