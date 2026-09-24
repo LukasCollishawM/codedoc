@@ -8,6 +8,8 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Fixed
 
+- **`codedoc detached` offered the same symbol twice as different choices.** Candidates were the top-scoring nodes, and several nodes inside one declaration all surface under that declaration's name, so django produced a list reading "possibly now `SQLiteNumericMixin/as_sqlite`, or `SQLiteNumericMixin/as_sqlite`". Adjudication happens with `resolve --to-symbol`, so two entries under one name are two things the reader cannot tell apart and cannot act on differently. Candidates are now distinct by name.
+
 - **A path that is not in the repository was answered with zero rather than named.** Following the README literally on chalk, whose sources live in `source/`, `codedoc import src/` reported "scanned 0 files, found 0 documentable comments" and exited 0. That reads as an answer about the code. `import`, `coverage` and `gaps` now name the path and exit non-zero.
 
 - **`coverage` and `gaps` answered "nothing found" about directories full of code.** Their path arguments were resolved against the repository root only, so running `codedoc gaps utils` from `source/core` scanned a directory that does not exist and reported no declarations — which reads as a finding rather than a miss. They now resolve the same way every other path does.

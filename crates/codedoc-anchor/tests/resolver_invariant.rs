@@ -366,3 +366,30 @@ proptest! {
         }
     }
 }
+
+#[test]
+fn every_candidate_offered_for_adjudication_is_a_different_thing_to_choose() {
+    let adapter = Registry::for_path(&RepoPath::parse("lib.rs").unwrap()).unwrap();
+    let before = "fn gone(a: u32, b: u32) -> u32 {\n    a + b\n}\n";
+    let after = "fn first(a: u32, b: u32) -> u32 {\n    a + b\n}\n\
+                 fn second(a: u32, b: u32) -> u32 {\n    a + b\n}\n\
+                 fn third(a: u32, b: u32) -> u32 {\n    a + b\n}\n";
+
+    let tree = adapter.parse(before).unwrap();
+    let node = codedoc_anchor::locate::by_symbol(&tree, before, adapter, "rust://gone").unwrap();
+    let anchor = Anchor::capture(RepoPath::parse("lib.rs").unwrap(), adapter, before, node);
+
+    let after_tree = adapter.parse(after).unwrap();
+    let offered =
+        codedoc_anchor::FileIndex::build(adapter, after, &after_tree).candidates_like(&anchor, 5);
+
+    let names: Vec<&str> = offered.iter().map(|(symbol, _, _)| symbol.as_str()).collect();
+    let distinct: std::collections::BTreeSet<&&str> = names.iter().collect();
+    assert_eq!(
+        names.len(),
+        distinct.len(),
+        "a person adjudicating picks one of these with resolve --to-symbol, so two \
+         entries under one name are two things they cannot tell apart: {names:?}"
+    );
+    assert!(names.len() > 1, "the fixture must offer a choice at all: {names:?}");
+}

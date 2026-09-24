@@ -419,8 +419,13 @@ impl<'tree, 'adapter> FileIndex<'tree, 'adapter> {
         scored.sort_by(|left, right| {
             right.0.partial_cmp(&left.0).unwrap_or(std::cmp::Ordering::Equal)
         });
+        let mut seen: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
         scored
             .into_iter()
+            .filter(|(_, candidate)| {
+                let label = candidate.symbol.clone().unwrap_or_else(|| candidate.kind.clone());
+                seen.insert(label)
+            })
             .take(limit)
             .map(|(score, candidate)| {
                 (
