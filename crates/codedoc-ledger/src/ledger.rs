@@ -4,6 +4,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use codedoc_core::{CanonicalError, LedgerHead, RecordId};
+use rayon::prelude::*;
 use thiserror::Error;
 
 use crate::record::{Record, RecordContent};
@@ -169,26 +170,32 @@ impl Ledger {
             .collect();
         shards.sort();
 
-        let mut collected = Vec::new();
-        for shard in shards {
-            let raw = fs::read(&shard).map_err(|source| LedgerError::Io {
-                path: shard.display().to_string(),
-                detail: source.to_string(),
-            })?;
-            for (offset, line) in raw.split(|byte| *byte == b'\n').enumerate() {
-                if line.is_empty() {
-                    continue;
+        let batches: Result<Vec<Vec<Record>>, LedgerError> = shards
+            .par_iter()
+            .map(|shard| {
+                let raw = fs::read(shard).map_err(|source| LedgerError::Io {
+                    path: shard.display().to_string(),
+                    detail: source.to_string(),
+                })?;
+                let mut records = Vec::new();
+                for (offset, line) in raw.split(|byte| *byte == b'\n').enumerate() {
+                    if line.is_empty() {
+                        continue;
+                    }
+                    let record =
+                        Record::decode_line(line).map_err(|source| LedgerError::Malformed {
+                            shard: shard.display().to_string(),
+                            line: offset + 1,
+                            source,
+                        })?;
+                    records.push(record);
                 }
-                let record =
-                    Record::decode_line(line).map_err(|source| LedgerError::Malformed {
-                        shard: shard.display().to_string(),
-                        line: offset + 1,
-                        source,
-                    })?;
-                collected.push(record);
-            }
-        }
-        collected.sort_by_key(|record| (record.content().created, record.id().to_string()));
+                Ok(records)
+            })
+            .collect();
+
+        let mut collected: Vec<Record> = batches?.into_iter().flatten().collect();
+        collected.sort_by_key(|record| (record.content().created, record.id()));
         Ok(collected)
     }
 

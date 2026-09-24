@@ -214,16 +214,32 @@ fn collect_comment_blocks<'tree>(
 
 fn documented_node<'tree>(comment: Node<'tree>, adapter: &Adapter) -> Option<Node<'tree>> {
     let mut candidate = comment.next_named_sibling();
+    let mut first_adjacent = None;
+    let mut previous_end = comment.end_position().row;
+
     while let Some(sibling) = candidate {
         if adapter.is_ignorable(sibling.kind()) {
             candidate = sibling.next_named_sibling();
             continue;
         }
-        let gap = sibling.start_position().row.saturating_sub(comment.end_position().row);
-        if gap <= ADJACENCY_LINES {
+        let gap = sibling.start_position().row.saturating_sub(previous_end);
+        if gap > ADJACENCY_LINES {
+            break;
+        }
+        if adapter.declares_symbol(sibling.kind()) {
             return Some(sibling);
         }
-        break;
+        if first_adjacent.is_none() {
+            first_adjacent = Some(sibling);
+        }
+        if !is_modifier(sibling.kind()) {
+            break;
+        }
+        previous_end = sibling.end_position().row;
+        candidate = sibling.next_named_sibling();
+    }
+    if let Some(found) = first_adjacent {
+        return Some(found);
     }
     let mut ancestor = comment.parent();
     while let Some(node) = ancestor {
@@ -233,6 +249,10 @@ fn documented_node<'tree>(comment: Node<'tree>, adapter: &Adapter) -> Option<Nod
         ancestor = node.parent();
     }
     None
+}
+
+fn is_modifier(kind: &str) -> bool {
+    matches!(kind, "attribute_item" | "attribute" | "decorator" | "annotation" | "modifiers")
 }
 
 fn clean_comment(raw: &str) -> String {

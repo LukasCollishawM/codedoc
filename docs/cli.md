@@ -35,6 +35,11 @@ Harvests existing comments, anchors each to the construct it documents, and infe
 kind from markers (`TODO` → warning, `SAFETY:` → security, "because…" → rationale).
 Dry run unless `--write`. **Never modifies source.**
 
+Attributes, decorators and annotations between a comment and what it documents are
+stepped over, so a doc comment above `#[cfg(...)]` above `pub fn` anchors to the
+function. Anchoring to the attribute instead produces a record that cannot be
+resolved, because attribute text repeats throughout a file and carries no symbol.
+
 ### `codedoc git install-merge-driver`
 
 Registers a union merge driver for `.codedoc/ledger/*.jsonl`, so concurrent branches

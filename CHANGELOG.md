@@ -39,6 +39,7 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Changed
 
+- **Import steps over attributes and decorators** to reach the declaration a comment documents. It previously anchored to the first thing after the comment, so a doc comment above `#[cfg(...)]` attached to the attribute — which has no symbol and whose text repeats throughout a file, making the record permanently unresolvable. On a 27,420-record corpus this cut detachments from 1,542 to 52.
 - **Detached records come with suggestions.** Each carries up to three same-kind constructs ranked by shape likeness; a renamed function typically appears at 100%. They are proposals to confirm, never applied automatically, which keeps the never-guess rule intact while making a detachment a one-command decision instead of a dead end.
 - **A renamed declaration now detaches** rather than resolving, a consequence of closing the rung 4 false reattachment. Matching on an identical body was tried as a replacement signal and rejected: overloads routinely share a body, so it reintroduced the very defect it was meant to work around. `codedoc resolve` reattaches in one command. See [ADR-0011](docs/decisions/0011-renames-detach.md).
 

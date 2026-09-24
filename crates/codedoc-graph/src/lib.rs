@@ -13,8 +13,8 @@ use codedoc_ledger::{Kind, Ledger, LedgerError, Record, Timestamp, Workspace};
 
 pub struct Graph {
     records: Vec<Record>,
-    superseded: BTreeSet<String>,
-    tombstoned: BTreeSet<String>,
+    superseded: BTreeSet<RecordId>,
+    tombstoned: BTreeSet<RecordId>,
 }
 
 impl Graph {
@@ -34,9 +34,9 @@ impl Graph {
                 continue;
             };
             if record.kind() == Kind::Tombstone {
-                tombstoned.insert(parent.to_string());
+                tombstoned.insert(parent);
             } else {
-                superseded.insert(parent.to_string());
+                superseded.insert(parent);
             }
         }
         Graph { records, superseded, tombstoned }
@@ -51,7 +51,7 @@ impl Graph {
             .iter()
             .filter(|record| record.kind() != Kind::Tombstone)
             .filter(|record| {
-                let id = record.id().to_string();
+                let id = record.id();
                 !self.superseded.contains(&id) && !self.tombstoned.contains(&id)
             })
             .collect()
@@ -68,8 +68,7 @@ impl Graph {
     }
 
     pub fn find(&self, id: RecordId) -> Option<&Record> {
-        let wanted = id.to_string();
-        self.records.iter().find(|record| record.id().to_string() == wanted)
+        self.records.iter().find(|record| record.id() == id)
     }
 
     pub fn supersession_chain(&self, id: RecordId) -> Vec<&Record> {
