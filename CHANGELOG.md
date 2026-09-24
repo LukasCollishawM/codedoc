@@ -14,6 +14,8 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Added
 
+- **`lint-prose` has tests.** It is the guard against a class of mistake that has landed five times in this repository, and nothing checked that it still caught it. Four cases: a run left by a lost continuation on a single line, which is the shape `cargo fmt` leaves behind; an intact continuation; the indentation at the start of a continued line, which must not count; and wide indentation in ordinary code, which is not inside a literal at all.
+
 - **The server instructions tell an agent when to call `codedoc_gaps`.** A tool an agent has to discover the use of is a tool it will not reach for on the one task it was built for — arriving at an undocumented repository and being asked to fix that.
 
 - **`parse_target` is tested, and what it does is recorded.** Found by running `codedoc gaps` on codedoc: two of its four commits were corrective and nothing exercised it. The ranking was right. Two facts lived only in the code — the colon branch is tried first, and only the number parse stops `file@rust://symbol` being split at the symbol's own scheme separator; and writing both forms at once silently drops the symbol into the file name rather than failing. Five tests now hold both, including the second one as it actually behaves rather than as it should.

@@ -112,3 +112,51 @@ fn swallowed_continuations(source: &str) -> Vec<(usize, String)> {
     }
     found
 }
+
+#[cfg(test)]
+mod tests {
+    use super::swallowed_continuations;
+
+    fn spaces(count: usize) -> String {
+        " ".repeat(count)
+    }
+
+    fn literal(body: &str) -> String {
+        format!("const M: &str = \"{body}\";")
+    }
+
+    fn continuation(indent: usize) -> String {
+        format!("{}\n{}", char::from(92), spaces(indent))
+    }
+
+    #[test]
+    fn a_run_left_by_a_lost_continuation_is_found_even_on_one_line() {
+        let source = literal(&format!("Ignoring it would{}record the default", spaces(10)));
+        assert_eq!(swallowed_continuations(&source).len(), 1, "{source}");
+    }
+
+    #[test]
+    fn an_intact_continuation_is_not_a_finding() {
+        let source = literal(&format!("Ignoring it would {}record the default", continuation(9)));
+        assert!(swallowed_continuations(&source).is_empty(), "{source}");
+    }
+
+    #[test]
+    fn indentation_at_the_start_of_a_continued_line_is_not_a_run() {
+        let source = literal(&format!("first {}second {}third", continuation(8), continuation(8)));
+        assert!(swallowed_continuations(&source).is_empty(), "{source}");
+    }
+
+    #[test]
+    fn code_outside_a_literal_is_never_a_finding() {
+        let source = format!(
+            "fn wide() {{
+    let x = 1;
+{}let y = 2;
+}}
+",
+            spaces(12)
+        );
+        assert!(swallowed_continuations(&source).is_empty(), "{source}");
+    }
+}
