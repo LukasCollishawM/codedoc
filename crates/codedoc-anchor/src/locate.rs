@@ -116,6 +116,23 @@ mod tests {
     }
 
     #[test]
+    fn a_line_anchors_to_the_statement_not_to_a_token_inside_it() {
+        let adapter = Registry::by_name("rust").unwrap();
+        let source = "fn compute() -> u32 {
+    let total = 42;
+    total
+}
+";
+        let tree = adapter.parse(source).unwrap();
+        let node = by_line(&tree, adapter, 2).unwrap();
+        assert_eq!(
+            node.kind(),
+            "let_declaration",
+            "a statement and the identifier and literal inside it all span one line, so              ties must resolve outward. Anchoring to a bare identifier would attach a              claim to a token that says nothing about what the line does."
+        );
+    }
+
+    #[test]
     fn python_indentation_blocks_locate_correctly() {
         let adapter = Registry::by_name("python").unwrap();
         let source = "class Ledger:\n    def append(self):\n        return 1\n";
