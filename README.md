@@ -10,13 +10,20 @@ checked against the code beneath it. A record can.
 
 ## Installation
 
-Requires Rust 1.85 or later and a C toolchain for the tree-sitter grammars.
+The [releases page](https://github.com/LukasCollishawM/codedoc/releases) carries
+archives for Linux, macOS and Windows holding all three binaries. Unpack one and put it
+on your `PATH`.
+
+To build instead, Rust 1.85 or later and a C toolchain for the tree-sitter grammars:
 
 ```bash
 cargo install --path crates/codedoc-cli   # the codedoc command
 cargo install --path crates/codedoc-mcp   # the MCP server
 cargo install --path crates/codedoc-lsp   # optional: editor hovers and diagnostics
 ```
+
+The crates are not on crates.io: the compatibility surface is the on-disk format rather
+than the Rust API, so `cargo install codedoc` is not a thing you can run.
 
 ## Usage
 
