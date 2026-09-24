@@ -8,6 +8,7 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Added
 
+- **The language server has an end-to-end test too.** It starts the real binary, performs the LSP handshake and asserts that hover, code lens and diagnostics are all advertised — a capability that is implemented but not announced is one no editor will ever call, and nothing checked.
 - **The MCP server has an end-to-end test.** It is the primary interface and nothing had ever run it: the tests exercised the operations underneath it, which cannot catch a broken tool macro, a schema that will not serialise, or instructions that fail to reach `initialize`. A test now starts the real binary, performs the handshake, lists the tools, writes a record through `codedoc_attach` and finds it again through `codedoc_search`.
 - **Three conformance vectors for properties that only Rust tests had held.** That adding a comment disturbs neither the anchor nor its drift, in Rust and Python, which is what makes annotating code safe; and that a different function taking the deleted one's slot does not inherit its claim, which is the position-is-not-identity rule that a property test found being broken and nothing language-neutral bound.
 - **`lint-docs` also checks that every command-line option is named in its own section of the reference.** It found five that were not, and a duplicate `codedoc list` section created while documenting one of them. The same rule already applied to subcommands; an option nobody documents is one nobody finds.
