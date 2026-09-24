@@ -286,12 +286,22 @@ how many authors, and what the most recent corrective commit said.
 
 ```
 $ codedoc gaps --limit 2
-2 undocumented declarations the last 400 commits came back to:
+2 undocumented declarations the last 205 commits came back to:
 
   crates/codedoc-cli/src/main.rs:510 - rust://parse_target
     3 commits, 2 corrective, 1 author
     latest correction: Pass the scope flag through, and repair a chain broken by history surgery
 ```
+
+The count is the history actually walked, which is not the window asked for: a
+repository with fewer commits than `--commits`, or a clone that does not carry them,
+has less evidence than the window suggests, and the output says which of those it is.
+A commit with no parent is skipped, because it created its files rather than
+correcting them. That matters most in a shallow clone, where git reports the grafted
+boundary commit as touching every file in the tree: counting it ranks every
+declaration in the repository and attributes one commit message to all of them. On a
+depth-1 checkout, which is what `actions/checkout` does by default, there is then no
+history left to rank and `gaps` says so rather than inventing a ranking.
 
 The ranking is corrections first, then the share of commits that were corrective,
 then authors, then commits. A range corrected twice in four commits outranks one

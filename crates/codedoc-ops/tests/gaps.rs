@@ -37,7 +37,7 @@ fn write(root: &Path, changing: &str, body: &str) {
     let mut source = String::new();
     for name in ["steady", "corrected", "churned"] {
         let value = if name == changing { body } else { "0" };
-        source.push_str(&format!("pub fn {name}() -> u32 {{\n    {value}\n}}\n\n"));
+        source.push_str(&format!("pub fn {name}() -> u32 {{\n {value}\n}}\n\n"));
     }
     fs::write(root.join("src/lib.rs"), source).unwrap();
 }
@@ -131,10 +131,67 @@ fn a_declaration_that_already_carries_a_record_is_not_a_gap() {
 fn without_a_repository_it_reports_nothing_rather_than_guessing() {
     let root = tempfile::tempdir().expect("a temporary directory");
     fs::create_dir_all(root.path().join("src")).unwrap();
-    fs::write(root.path().join("src/lib.rs"), "pub fn compute() -> u32 {\n    0\n}\n").unwrap();
+    fs::write(root.path().join("src/lib.rs"), "pub fn compute() -> u32 {\n 0\n}\n").unwrap();
     Ledger::initialise(root.path()).unwrap();
 
     let report = codedoc_ops::gaps(root.path(), &[], 10, 100).unwrap();
     assert_eq!(report["git"], false, "{report}");
     assert_eq!(report["gaps"].as_array().map(Vec::len), Some(0), "{report}");
+}
+
+#[test]
+fn the_commit_that_created_the_files_is_not_a_correction() {
+    let root = project();
+    let report = codedoc_ops::gaps(root.path(), &[], 20, 400).expect("gaps runs");
+
+    assert_eq!(
+        report["commits_scanned"].as_u64(),
+        Some(4),
+        "five commits were made and the first one has no parent, so it added the module rather than correcting it. Counting it makes every file in the repository look corrected once by whatever that commit happened to say: {report}"
+    );
+    assert_eq!(
+        report["commits_requested"].as_u64(),
+        Some(400),
+        "the window asked for and the history actually walked are different numbers, and reporting the first as though it were the second tells a reader the ranking rests on four hundred commits when it rests on four: {report}"
+    );
+    assert_eq!(report["history_shallow"].as_bool(), Some(false), "{report}");
+    assert_eq!(report["history_capped"].as_bool(), Some(false), "{report}");
+
+    let steady = report["gaps"]
+        .as_array()
+        .expect("gaps is a list")
+        .iter()
+        .find(|gap| gap["symbol"].as_str() == Some("rust://steady"));
+    assert!(
+        steady.is_none(),
+        "steady was written once and never touched again. It only looks revisited if the commit that created it counts as having corrected it: {report}"
+    );
+}
+
+#[test]
+fn a_shallow_clone_says_so_rather_than_ranking_on_a_history_it_does_not_have() {
+    let origin = project();
+    let elsewhere = tempfile::tempdir().expect("a temporary directory");
+    let clone = elsewhere.path().join("shallow");
+    let done = Command::new("git")
+        .args(["clone", "-q", "--no-local", "--depth", "1"])
+        .arg(origin.path())
+        .arg(&clone)
+        .output()
+        .expect("git");
+    assert!(done.status.success(), "git clone: {}", String::from_utf8_lossy(&done.stderr));
+    Ledger::initialise(&clone).unwrap();
+
+    let report = codedoc_ops::gaps(&clone, &[], 20, 400).expect("gaps runs");
+
+    assert_eq!(
+        report["history_shallow"].as_bool(),
+        Some(true),
+        "a depth-1 checkout is what actions/checkout does by default: {report}"
+    );
+    assert_eq!(
+        report["gaps"].as_array().map(Vec::len),
+        Some(0),
+        "the only commit a depth-1 clone has is its grafted boundary, which git reports as touching every file in the tree. Ranking on it names every declaration in the repository and attributes that one commit message to all of them, which reads as evidence and is noise: {report}"
+    );
 }

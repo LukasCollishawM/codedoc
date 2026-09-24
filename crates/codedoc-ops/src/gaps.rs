@@ -91,42 +91,79 @@ fn git(root: &Path, arguments: &[String]) -> Option<String> {
     output.status.success().then(|| String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
-fn history_by_file(root: &Path, commits: usize) -> BTreeMap<String, History> {
-    let arguments: Vec<String> =
-        ["log", "-n", &commits.to_string(), "--format=%x00%an%x00%s", "--name-only", "--no-merges"]
-            .iter()
-            .map(|argument| (*argument).to_owned())
-            .collect();
+struct FileHistories {
+    by_file: BTreeMap<String, History>,
+    commits_walked: usize,
+}
+
+fn parentless_commits(root: &Path) -> BTreeSet<String> {
+    let arguments = ["rev-list".to_owned(), "--max-parents=0".to_owned(), "HEAD".to_owned()];
+    let Some(listing) = git(root, &arguments) else {
+        return BTreeSet::new();
+    };
+    listing.lines().map(str::trim).filter(|line| !line.is_empty()).map(str::to_owned).collect()
+}
+
+fn history_is_shallow(root: &Path) -> bool {
+    let arguments = ["rev-parse".to_owned(), "--is-shallow-repository".to_owned()];
+    git(root, &arguments).is_some_and(|answer| answer.trim() == "true")
+}
+
+fn history_by_file(root: &Path, commits: usize, created: &BTreeSet<String>) -> FileHistories {
+    let arguments: Vec<String> = [
+        "log",
+        "-n",
+        &commits.to_string(),
+        "--format=%x00%H%x00%an%x00%s",
+        "--name-only",
+        "--no-merges",
+    ]
+    .iter()
+    .map(|argument| (*argument).to_owned())
+    .collect();
 
     let mut by_file: BTreeMap<String, History> = BTreeMap::new();
+    let mut commits_walked = 0usize;
     let Some(listing) = git(root, &arguments) else {
-        return by_file;
+        return FileHistories { by_file, commits_walked };
     };
 
     let mut author = String::new();
     let mut subject = String::new();
+    let mut creating = false;
     for line in listing.lines() {
         if let Some(header) = line.strip_prefix('\u{0}') {
             let mut fields = header.split('\u{0}');
+            creating = created.contains(fields.next().unwrap_or_default());
             author = fields.next().unwrap_or_default().to_owned();
             subject = fields.next().unwrap_or_default().to_owned();
+            if !creating {
+                commits_walked += 1;
+            }
             continue;
         }
-        if line.is_empty() {
+        if line.is_empty() || creating {
             continue;
         }
         by_file.entry(line.to_owned()).or_default().observe(&author, &subject);
     }
-    by_file
+    FileHistories { by_file, commits_walked }
 }
 
-fn history_of_range(root: &Path, file: &str, first: usize, last: usize, commits: usize) -> History {
+fn history_of_range(
+    root: &Path,
+    file: &str,
+    first: usize,
+    last: usize,
+    commits: usize,
+    created: &BTreeSet<String>,
+) -> History {
     let arguments: Vec<String> = vec![
         "log".to_owned(),
         "-n".to_owned(),
         commits.to_string(),
         "-s".to_owned(),
-        "--format=%an%x00%s".to_owned(),
+        "--format=%H%x00%an%x00%s".to_owned(),
         format!("-L{first},{last}:{file}"),
     ];
 
@@ -139,8 +176,12 @@ fn history_of_range(root: &Path, file: &str, first: usize, last: usize, commits:
             continue;
         }
         let mut fields = line.split('\u{0}');
+        let commit = fields.next().unwrap_or_default();
         let author = fields.next().unwrap_or_default();
         let subject = fields.next().unwrap_or_default();
+        if created.contains(commit) {
+            continue;
+        }
         history.observe(author, subject);
     }
     history
@@ -157,6 +198,9 @@ pub fn gaps(root: &Path, paths: &[String], limit: usize, commits: usize) -> Outc
             "command": "gaps",
             "git": false,
             "commits_scanned": 0,
+            "commits_requested": commits,
+            "history_shallow": false,
+            "history_capped": false,
             "files_examined": 0,
             "undocumented": 0,
             "examined": 0,
@@ -164,7 +208,12 @@ pub fn gaps(root: &Path, paths: &[String], limit: usize, commits: usize) -> Outc
         }));
     }
 
-    let by_file = history_by_file(found.root(), commits);
+    let created = parentless_commits(found.root());
+    let histories = history_by_file(found.root(), commits, &created);
+    let commits_walked = histories.commits_walked;
+    let shallow = history_is_shallow(found.root());
+    let capped = commits_walked >= commits;
+    let by_file = histories.by_file;
 
     let mut files: Vec<(String, (usize, usize, usize, usize))> =
         source_files(found.root(), paths, root)
@@ -205,8 +254,14 @@ pub fn gaps(root: &Path, paths: &[String], limit: usize, commits: usize) -> Outc
     let mut ranked: Vec<(History, (String, String, usize, usize))> = candidates
         .into_par_iter()
         .map(|candidate| {
-            let history =
-                history_of_range(found.root(), &candidate.0, candidate.2, candidate.3, commits);
+            let history = history_of_range(
+                found.root(),
+                &candidate.0,
+                candidate.2,
+                candidate.3,
+                commits,
+                &created,
+            );
             (history, candidate)
         })
         .filter(|(history, _)| history.worth_reporting())
@@ -219,7 +274,10 @@ pub fn gaps(root: &Path, paths: &[String], limit: usize, commits: usize) -> Outc
     Ok(json!({
         "command": "gaps",
         "git": true,
-        "commits_scanned": commits,
+        "commits_scanned": commits_walked,
+        "commits_requested": commits,
+        "history_shallow": shallow,
+        "history_capped": capped,
         "files_examined": files.len(),
         "undocumented": undocumented,
         "examined": ranked.len(),

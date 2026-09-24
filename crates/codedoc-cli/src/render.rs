@@ -560,6 +560,19 @@ fn render_coverage(payload: &Value, out: &mut String) {
     let _ = writeln!(out, "declaration carries a record has mostly restated its own code.");
 }
 
+fn history_note(payload: &Value) -> Option<String> {
+    let reach = if payload["history_shallow"].as_bool() == Some(true) {
+        "This clone is shallow, so that is all the history it has; `git fetch --unshallow`\nreads the rest."
+    } else if payload["history_capped"].as_bool() == Some(true) {
+        "That is the window, not the whole history; `--commits` reads further back."
+    } else {
+        return None;
+    };
+    Some(format!(
+        "\n{reach}\nRanking rests on how often a range was corrected, so less history is less\nevidence, and an empty result can mean the history is missing rather than the\ncode settled."
+    ))
+}
+
 fn render_gaps(payload: &Value, out: &mut String) {
     if payload["git"].as_bool() != Some(true) {
         let _ = writeln!(out, "no git history here, so there is nothing to rank against");
@@ -567,21 +580,22 @@ fn render_gaps(payload: &Value, out: &mut String) {
     }
     let empty = Vec::new();
     let gaps = payload["gaps"].as_array().unwrap_or(&empty);
+    let walked = count(payload, "commits_scanned");
+    let note = history_note(payload);
     if gaps.is_empty() {
-        let _ = writeln!(
-            out,
-            "nothing undocumented in the last {} commits has been revisited",
-            count(payload, "commits_scanned")
-        );
+        let _ =
+            writeln!(out, "nothing undocumented in the last {walked} commits has been revisited");
+        if let Some(reach) = note {
+            let _ = writeln!(out, "{reach}");
+        }
         return;
     }
 
     let _ = writeln!(
         out,
-        "{} undocumented declaration{} the last {} commits came back to:",
+        "{} undocumented declaration{} the last {walked} commits came back to:",
         gaps.len(),
         if gaps.len() == 1 { "" } else { "s" },
-        count(payload, "commits_scanned")
     );
     for gap in gaps {
         let _ = writeln!(out);
@@ -610,6 +624,9 @@ fn render_gaps(payload: &Value, out: &mut String) {
     let _ = writeln!(out, "A correction is evidence that the code did not say enough, because");
     let _ = writeln!(out, "code that said enough would not have needed correcting. Read those");
     let _ = writeln!(out, "commits rather than the code: the code is only what was left after.");
+    if let Some(reach) = note {
+        let _ = writeln!(out, "{reach}");
+    }
 }
 
 fn render_conflicts(payload: &Value, out: &mut String) {
