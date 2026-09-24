@@ -196,6 +196,11 @@ when anything is reported.
 
 Places a detached record explicitly.
 
+**Renaming a declaration detaches its records**, and this is how you reattach them.
+Nothing available at resolution time distinguishes a rename from a deletion followed
+by a similar addition — position, shape and body identity were each tried and each
+conflated the two. See [ADR-0011](decisions/0011-renames-detach.md).
+
 ### `codedoc supersede <record> [--claim "..."] [--detail "..."] [--kind <kind>]`
 
 Revises a record. Writes a superseding record and re-anchors it to the code's current

@@ -39,6 +39,8 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Changed
 
+- **A renamed declaration now detaches** rather than resolving, a consequence of closing the rung 4 false reattachment. Matching on an identical body was tried as a replacement signal and rejected: overloads routinely share a body, so it reintroduced the very defect it was meant to work around. `codedoc resolve` reattaches in one command. See [ADR-0011](docs/decisions/0011-renames-detach.md).
+
 - **Rung 5 follows code that moved between files**, not only files that were renamed. A function relocated from one module to another used to detach; it now resolves and the report names where it went. The search is bounded to files changed since the record's revision, and several candidates detach as ambiguous rather than picking one.
 - **Anchor survival measured on three external corpora**: ripgrep (Rust, 400 commits, 98.2%), httpx (Python, 300 commits, 92.8%) and this repository (97.9%). Zero suspicious reattachments in all three, and every detachment inspected corresponds to code genuinely deleted or renamed.
 - **Symbol cardinality is counted per declaration kind.** Counting per symbol alone detached every record on a Rust type whenever an `impl` block was added or replaced by a derive, because a type and its impls share one symbol path. Found by replaying ripgrep, where `#[derive(Default)]` replacing hand-written impls detached records on enums that had not moved. Survival on ripgrep rose from 97.5% to 98.2%, and the overload invariant is untouched: an overload set shares a kind as well as a symbol.

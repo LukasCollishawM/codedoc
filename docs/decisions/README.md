@@ -16,3 +16,4 @@ Any change to the on-disk format requires a record here, then a change to `docs/
 | [ADR-0008](0008-drop-the-time-dependency.md) | Remove the time dependency |
 | [ADR-0009](0009-zero-comments-in-this-repository.md) | This repository contains no comments |
 | [ADR-0010](0010-no-verification-cache.md) | No verification cache *(rejected)* |
+| [ADR-0011](0011-renames-detach.md) | A renamed declaration detaches |
