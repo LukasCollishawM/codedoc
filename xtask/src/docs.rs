@@ -72,7 +72,7 @@ fn instructions_match_agents_md() -> ExitCode {
 
     if missing.is_empty() {
         println!("lint-docs: AGENTS.md quotes the server instructions verbatim");
-        return ExitCode::SUCCESS;
+        return tool_count_is_stated_correctly(&server);
     }
 
     eprintln!("lint-docs: AGENTS.md quotes the server instructions, and they have drifted");
@@ -83,6 +83,64 @@ fn instructions_match_agents_md() -> ExitCode {
     eprintln!();
     eprintln!("AGENTS.md tells a reader this is what every agent is sent. If it is not,");
     eprintln!("the page is describing a product nobody is running. Update the blockquote.");
+    ExitCode::from(1)
+}
+
+const NUMERALS: [&str; 30] = [
+    "zero",
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+    "ten",
+    "eleven",
+    "twelve",
+    "thirteen",
+    "fourteen",
+    "fifteen",
+    "sixteen",
+    "seventeen",
+    "eighteen",
+    "nineteen",
+    "twenty",
+    "twenty-one",
+    "twenty-two",
+    "twenty-three",
+    "twenty-four",
+    "twenty-five",
+    "twenty-six",
+    "twenty-seven",
+    "twenty-eight",
+    "twenty-nine",
+];
+
+fn tool_count_is_stated_correctly(server: &str) -> ExitCode {
+    let declared = server.matches("#[tool(").count();
+    let Ok(readme) = fs::read_to_string("README.md") else {
+        eprintln!("lint-docs: README.md is missing");
+        return ExitCode::from(1);
+    };
+    let Some(sentence) = readme.lines().find(|line| line.contains("tools, discovers them")) else {
+        println!("lint-docs: README states no tool count");
+        return ExitCode::SUCCESS;
+    };
+    let spelled = NUMERALS.get(declared).copied().unwrap_or("");
+    if !spelled.is_empty() && sentence.contains(spelled) {
+        println!("lint-docs: README states {declared} agent tools, which is how many there are");
+        return ExitCode::SUCCESS;
+    }
+
+    eprintln!("lint-docs: the MCP server exposes {declared} tools and README.md says otherwise");
+    eprintln!();
+    eprintln!("  {}", sentence.trim());
+    eprintln!();
+    eprintln!("A number in the README is a claim about the product, and a wrong one is");
+    eprintln!("read by everyone who arrives. Say \"{spelled}\", or drop the count.");
     ExitCode::from(1)
 }
 
