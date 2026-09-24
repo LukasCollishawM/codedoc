@@ -9,6 +9,21 @@ rendered *from* that JSON, never in parallel to it, so the two cannot disagree.
 Global flags: `--root <path>` (defaults to the working directory, searching upward
 for a ledger), `--json`, `--scope shared|local|global`.
 
+`--scope` chooses which ledger a command **writes** to. It also narrows the three
+commands that enumerate records — `list`, `search` and `stats` — which is how you ask
+what you have recorded locally in a repository you do not own.
+
+`supersede`, `affirm`, `retract` and `resolve` write to the ledger holding the record
+they act on, not to the default one, unless you name a scope. A record you kept in the
+untracked local ledger stays there when you revise or retire it — otherwise affirming a
+local note would copy it into the repository, and a tombstone quotes the claim it
+retires, so retracting one would publish the very text the local scope was keeping out.
+
+It deliberately does not narrow `verify`, `context`, `detached`, `conflicts` or
+`evidence`. Those answer questions about whether your knowledge still holds, and a
+claim you recorded locally is no less true while you are checking it, so reading only
+one ledger would make them answer the wrong question.
+
 ## Exit codes
 
 | code | meaning |

@@ -91,7 +91,7 @@ fn an_affirmation_keeps_the_claim_and_records_who_checked_it() {
     );
     assert_eq!(chain[1]["claim"], chain[0]["claim"], "an affirmation does not reword the claim");
 
-    let listed = codedoc_ops::list(root.path(), None, None).unwrap();
+    let listed = codedoc_ops::list(root.path(), None, None, None).unwrap();
     assert_eq!(listed["count"], 1, "the superseded original leaves the active set: {listed}");
 }
 

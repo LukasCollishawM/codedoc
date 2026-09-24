@@ -333,10 +333,17 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
         }
         Command::Reindex => command_reindex(&cli.root),
         Command::List { file, symbol } => {
-            command_list(&cli.root, file.as_deref(), symbol.as_deref())
+            command_list(&cli.root, scope, file.as_deref(), symbol.as_deref())
         }
         Command::Search { query, kind, file, limit } => Ok((
-            ops::search(&cli.root, &query.join(" "), kind.as_deref(), file.as_deref(), *limit)?,
+            ops::search(
+                &cli.root,
+                scope,
+                &query.join(" "),
+                kind.as_deref(),
+                file.as_deref(),
+                *limit,
+            )?,
             0,
         )),
         Command::Affirm { record, assurance, author, identity, session } => {
@@ -359,7 +366,7 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
             ))
         }
         Command::History { record } => command_history(&cli.root, record),
-        Command::Stats => command_stats(&cli.root),
+        Command::Stats => command_stats(&cli.root, scope),
         Command::Kinds => Ok((json!({"command": "kinds", "kinds": Kind::vocabulary()}), 0)),
         Command::Supersede { record, claim, detail, kind } => Ok((
             ops::supersede(
@@ -532,8 +539,13 @@ fn command_reindex(root: &Path) -> Result<(Value, i32)> {
     ))
 }
 
-fn command_list(root: &Path, file: Option<&str>, symbol: Option<&str>) -> Result<(Value, i32)> {
-    Ok((ops::list(root, file, symbol)?, 0))
+fn command_list(
+    root: &Path,
+    scope: Option<Scope>,
+    file: Option<&str>,
+    symbol: Option<&str>,
+) -> Result<(Value, i32)> {
+    Ok((ops::list(root, scope, file, symbol)?, 0))
 }
 
 fn command_history(root: &Path, record: &str) -> Result<(Value, i32)> {
@@ -544,6 +556,6 @@ fn command_detached(root: &Path) -> Result<(Value, i32)> {
     Ok(ops::detached(root)?)
 }
 
-fn command_stats(root: &Path) -> Result<(Value, i32)> {
-    Ok((ops::stats(root)?, 0))
+fn command_stats(root: &Path, scope: Option<Scope>) -> Result<(Value, i32)> {
+    Ok((ops::stats(root, scope)?, 0))
 }

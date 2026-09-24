@@ -89,6 +89,10 @@ pub(crate) fn workspace(root: &Path) -> Result<Workspace, OpsError> {
     Workspace::discover(root).map_err(|_| OpsError::NoLedger { root: root.display().to_string() })
 }
 
+pub(crate) fn workspace_in(root: &Path, scope: Option<Scope>) -> Result<Workspace, OpsError> {
+    Ok(workspace(root)?.confined_to(scope))
+}
+
 pub(crate) fn writable(root: &Path, scope: Option<Scope>) -> Result<Ledger, OpsError> {
     let found = workspace(root)?;
     let target = found.write_target(scope)?;

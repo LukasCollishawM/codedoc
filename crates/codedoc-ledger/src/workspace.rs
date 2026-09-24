@@ -31,6 +31,13 @@ impl Workspace {
         Workspace { root: root.to_path_buf(), ledgers }
     }
 
+    pub fn confined_to(mut self, scope: Option<Scope>) -> Self {
+        if let Some(wanted) = scope {
+            self.ledgers.retain(|ledger| ledger.scope() == wanted);
+        }
+        self
+    }
+
     pub fn root(&self) -> &Path {
         &self.root
     }

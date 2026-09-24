@@ -2,7 +2,6 @@ use std::fs;
 use std::path::Path;
 
 use codedoc_anchor::{Anchor, FileIndex, Resolution};
-use codedoc_graph::Graph;
 use codedoc_lang::Registry;
 use codedoc_ledger::{Body, Kind, Record, Scope};
 use serde_json::json;
@@ -13,20 +12,24 @@ use crate::{Attribution, OpsError, Outcome, workspace, writable};
 pub type Relocation = Target;
 
 pub(crate) fn find(root: &Path, reference: &str) -> Result<Record, OpsError> {
-    let found = workspace(root)?;
-    let graph = Graph::across(&found)?;
+    find_in_scope(root, reference).map(|(record, _)| record)
+}
 
-    let matches: Vec<&Record> = graph
-        .all()
-        .iter()
-        .filter(|record| record.id().to_string().starts_with(reference))
-        .collect();
-    match matches.as_slice() {
-        [single] => Ok((*single).clone()),
-        [] => Err(OpsError::RecordMissing { reference: reference.to_owned() }),
-        many => {
-            Err(OpsError::RecordAmbiguous { reference: reference.to_owned(), count: many.len() })
+pub(crate) fn find_in_scope(root: &Path, reference: &str) -> Result<(Record, Scope), OpsError> {
+    let found = workspace(root)?;
+
+    let mut matches: Vec<(Record, Scope)> = Vec::new();
+    for ledger in found.ledgers() {
+        for record in ledger.records()? {
+            if record.id().to_string().starts_with(reference) {
+                matches.push((record, ledger.scope()));
+            }
         }
+    }
+    match matches.len() {
+        1 => Ok(matches.remove(0)),
+        0 => Err(OpsError::RecordMissing { reference: reference.to_owned() }),
+        many => Err(OpsError::RecordAmbiguous { reference: reference.to_owned(), count: many }),
     }
 }
 
@@ -93,7 +96,8 @@ pub fn affirm(
     attribution: &Attribution,
     assurance: Option<codedoc_ledger::Assurance>,
 ) -> Outcome {
-    let original = find(root, reference)?;
+    let (original, home) = find_in_scope(root, reference)?;
+    let scope = scope.or(Some(home));
     let anchor = original
         .subject()
         .ok_or_else(|| OpsError::NoSubject { reference: reference.to_owned() })?;
@@ -138,7 +142,8 @@ pub fn supersede(
     detail: Option<&str>,
     kind: Option<&str>,
 ) -> Outcome {
-    let original = find(root, reference)?;
+    let (original, home) = find_in_scope(root, reference)?;
+    let scope = scope.or(Some(home));
     let anchor = original
         .subject()
         .ok_or_else(|| OpsError::NoSubject { reference: reference.to_owned() })?;
@@ -173,7 +178,8 @@ pub fn resolve(
     reference: &str,
     relocation: &Relocation,
 ) -> Outcome {
-    let original = find(root, reference)?;
+    let (original, home) = find_in_scope(root, reference)?;
+    let scope = scope.or(Some(home));
     let anchor = original
         .subject()
         .ok_or_else(|| OpsError::NoSubject { reference: reference.to_owned() })?;
@@ -204,7 +210,8 @@ pub fn retract(
     reference: &str,
     reason: Option<&str>,
 ) -> Outcome {
-    let original = find(root, reference)?;
+    let (original, home) = find_in_scope(root, reference)?;
+    let scope = scope.or(Some(home));
     let anchor = original
         .subject()
         .ok_or_else(|| OpsError::NoSubject { reference: reference.to_owned() })?

@@ -57,7 +57,7 @@ fn a_claim_is_found_by_words_without_naming_the_file_it_lives_in() {
     );
     record(root.path(), "src/cache.rs", "rust://evict", "performance", "Eviction is O(1).");
 
-    let found = codedoc_ops::search(root.path(), "tenant isolation", None, None, 10).unwrap();
+    let found = codedoc_ops::search(root.path(), None, "tenant isolation", None, None, 10).unwrap();
     assert_eq!(found["count"], 1, "{found}");
     assert!(claims(&found)[0].contains("Tenant isolation"));
 }
@@ -80,7 +80,7 @@ fn a_query_whose_terms_are_spread_across_records_returns_all_of_them_best_first(
         "Eviction never touches a token.",
     );
 
-    let found = codedoc_ops::search(root.path(), "token validation", None, None, 10).unwrap();
+    let found = codedoc_ops::search(root.path(), None, "token validation", None, None, 10).unwrap();
     assert_eq!(
         found["count"], 2,
         "requiring every term turns a broad question into no answer at all: {found}"
@@ -103,11 +103,13 @@ fn search_filters_by_kind_and_by_path_prefix() {
     );
     record(root.path(), "src/cache.rs", "rust://evict", "performance", "The token is cached here.");
 
-    let by_kind = codedoc_ops::search(root.path(), "token", Some("performance"), None, 10).unwrap();
+    let by_kind =
+        codedoc_ops::search(root.path(), None, "token", Some("performance"), None, 10).unwrap();
     assert_eq!(by_kind["count"], 1, "{by_kind}");
     assert!(claims(&by_kind)[0].contains("cached"));
 
-    let by_file = codedoc_ops::search(root.path(), "token", None, Some("src/auth"), 10).unwrap();
+    let by_file =
+        codedoc_ops::search(root.path(), None, "token", None, Some("src/auth"), 10).unwrap();
     assert_eq!(by_file["count"], 1, "{by_file}");
     assert!(claims(&by_file)[0].contains("checked"));
 }
@@ -122,12 +124,12 @@ fn a_retracted_claim_does_not_come_back_from_search() {
         "invariant",
         "Tokens are validated exactly once.",
     );
-    let listed = codedoc_ops::list(root.path(), None, None).unwrap();
+    let listed = codedoc_ops::list(root.path(), None, None, None).unwrap();
     let id = listed["records"][0]["record"].as_str().unwrap().to_owned();
 
     codedoc_ops::retract(root.path(), None, &id, Some("no longer true")).unwrap();
 
-    let found = codedoc_ops::search(root.path(), "validated", None, None, 10).unwrap();
+    let found = codedoc_ops::search(root.path(), None, "validated", None, None, 10).unwrap();
     assert_eq!(found["count"], 0, "a retracted claim is not a current answer: {found}");
 }
 
@@ -137,7 +139,7 @@ fn a_query_with_no_searchable_terms_returns_nothing_rather_than_failing() {
     record(root.path(), "src/auth.rs", "rust://validate", "invariant", "Tokens are validated.");
 
     for query in ["", "   ", "*", "\"", "-", "AND OR NOT"] {
-        let found = codedoc_ops::search(root.path(), query, None, None, 10).unwrap();
+        let found = codedoc_ops::search(root.path(), None, query, None, None, 10).unwrap();
         assert!(
             found["count"].as_u64().is_some(),
             "a query the user typed must never reach the full-text parser raw: {query:?}"

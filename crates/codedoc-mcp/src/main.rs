@@ -100,6 +100,8 @@ pub struct RecordArgs {
 pub struct FilterArgs {
     pub file: Option<String>,
     pub symbol: Option<String>,
+    /// Restrict to one ledger: `local`, `shared` or `global`. Omit to read across all.
+    pub scope: Option<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -113,6 +115,8 @@ pub struct SearchArgs {
     pub file: Option<String>,
     /// How many records to return. Defaults to 20.
     pub limit: Option<usize>,
+    /// Restrict to one ledger: `local`, `shared` or `global`. Omit to read across all.
+    pub scope: Option<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -120,6 +124,12 @@ pub struct InitArgs {
     /// `local` keeps the ledger inside `.git/`, where the repository cannot track it.
     /// `shared` puts it in `.codedoc/` to be committed. `global` keeps it outside the
     /// repository entirely. Defaults to `local`.
+    pub scope: Option<String>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct ScopeArgs {
+    /// Restrict to one ledger: `local`, `shared` or `global`. Omit to read across all.
     pub scope: Option<String>,
 }
 
@@ -375,6 +385,7 @@ impl Codedoc {
     ) -> Result<CallToolResult, McpError> {
         respond(search(
             &self.root,
+            scope_of(&args.scope),
             &args.query,
             args.kind.as_deref(),
             args.file.as_deref(),
@@ -387,7 +398,12 @@ impl Codedoc {
         &self,
         Parameters(args): Parameters<FilterArgs>,
     ) -> Result<CallToolResult, McpError> {
-        respond(list(&self.root, args.file.as_deref(), args.symbol.as_deref()))
+        respond(list(
+            &self.root,
+            scope_of(&args.scope),
+            args.file.as_deref(),
+            args.symbol.as_deref(),
+        ))
     }
 
     #[tool(
@@ -475,9 +491,9 @@ impl Codedoc {
     )]
     async fn codedoc_stats(
         &self,
-        Parameters(_args): Parameters<NoArgs>,
+        Parameters(args): Parameters<ScopeArgs>,
     ) -> Result<CallToolResult, McpError> {
-        respond(stats(&self.root))
+        respond(stats(&self.root, scope_of(&args.scope)))
     }
 }
 

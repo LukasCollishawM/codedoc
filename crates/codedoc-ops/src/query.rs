@@ -7,8 +7,10 @@ use codedoc_index::Index;
 use codedoc_verify::{Status, Verifier};
 use serde_json::{Value, json};
 
+use codedoc_ledger::Scope;
+
 use crate::lifecycle::find;
-use crate::{OpsError, Outcome, workspace};
+use crate::{OpsError, Outcome, workspace, workspace_in};
 
 pub fn context(
     root: &Path,
@@ -205,8 +207,13 @@ pub fn detached(root: &Path) -> Result<(Value, i32), OpsError> {
     Ok((json!({"command": "detached", "count": rows.len(), "records": rows}), code))
 }
 
-pub fn list(root: &Path, file: Option<&str>, symbol: Option<&str>) -> Outcome {
-    let found = workspace(root)?;
+pub fn list(
+    root: &Path,
+    scope: Option<Scope>,
+    file: Option<&str>,
+    symbol: Option<&str>,
+) -> Outcome {
+    let found = workspace_in(root, scope)?;
     let graph = Graph::across(&found)?;
     let records = match (file, symbol) {
         (_, Some(wanted)) => graph.for_symbol(wanted),
@@ -228,17 +235,23 @@ pub fn list(root: &Path, file: Option<&str>, symbol: Option<&str>) -> Outcome {
             })
         })
         .collect();
-    Ok(json!({"command": "list", "count": rows.len(), "records": rows}))
+    Ok(json!({
+        "command": "list",
+        "count": rows.len(),
+        "scopes": found.scopes().iter().map(|entry| entry.as_str()).collect::<Vec<_>>(),
+        "records": rows,
+    }))
 }
 
 pub fn search(
     root: &Path,
+    scope: Option<Scope>,
     query: &str,
     kind: Option<&str>,
     file: Option<&str>,
     limit: usize,
 ) -> Outcome {
-    let found = workspace(root)?;
+    let found = workspace_in(root, scope)?;
     let now = codedoc_ledger::Timestamp::now().unix_seconds();
     let mut scored: Vec<(f64, codedoc_ledger::Record)> = Vec::new();
 
@@ -432,8 +445,8 @@ pub fn conflicts(root: &Path) -> Result<(Value, i32), OpsError> {
     Ok((json!({"command": "conflicts", "count": rows.len(), "findings": rows}), code))
 }
 
-pub fn stats(root: &Path) -> Outcome {
-    let found = workspace(root)?;
+pub fn stats(root: &Path, scope: Option<Scope>) -> Outcome {
+    let found = workspace_in(root, scope)?;
     let graph = Graph::across(&found)?;
     let verification = found.verify()?;
     Ok(json!({
