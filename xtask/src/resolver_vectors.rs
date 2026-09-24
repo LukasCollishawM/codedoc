@@ -190,6 +190,62 @@ pub const CASES: &[Case] = &[
         after: "export function admit(id: number): number {\n    const verified = id;\n    return verified;\n}\n",
         symbol: "typescript://admit",
     },
+    Case {
+        name: "annotating_code_does_not_disturb_the_anchor_on_it",
+        language: "rust",
+        path: "src/lib.rs",
+        before: "fn settle(amount: u32) -> u32 {
+    let scaled = amount * 2;
+    scaled + 1
+}
+",
+        after: "/// Settles an amount.
+// A note someone added while reading.
+fn settle(amount: u32) -> u32 {
+    let scaled = amount * 2;
+    // doubled first, deliberately
+    scaled + 1
+}
+",
+        symbol: "rust://settle",
+    },
+    Case {
+        name: "python_annotating_code_does_not_disturb_the_anchor_on_it",
+        language: "python",
+        path: "app/svc.py",
+        before: "def settle(amount):
+    scaled = amount * 2
+    return scaled + 1
+",
+        after: "# A note someone added while reading.
+def settle(amount):
+    scaled = amount * 2
+    # doubled first, deliberately
+    return scaled + 1
+",
+        symbol: "python://settle",
+    },
+    Case {
+        name: "a_different_function_taking_the_same_slot_does_not_inherit_the_claim",
+        language: "rust",
+        path: "src/lib.rs",
+        before: "fn aaa() -> u32 {
+    let v = 1;
+    v
+}
+
+fn aab() -> u32 {
+    let v = 1;
+    v
+}
+",
+        after: "fn aab() -> u32 {
+    let v = 1;
+    v
+}
+",
+        symbol: "rust://aaa",
+    },
 ];
 
 pub fn drift_for(case: &Case) -> Option<u32> {
@@ -241,6 +297,74 @@ pub fn outcome_for(case: &Case) -> Option<(String, String)> {
     }
 }
 
+pub struct FileCase {
+    pub name: &'static str,
+    pub language: &'static str,
+    pub path: &'static str,
+    pub before: &'static str,
+    pub after: &'static str,
+}
+
+pub const FILE_CASES: &[FileCase] = &[FileCase {
+    name: "a_file_claim_holds_while_the_file_exists_and_measures_how_much_it_changed",
+    language: "rust",
+    path: "src/wire.rs",
+    before: "fn decode(raw: &[u8]) -> u32 {
+    raw.len() as u32
+}
+",
+    after: "fn decode(raw: &[u8]) -> u32 {
+    let mut total = 0u32;
+    for byte in raw {
+        total += u32::from(*byte);
+    }
+    total
+}
+",
+}];
+
+fn file_vector(case: &FileCase) -> Result<String, String> {
+    let adapter = Registry::by_name(case.language)
+        .ok_or_else(|| format!("no adapter for {}", case.language))?;
+    let path = RepoPath::parse(case.path).map_err(|failure| failure.to_string())?;
+    let before_tree = adapter.parse(case.before).map_err(|failure| failure.to_string())?;
+    let anchor = Anchor::capture_file(path, adapter, case.before, before_tree.root_node());
+
+    let after_tree = adapter.parse(case.after).map_err(|failure| failure.to_string())?;
+    let current = codedoc_anchor::fingerprint::shape_histogram(after_tree.root_node(), adapter);
+    let drift = codedoc_verify::drift_between(&anchor.shape, &current);
+
+    let index = FileIndex::build(adapter, case.after, &after_tree);
+    let resolution = index.resolve(&anchor);
+    let (outcome, detail) = match resolution {
+        Resolution::Located(located) => {
+            let rung = serde_json::to_string(&located.rung()).map_err(|e| e.to_string())?;
+            ("located".to_owned(), rung.trim_matches('"').to_owned())
+        }
+        _ => ("detached".to_owned(), "unknown".to_owned()),
+    };
+
+    Ok(format!(
+        "    {{
+      \"name\": {},
+      \"language\": {},
+      \"path\": {},
+      \"subject\": \"file\",
+      \"drift\": {drift},
+      \"before\": {},
+      \"after\": {},
+      \"expect\": {{ \"outcome\": {}, \"detail\": {} }}
+    }}",
+        quote(case.name),
+        quote(case.language),
+        quote(case.path),
+        quote(case.before),
+        quote(case.after),
+        quote(&outcome),
+        quote(&detail)
+    ))
+}
+
 pub fn generate() -> Result<usize, String> {
     let mut entries = Vec::new();
     for case in CASES {
@@ -260,12 +384,15 @@ pub fn generate() -> Result<usize, String> {
             quote(&detail)
         ));
     }
+    for case in FILE_CASES {
+        entries.push(file_vector(case)?);
+    }
     let document = format!(
         "{{\n  \"version\": 1,\n  \"description\": \"Resolver vectors. An implementation must capture the anchor for `symbol` in `before`, resolve it against `after`, and reach the stated outcome. Ambiguity must never be resolved by selection.\",\n  \"vectors\": [\n{}\n  ]\n}}\n",
         entries.join(",\n")
     );
     fs::write("conformance/resolver/vectors.json", document).map_err(|e| e.to_string())?;
-    Ok(CASES.len())
+    Ok(CASES.len() + FILE_CASES.len())
 }
 
 fn quote(raw: &str) -> String {

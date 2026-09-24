@@ -47,6 +47,17 @@ jobs:
       - name: every command the documentation names exists
         run: cargo run --quiet -p xtask -- lint-invocations
 
+  conformance:
+    name: conformance vectors are what the generator writes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo run -p xtask -- vectors
+      - name: the committed vectors match the generator
+        run: git diff --exit-code -- conformance/
+
   anchors:
     name: anchor survival
     runs-on: ubuntu-latest
