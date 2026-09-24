@@ -72,3 +72,23 @@ fn a_repository_relative_path_still_works_from_anywhere() {
         .expect("the repository-relative spelling is still accepted");
     assert_eq!(written["file"], "src/db/models/query.rs", "{written}");
 }
+
+#[test]
+fn a_path_argument_typed_from_a_subdirectory_is_scanned() {
+    let root = project();
+    let deep = root.path().join("src/db");
+    let previous = std::env::current_dir().ok();
+    std::env::set_current_dir(&deep).expect("move into the subdirectory");
+
+    let scanned = codedoc_ops::coverage(&deep, &["models".to_owned()], 5);
+
+    if let Some(back) = previous {
+        let _ = std::env::set_current_dir(back);
+    }
+    let scanned = scanned.expect("coverage runs");
+    assert!(
+        scanned["declarations"].as_u64().unwrap_or(0) > 0,
+        "answering 'no declarations found' about a directory that is full of them \
+         reads as a finding rather than a miss: {scanned}"
+    );
+}

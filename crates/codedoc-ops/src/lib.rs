@@ -125,7 +125,7 @@ impl OpsError {
     }
 }
 
-pub(crate) fn repo_relative_to(base: &Path, given: &str) -> String {
+pub(crate) fn repo_relative_from(base: &Path, given: &str, invoked_from: &Path) -> String {
     let canonical = |path: &Path| std::fs::canonicalize(path).ok();
     let Some(base) = canonical(base) else {
         return given.to_owned();
@@ -133,10 +133,7 @@ pub(crate) fn repo_relative_to(base: &Path, given: &str) -> String {
     if canonical(&base.join(given)).is_some() {
         return given.to_owned();
     }
-    let Ok(here) = std::env::current_dir() else {
-        return given.to_owned();
-    };
-    let Some(resolved) = canonical(&here.join(given)) else {
+    let Some(resolved) = canonical(&invoked_from.join(given)) else {
         return given.to_owned();
     };
     match resolved.strip_prefix(&base) {

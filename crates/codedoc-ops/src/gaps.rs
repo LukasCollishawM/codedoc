@@ -165,15 +165,16 @@ pub fn gaps(root: &Path, paths: &[String], limit: usize, commits: usize) -> Outc
 
     let by_file = history_by_file(found.root(), commits);
 
-    let mut files: Vec<(String, (usize, usize, usize, usize))> = source_files(found.root(), paths)
-        .into_iter()
-        .map(|relative| {
-            let name = relative.as_str().to_owned();
-            let rank = by_file.get(&name).map(History::rank).unwrap_or_default();
-            (name, rank)
-        })
-        .filter(|(_, rank)| rank.3 > 0)
-        .collect();
+    let mut files: Vec<(String, (usize, usize, usize, usize))> =
+        source_files(found.root(), paths, root)
+            .into_iter()
+            .map(|relative| {
+                let name = relative.as_str().to_owned();
+                let rank = by_file.get(&name).map(History::rank).unwrap_or_default();
+                (name, rank)
+            })
+            .filter(|(_, rank)| rank.3 > 0)
+            .collect();
     files.sort_by(|left, right| right.1.cmp(&left.1).then_with(|| left.0.cmp(&right.0)));
     files.truncate(FILES_EXAMINED);
 

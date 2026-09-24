@@ -6,7 +6,7 @@ use codedoc_lang::Registry;
 use codedoc_ledger::{Body, Kind, Record, Scope};
 use serde_json::json;
 
-use crate::record::{Target, append, capture, draft};
+use crate::record::{Target, append, capture_from, draft};
 use crate::{Attribution, OpsError, Outcome, workspace, writable};
 
 pub type Relocation = Target;
@@ -192,7 +192,7 @@ pub fn resolve(
         target.file = anchor.file.as_str().to_owned();
     }
     let found = workspace(root)?;
-    let placed = capture(found.root(), &target)?;
+    let placed = capture_from(found.root(), &target, root)?;
     let body = original.content().body.clone();
     let kind = original.kind();
     let record = emit(root, scope, &original, placed.clone(), kind, body)?;

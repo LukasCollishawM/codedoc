@@ -36,8 +36,16 @@ impl Target {
 }
 
 pub(crate) fn capture(root: &Path, target: &Target) -> Result<Anchor, OpsError> {
+    capture_from(root, target, Path::new("."))
+}
+
+pub(crate) fn capture_from(
+    root: &Path,
+    target: &Target,
+    invoked_from: &Path,
+) -> Result<Anchor, OpsError> {
     let mut target = target.clone();
-    target.file = crate::repo_relative_to(root, &target.file);
+    target.file = crate::repo_relative_from(root, &target.file, invoked_from);
     let target = &target;
     let path = RepoPath::parse(&target.file)
         .map_err(|source| OpsError::Language { detail: source.to_string() })?;
@@ -181,7 +189,7 @@ pub fn attach(
         vocabulary: Kind::vocabulary().join(", "),
     })?;
     let ledger = writable(root, scope)?;
-    let anchor = capture(ledger.root(), target)?;
+    let anchor = capture_from(ledger.root(), target, root)?;
     let attribution = attribution.clone().with_assurance(assurance);
 
     let content = draft(

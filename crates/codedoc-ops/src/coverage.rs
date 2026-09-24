@@ -52,8 +52,12 @@ fn is_excluded(path: &Path) -> bool {
     vendored || named_as_test
 }
 
-pub(crate) fn source_files(root: &Path, paths: &[String]) -> Vec<RepoPath> {
-    let targets: Vec<String> = if paths.is_empty() { vec![".".to_owned()] } else { paths.to_vec() };
+pub(crate) fn source_files(root: &Path, paths: &[String], invoked_from: &Path) -> Vec<RepoPath> {
+    let targets: Vec<String> = if paths.is_empty() {
+        vec![".".to_owned()]
+    } else {
+        paths.iter().map(|given| crate::repo_relative_from(root, given, invoked_from)).collect()
+    };
     let mut candidates = Vec::new();
     for target in &targets {
         for entry in WalkDir::new(root.join(target)).into_iter().filter_map(Result::ok) {
@@ -162,7 +166,7 @@ pub fn coverage(root: &Path, paths: &[String], limit: usize) -> Outcome {
         }
     }
 
-    let candidates = source_files(found.root(), paths);
+    let candidates = source_files(found.root(), paths, root);
 
     let scanned: Vec<FileCoverage> = candidates
         .par_iter()
