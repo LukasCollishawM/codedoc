@@ -21,34 +21,52 @@ codedoc is that somewhere.
 
 ## What it looks like
 
-An agent working on your code finds something non-obvious and records it:
+An agent working on your code finds something non-obvious and records it. It does
+this through MCP, so this is a tool call rather than a command it types:
 
-```bash
-codedoc attach crates/codedoc-verify/src/history.rs --symbol rust://is_ancestor \
-  --kind invariant \
-  --claim "Only git exit code 1 means not an ancestor; every other failure must be read as already present." \
-  --detail "git exits 0 for ancestor, 1 for not, and 128 for a revision it does not know. The only caller decides whether a record was written during a change, so reading 128 as 'not an ancestor' would credit an author with recording work they did not do. Under-crediting is the smaller wrong."
+```
+codedoc_attach {
+  "file":   "crates/codedoc-verify/src/history.rs",
+  "symbol": "rust://is_ancestor",
+  "kind":   "invariant",
+  "claim":  "Only git exit code 1 means not an ancestor; every other failure
+             must be read as already present.",
+  "detail": "git exits 0 for ancestor, 1 for not, and 128 for a revision it
+             does not know. The only caller decides whether a record was
+             written during a change, so reading 128 as 'not an ancestor'
+             would credit an author with recording work they did not do.
+             Under-crediting is the smaller wrong."
+}
 ```
 
 Nothing changes in the source file. Weeks later, a different agent is asked to touch
-that function and calls codedoc first:
+that function. It calls `codedoc_context` before reading the code, and gets back:
 
+```json
+{
+  "target": {
+    "file": "crates/codedoc-verify/src/history.rs",
+    "symbol": "rust://is_ancestor"
+  },
+  "invariants": [
+    {
+      "kind": "invariant",
+      "claim": "Only git exit code 1 means not an ancestor; every other failure
+                must be read as already present.",
+      "detail": "git exits 0 for ancestor, 1 for not, and 128 for a revision it
+                 does not know. The only caller decides whether a record was
+                 written during a change, so reading 128 as 'not an ancestor'
+                 would credit an author with recording work they did not do.
+                 Under-crediting is the smaller wrong.",
+      "assurance": "asserted"
+    }
+  ]
+}
 ```
-$ codedoc context crates/codedoc-verify/src/history.rs --symbol rust://is_ancestor
 
-TARGET
-  crates/codedoc-verify/src/history.rs
-  rust://is_ancestor
-
-INVARIANTS
-  - Only git exit code 1 means not an ancestor; every other failure must be
-    read as already present.
-    git exits 0 for ancestor, 1 for not, and 128 for a revision it does not
-    know. The only caller decides whether a record was written during a
-    change, so reading 128 as 'not an ancestor' would credit an author with
-    recording work they did not do. Under-crediting is the smaller wrong.
-    [asserted]
-```
+Every one of those tools has a command-line equivalent with the same JSON under
+`--json`, for agents that shell out rather than speak MCP, and for you when you want
+to look. [docs/cli.md](docs/cli.md) covers those.
 
 That is the whole idea. The rest of this page is how it survives the code changing.
 
