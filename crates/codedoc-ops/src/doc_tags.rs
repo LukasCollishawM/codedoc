@@ -79,7 +79,40 @@ fn starts_a_word(text: &str, at: usize) -> bool {
 
 const INLINE_TAGS: &[&str] = &["link", "linkplain", "code", "literal", "value", "inheritdoc"];
 
+const XMLDOC_BLOCK: &[&str] = &[
+    "param",
+    "returns",
+    "remarks",
+    "exception",
+    "example",
+    "seealso",
+    "typeparam",
+    "value",
+    "permission",
+    "returns",
+];
+
 const HTML_TAGS: &[&str] = &[
+    "summary",
+    "param",
+    "returns",
+    "remarks",
+    "exception",
+    "example",
+    "seealso",
+    "typeparam",
+    "value",
+    "permission",
+    "paramref",
+    "typeparamref",
+    "see",
+    "c",
+    "list",
+    "item",
+    "term",
+    "description",
+    "inheritdoc",
+    "para",
     "p",
     "br",
     "code",
@@ -165,7 +198,15 @@ pub(crate) fn strip_html(text: &str) -> String {
                 .chars()
                 .take_while(|glyph| glyph.is_ascii_alphanumeric())
                 .collect();
-            if matches!(name.to_ascii_lowercase().as_str(), "p" | "br" | "li" | "tr") {
+            let lowered = name.to_ascii_lowercase();
+            let closing = text[at..].starts_with("</");
+            if !closing && XMLDOC_BLOCK.contains(&lowered.as_str()) {
+                out.push_str(
+                    "
+
+",
+                );
+            } else if matches!(lowered.as_str(), "p" | "br" | "li" | "tr") {
                 out.push(' ');
             }
             at += width;
@@ -306,6 +347,25 @@ mod tests {
         assert_eq!(
             break_before_first_block_tag("Compares a &lt; b using &amp; semantics."),
             "Compares a < b using & semantics."
+        );
+    }
+
+    #[test]
+    fn a_csharp_summary_is_the_claim_and_its_siblings_are_the_detail() {
+        let given = "<summary>Validates a token.</summary><param name=\"raw\">the bytes</param>";
+        assert_eq!(
+            break_before_first_block_tag(given),
+            "Validates a token.
+
+the bytes"
+        );
+    }
+
+    #[test]
+    fn a_csharp_inline_reference_keeps_its_text() {
+        assert_eq!(
+            break_before_first_block_tag("<summary>Returns <c>null</c> when empty.</summary>"),
+            "Returns null when empty."
         );
     }
 
