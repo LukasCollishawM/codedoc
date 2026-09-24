@@ -152,6 +152,13 @@ returns what is already known about that change as one answer, with the budget s
 across the whole set rather than a few claims from each file. `codedoc_context` is the
 sharper tool once you are at one location and know where.
 
+**If `codedoc_attach` comes back with `symbol: null`, the record is fragile.** It
+landed on a construct the language adapter cannot name — a macro invocation, a
+top-level statement, or a form the adapter does not recognise. Such a record resolves
+only while its file is byte-identical and detaches on the first edit. Prefer attaching
+to the enclosing named declaration instead, or to the file, and say in the claim which
+part of it you mean.
+
 **Do not write down what the name already says.** `codedoc_attach` reports
 `restates_the_symbol` when every word of your claim is already in the symbol it is
 attached to. "Validates the token" on `validate_token` costs a reader time and tells
