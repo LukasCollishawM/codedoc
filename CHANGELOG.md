@@ -8,6 +8,7 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Added
 
+- **Three conformance vectors for properties that only Rust tests had held.** That adding a comment disturbs neither the anchor nor its drift, in Rust and Python, which is what makes annotating code safe; and that a different function taking the deleted one's slot does not inherit its claim, which is the position-is-not-identity rule that a property test found being broken and nothing language-neutral bound.
 - **`lint-docs` also checks that every command-line option is named in its own section of the reference.** It found five that were not, and a duplicate `codedoc list` section created while documenting one of them. The same rule already applied to subcommands; an option nobody documents is one nobody finds.
 - **`--as-of` on `codedoc list` and `codedoc context`.** The README said that what was believed about code six months ago is a query rather than an archaeology exercise. `Graph::as_of` implemented exactly that and was reachable from nothing — it had one unit test and no caller, so the promise was not backed by a command anyone could run. Both commands now take a date, and the MCP equivalents take `as_of`. Run against this repository's own ledger: 8 records as of 22:00 tonight, 48 now.
 - **`lint-docs` checks the tool count the README states against the number the server exposes.** That sentence went stale four times in one night as tools were added, and it is the number every reader arrives at.

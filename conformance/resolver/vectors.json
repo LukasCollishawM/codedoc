@@ -322,6 +322,44 @@
         "outcome": "located",
         "detail": "file_identity"
       }
+    },
+    {
+      "name": "annotating_code_does_not_disturb_the_anchor_on_it",
+      "language": "rust",
+      "path": "src/lib.rs",
+      "symbol": "rust://settle",
+      "drift": 0,
+      "before": "fn settle(amount: u32) -> u32 {\n    let scaled = amount * 2;\n    scaled + 1\n}\n",
+      "after": "/// Settles an amount.\n// A note someone added while reading.\nfn settle(amount: u32) -> u32 {\n    let scaled = amount * 2;\n    // doubled first, deliberately\n    scaled + 1\n}\n",
+      "expect": {
+        "outcome": "located",
+        "detail": "content_identity"
+      }
+    },
+    {
+      "name": "a_different_function_taking_the_same_slot_does_not_inherit_the_claim",
+      "language": "rust",
+      "path": "src/lib.rs",
+      "symbol": "rust://aaa",
+      "before": "fn aaa() -> u32 {\n    let v = 1;\n    v\n}\n\nfn aab() -> u32 {\n    let v = 1;\n    v\n}\n",
+      "after": "fn aab() -> u32 {\n    let v = 1;\n    v\n}\n",
+      "expect": {
+        "outcome": "detached",
+        "detail": "no_candidate"
+      }
+    },
+    {
+      "name": "python_annotating_code_does_not_disturb_the_anchor_on_it",
+      "language": "python",
+      "path": "app/svc.py",
+      "symbol": "python://settle",
+      "drift": 0,
+      "before": "def settle(amount):\n    scaled = amount * 2\n    return scaled + 1\n",
+      "after": "# A note someone added while reading.\ndef settle(amount):\n    scaled = amount * 2\n    # doubled first, deliberately\n    return scaled + 1\n",
+      "expect": {
+        "outcome": "located",
+        "detail": "content_identity"
+      }
     }
   ]
 }
