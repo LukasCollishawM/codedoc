@@ -8,6 +8,7 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Added
 
+- **The spec says identity is the digest of the canonical re-encoding, not of the stored bytes**, and a test holds it. That is the property that lets a ledger written before an optional member existed keep every identifier it was written with, and it is what makes omitting defaults a compatible change rather than a second breaking one.
 - **`codedoc coverage` reports claims about a file alongside its declaration coverage.** A file claim documents no declaration, so it does not count toward the percentage and should not — but the thinnest-files listing is where someone looks to decide what to document next, and sending them to a file that already carries a module-level claim wastes the trip.
 - **The CLI binary is tested through the binary.** The exit codes in `docs/cli.md` are what a CI job branches on and nothing checked that the process returns them; `--json` is what a script parses and nothing checked it stays JSON when the command fails. Both are asserted now, along with an unknown record kind being refused with the vocabulary rather than a bare rejection.
 - **The language server has an end-to-end test too.** It starts the real binary, performs the LSP handshake and asserts that hover, code lens and diagnostics are all advertised — a capability that is implemented but not announced is one no editor will ever call, and nothing checked.

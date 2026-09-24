@@ -50,3 +50,36 @@ fn a_record_keeps_the_identity_it_was_written_with() {
     }
     assert!(checked >= 2, "the identity fixture set must not be empty");
 }
+
+#[test]
+fn a_stored_member_at_its_default_hashes_the_same_as_an_omitted_one() {
+    let raw = fixtures();
+    let (expected, encoded) = raw
+        .lines()
+        .map(str::trim)
+        .find(|line| !line.is_empty() && !line.starts_with('#'))
+        .and_then(|line| line.split_once(' '))
+        .expect("a fixture");
+
+    let verbose = encoded.replace(
+        "\"range\":",
+        "\"symbol_cardinality\":1,\"symbol_ordinal\":0,\"context_siblings\":0,\"range\":",
+    );
+    assert_ne!(verbose, encoded, "the fixture should gain the members it omits");
+
+    let restored = Record::decode_line(verbose.as_bytes())
+        .expect("a line carrying optional members at their defaults still decodes");
+    assert_eq!(
+        restored.id().to_string(),
+        expected,
+        "identity is the hash of the canonical re-encoding, not of the bytes on disk. \
+         That is what lets a ledger written before an optional member existed keep \
+         every identity it was written with, and it is the property that makes \
+         omitting defaults a compatible change rather than a breaking one."
+    );
+    assert_eq!(
+        String::from_utf8(restored.encode_line().expect("re-encodes")).unwrap(),
+        encoded,
+        "and re-encoding it normalises back to the canonical form"
+    );
+}

@@ -32,6 +32,8 @@ Unrecognised object members MUST be preserved across a decode and re-encode cycl
 
 This rule carries more weight than tidiness. A record's identifier is the digest of its canonical encoding, and an implementation recomputes that identifier when it reads a record back. A member that serialises while holding its default therefore changes the identifier of **every record written before that member existed**, which breaks the hash chain linking them and every supersession reference pointing at them. The failure presents as a corrupt or tampered-with ledger rather than as a schema change, so it is not self-diagnosing.
 
+A record's identifier is the digest of its **canonical re-encoding**, not of the bytes it was read from. A line that carries an optional member at its default therefore yields the same identifier as one that omits it, which is what allows a ledger written before that member existed to keep every identifier it was written with. An implementation MUST compute identity this way rather than over the stored bytes.
+
 It follows that adding a member to this format is a compatible change only when the member is optional and omitted at its default. `conformance/records/identity.jsonl` freezes records carrying none of the optional members, with the identifiers they must still produce.
 
 ## 2. Digests
