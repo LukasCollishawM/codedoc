@@ -109,22 +109,24 @@ fn assess(
         }
         Evidence::GitRevision(revision) => {
             let citation = format!("git:{revision}");
-            if revision_exists(root, revision.as_str()) {
-                (Standing::Present, citation, "")
-            } else {
-                (
+            match revision_exists(root, revision.as_str()) {
+                Some(true) => (Standing::Present, citation, ""),
+                Some(false) => (
                     Standing::Missing,
                     citation,
                     "this revision is not in the repository; history may have been rewritten",
-                )
+                ),
+                None => (Standing::Unchecked, citation, "git could not be consulted here"),
             }
         }
         Evidence::Test(name) => {
             let citation = format!("test:{name}");
-            if mentions(root, name) {
-                (Standing::Present, citation, "")
-            } else {
-                (Standing::Missing, citation, "no test by this name appears in the repository")
+            match mentions(root, name) {
+                Some(true) => (Standing::Present, citation, ""),
+                Some(false) => {
+                    (Standing::Missing, citation, "no test by this name appears in the repository")
+                }
+                None => (Standing::Unchecked, citation, "git could not be consulted here"),
             }
         }
         Evidence::Url(address) => (
@@ -136,22 +138,22 @@ fn assess(
     }
 }
 
-fn revision_exists(root: &Path, revision: &str) -> bool {
-    Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args(["cat-file", "-e", &format!("{revision}^{{commit}}")])
-        .output()
-        .map(|output| output.status.success())
-        .unwrap_or(false)
+fn revision_exists(root: &Path, revision: &str) -> Option<bool> {
+    let status = ran(root, &["cat-file", "-e", &format!("{revision}^{{commit}}")])?;
+    Some(status == 0)
 }
 
-fn mentions(root: &Path, name: &str) -> bool {
-    Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args(["grep", "--untracked", "--fixed-strings", "--quiet", "--", name])
-        .output()
-        .map(|output| output.status.success())
-        .unwrap_or(false)
+fn mentions(root: &Path, name: &str) -> Option<bool> {
+    match ran(root, &["grep", "--untracked", "--fixed-strings", "--quiet", "--", name])? {
+        0 => Some(true),
+        1 => Some(false),
+        _ => None,
+    }
+}
+
+fn ran(root: &Path, arguments: &[&str]) -> Option<i32> {
+    if !root.join(".git").exists() {
+        return None;
+    }
+    Command::new("git").arg("-C").arg(root).args(arguments).output().ok()?.status.code()
 }

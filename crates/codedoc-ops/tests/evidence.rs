@@ -167,3 +167,21 @@ fn a_test_that_exists_but_is_not_committed_yet_still_counts_as_evidence() {
          {report}"
     );
 }
+
+#[test]
+fn evidence_git_cannot_check_is_reported_unchecked_rather_than_missing() {
+    let root = project();
+    attach(
+        root.path(),
+        "The length is the whole answer.",
+        vec![Evidence::Test("a_test_that_certainly_exists_somewhere".to_owned())],
+    );
+
+    let (report, code) = codedoc_ops::evidence(root.path()).unwrap();
+    assert_eq!(
+        report["broken"], 0,
+        "there is no git repository here, so nothing was established about this test. \
+         Reporting it missing would state a fact the check never had: {report}"
+    );
+    assert_eq!(code, 0);
+}
