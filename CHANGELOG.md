@@ -8,6 +8,7 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Added
 
+- **`codedoc coverage` reports claims about a file alongside its declaration coverage.** A file claim documents no declaration, so it does not count toward the percentage and should not — but the thinnest-files listing is where someone looks to decide what to document next, and sending them to a file that already carries a module-level claim wastes the trip.
 - **The CLI binary is tested through the binary.** The exit codes in `docs/cli.md` are what a CI job branches on and nothing checked that the process returns them; `--json` is what a script parses and nothing checked it stays JSON when the command fails. Both are asserted now, along with an unknown record kind being refused with the vocabulary rather than a bare rejection.
 - **The language server has an end-to-end test too.** It starts the real binary, performs the LSP handshake and asserts that hover, code lens and diagnostics are all advertised — a capability that is implemented but not announced is one no editor will ever call, and nothing checked.
 - **The MCP server has an end-to-end test.** It is the primary interface and nothing had ever run it: the tests exercised the operations underneath it, which cannot catch a broken tool macro, a schema that will not serialise, or instructions that fail to reach `initialize`. A test now starts the real binary, performs the handshake, lists the tools, writes a record through `codedoc_attach` and finds it again through `codedoc_search`.

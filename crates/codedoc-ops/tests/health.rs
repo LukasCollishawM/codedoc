@@ -91,3 +91,37 @@ fn a_citation_that_stopped_resolving_blocks_and_says_what_to_run() {
          go and decode: {report}"
     );
 }
+
+#[test]
+fn coverage_says_when_a_thin_file_already_carries_a_claim_about_itself() {
+    let root = project();
+    let request = codedoc_ops::AttachRequest {
+        target: codedoc_ops::Target::file("src/lib.rs"),
+        kind: "explanation".to_owned(),
+        claim: "Everything here assumes the input is a whole frame.".to_owned(),
+        detail: None,
+    };
+    codedoc_ops::attach(
+        root.path(),
+        None,
+        &request,
+        &codedoc_ops::Attribution::human("tester"),
+        codedoc_ops::Provenance::default(),
+    )
+    .unwrap();
+
+    let report = codedoc_ops::coverage(root.path(), &[], 10).unwrap();
+    let thinnest = report["thinnest"].as_array().expect("a listing");
+    let entry = thinnest
+        .iter()
+        .find(|row| row["file"] == "src/lib.rs")
+        .unwrap_or_else(|| panic!("src/lib.rs is missing: {report}"));
+
+    assert_eq!(entry["documented"], 0, "a claim about the file documents no declaration");
+    assert_eq!(
+        entry["about_the_file"], 1,
+        "this listing is where someone looks to decide what to document next, so \
+         sending them to a file that already carries a claim about itself wastes \
+         the trip: {report}"
+    );
+}

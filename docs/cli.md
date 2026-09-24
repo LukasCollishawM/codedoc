@@ -209,6 +209,11 @@ $ codedoc coverage crates
 3% — 21 of 686 declarations carry a record, across 41 files
 ```
 
+Each entry in the thinnest list also reports `about_the_file`: claims recorded against
+the file itself rather than any declaration in it. They do not count toward the
+percentage, because a module header does not document a function — but a file that
+already carries one is not the blank page the percentage makes it look like.
+
 **Coverage is a prompt, not a target.** A codebase where every declaration carries a
 record has mostly restated its own code, which is the failure mode this project
 exists to avoid. It is useful for the opposite question: after importing a few

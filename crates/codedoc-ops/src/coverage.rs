@@ -122,6 +122,13 @@ pub fn coverage(root: &Path, paths: &[String], limit: usize) -> Outcome {
         .filter_map(|entry| entry.anchor.symbol.as_ref().map(ToString::to_string))
         .collect();
 
+    let mut about_the_file: BTreeMap<String, usize> = BTreeMap::new();
+    for entry in graph.active().iter().flat_map(|record| record.content().anchors.iter()) {
+        if matches!(entry.anchor.subject, codedoc_anchor::Subject::File) {
+            *about_the_file.entry(entry.anchor.file.as_str().to_owned()).or_insert(0) += 1;
+        }
+    }
+
     let targets: Vec<String> = if paths.is_empty() { vec![".".to_owned()] } else { paths.to_vec() };
 
     let mut candidates = Vec::new();
@@ -196,6 +203,7 @@ pub fn coverage(root: &Path, paths: &[String], limit: usize) -> Outcome {
                 "file": file,
                 "documented": have,
                 "declarations": count,
+                "about_the_file": about_the_file.get(*file).copied().unwrap_or(0),
             }))
             .collect::<Vec<_>>(),
         "undocumented_sample": uncovered
