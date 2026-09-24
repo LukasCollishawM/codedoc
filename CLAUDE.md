@@ -152,6 +152,8 @@ Make illegal states unrepresentable. `Resolution` carries its rung. A `Record` c
 
 No booleans in signatures — `resolve(path, true, false)` is unreadable at the call site and an enum costs nothing.
 
+`Canonical` is the deliberate exception and must stay one: the specification closes the set of canonical values at null, boolean, integer, string, array and object, so a consumer matching on it should be forced to handle every variant rather than given a wildcard to hide behind. Marking it `#[non_exhaustive]` would let a seventh kind of value slip silently through every downstream match, which is the opposite of what the attribute is for here.
+
 Every public enum and struct that can grow — record kinds, relation verbs, error types, resolver rungs — carries `#[non_exhaustive]`. This produces a deliberate asymmetry, and it is the right one: the attribute does not apply within the defining crate, so adding a record kind still breaks our own build until every site handles it, while downstream consumers keep compiling. Growth in the vocabulary must be free for the ecosystem and expensive for us.
 
 Two rules follow from that asymmetry, and the second one matters more than it looks:
