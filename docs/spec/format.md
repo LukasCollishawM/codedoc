@@ -28,6 +28,12 @@ Encoding MUST be idempotent: decoding canonical bytes and re-encoding MUST produ
 
 Unrecognised object members MUST be preserved across a decode and re-encode cycle. A ledger is distributed and an older implementation MUST NOT silently strip members written by a newer one.
 
+**An optional member MUST be omitted when it holds its default.** A member that has a default is one an older record may not carry, so a value and its absence denote the same thing; emitting it would give one value two encodings, which is what canonical form exists to prevent.
+
+This rule carries more weight than tidiness. A record's identifier is the digest of its canonical encoding, and an implementation recomputes that identifier when it reads a record back. A member that serialises while holding its default therefore changes the identifier of **every record written before that member existed**, which breaks the hash chain linking them and every supersession reference pointing at them. The failure presents as a corrupt or tampered-with ledger rather than as a schema change, so it is not self-diagnosing.
+
+It follows that adding a member to this format is a compatible change only when the member is optional and omitted at its default. `conformance/records/identity.jsonl` freezes records carrying none of the optional members, with the identifiers they must still produce.
+
 ## 2. Digests
 
 All digests are BLAKE3-256, rendered as 64 lowercase hexadecimal characters.

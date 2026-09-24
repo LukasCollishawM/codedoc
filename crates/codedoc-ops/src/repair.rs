@@ -2,14 +2,37 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use codedoc_core::RecordId;
-use codedoc_ledger::{Record, RecordContent, Scope};
-use serde_json::json;
+use codedoc_ledger::{Ledger, Record, RecordContent, Scope};
+use serde_json::{Value, json};
 
 use crate::{OpsError, Outcome, workspace, writable};
 
 pub fn repair(root: &Path, scope: Option<Scope>, write: bool) -> Outcome {
     let found = workspace(root)?;
-    let ledger = writable(found.root(), scope)?;
+
+    let mut scopes: Vec<Value> = Vec::new();
+    if scope.is_some() {
+        scopes.push(repair_ledger(&writable(found.root(), scope)?, write)?);
+    } else {
+        for ledger in found.ledgers() {
+            scopes.push(repair_ledger(ledger, write)?);
+        }
+    }
+
+    let total =
+        |member: &str| -> u64 { scopes.iter().filter_map(|entry| entry[member].as_u64()).sum() };
+
+    Ok(json!({
+        "command": "repair",
+        "records": total("records"),
+        "orphans": total("orphans"),
+        "rewritten": total("rewritten"),
+        "dry_run": !write,
+        "scopes": scopes,
+    }))
+}
+
+fn repair_ledger(ledger: &Ledger, write: bool) -> Outcome {
     let records = ledger.records()?;
 
     let known: Vec<String> = records.iter().map(|record| record.id().to_string()).collect();
@@ -22,7 +45,6 @@ pub fn repair(root: &Path, scope: Option<Scope>, write: bool) -> Outcome {
 
     if orphans.is_empty() {
         return Ok(json!({
-            "command": "repair",
             "scope": ledger.scope().as_str(),
             "records": records.len(),
             "orphans": 0,
@@ -33,7 +55,6 @@ pub fn repair(root: &Path, scope: Option<Scope>, write: bool) -> Outcome {
 
     if !write {
         return Ok(json!({
-            "command": "repair",
             "scope": ledger.scope().as_str(),
             "records": records.len(),
             "orphans": orphans.len(),
@@ -72,11 +93,10 @@ pub fn repair(root: &Path, scope: Option<Scope>, write: bool) -> Outcome {
     }
 
     ledger.replace_all(&rebuilt)?;
-    codedoc_index::Index::rebuild(&ledger)
+    codedoc_index::Index::rebuild(ledger)
         .map_err(|source| OpsError::Index { detail: source.to_string() })?;
 
     Ok(json!({
-        "command": "repair",
         "scope": ledger.scope().as_str(),
         "records": records.len(),
         "orphans": orphans.len(),

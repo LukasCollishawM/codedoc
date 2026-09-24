@@ -266,6 +266,11 @@ Repair re-chains every record in timestamp order and remaps supersession links.
 written into, so this is a recovery tool rather than routine maintenance. Dry run
 unless `--write`; back up `.codedoc` first.
 
+It mends every ledger in the workspace, because `codedoc verify` reports across every
+scope and a cure narrower than the diagnosis leaves you repairing something that still
+reports broken. Pass `--scope` to confine it to one; the output reports per scope
+either way.
+
 The better answer is not to rewrite history across a ledger. Orphaning is detected,
 not prevented.
 

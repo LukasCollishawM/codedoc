@@ -224,13 +224,13 @@ pub struct Anchor {
     pub preceding: ContextFingerprint,
     pub following: ContextFingerprint,
     pub shape: BTreeMap<String, u32>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_absent")]
     pub context_siblings: u32,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub symbol_kind: String,
-    #[serde(default = "one_declaration")]
+    #[serde(default = "one_declaration", skip_serializing_if = "is_single")]
     pub symbol_cardinality: u32,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_absent")]
     pub symbol_ordinal: u32,
     #[serde(default, skip_serializing_if = "is_construct")]
     pub subject: Subject,
@@ -239,6 +239,14 @@ pub struct Anchor {
 
 fn is_construct(subject: &Subject) -> bool {
     matches!(subject, Subject::Construct)
+}
+
+fn is_absent(count: &u32) -> bool {
+    *count == 0
+}
+
+fn is_single(count: &u32) -> bool {
+    *count == 1
 }
 
 impl Anchor {
