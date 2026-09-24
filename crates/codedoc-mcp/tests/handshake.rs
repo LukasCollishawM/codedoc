@@ -85,6 +85,24 @@ fn an_agent_can_connect_list_the_tools_and_record_something() {
         assert!(names.contains(&required), "{required} is not advertised: {names:?}");
     }
 
+    let mut undescribed = Vec::new();
+    for tool in tools {
+        let name = tool["name"].as_str().unwrap_or("");
+        let Some(properties) = tool["inputSchema"]["properties"].as_object() else {
+            continue;
+        };
+        for (field, schema) in properties {
+            if schema["description"].as_str().unwrap_or_default().is_empty() {
+                undescribed.push(format!("{name}.{field}"));
+            }
+        }
+    }
+    assert!(
+        undescribed.is_empty(),
+        "an agent decides what to pass from these schemas and has nothing else to go \
+         on, so a field with no description is a field it will guess at: {undescribed:?}"
+    );
+
     server.send(json!({
         "jsonrpc": "2.0", "id": 3, "method": "tools/call",
         "params": {

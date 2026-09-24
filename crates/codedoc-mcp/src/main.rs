@@ -54,10 +54,15 @@ Your records are attributed to you and default to assurance 'inferred'. Claim \
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct LocationArgs {
+    /// Repository-relative path, such as `src/auth.rs`.
     pub file: String,
+    /// A line in that file. Use this or `symbol`, not both; `symbol` is the sharper of the two.
     pub line: Option<u32>,
+    /// A symbol path such as `rust://validate_token`, as returned by other tools.
     pub symbol: Option<String>,
+    /// How many relation hops to follow. Defaults to 2.
     pub depth: Option<u8>,
+    /// Approximate character budget; the least trustworthy claims are dropped first.
     pub budget: Option<usize>,
     /// A date such as 2026-03-01, to see what was believed as of then rather than now.
     pub as_of: Option<String>,
@@ -65,45 +70,73 @@ pub struct LocationArgs {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct AttachArgs {
+    /// Repository-relative path the claim is about.
     pub file: String,
+    /// The symbol path to attach to. Omit this and `line` to record a claim about the whole file.
     pub symbol: Option<String>,
+    /// A line to attach to, when you cannot name the symbol. `symbol` resolves better.
     pub line: Option<u32>,
+    /// One of the record kinds, such as `invariant`, `security`, `rationale`, `known_failure_mode`.
     pub kind: String,
+    /// One sentence stating what is true. Not what the code does — what someone would otherwise have to work out.
     pub claim: String,
+    /// Why it is true, what breaks if it is not, how you established it.
     pub detail: Option<String>,
+    /// `asserted` for something you verified, `inferred` for something you worked out, `speculative` for a guess. Defaults to inferred for an agent.
     pub assurance: Option<String>,
+    /// Which ledger to write to: `local`, `shared` or `global`. Defaults to the workspace default.
     pub scope: Option<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct RelateArgs {
+    /// Repository-relative path of the first side of the relation.
     pub subject_file: String,
+    /// Symbol path of the first side.
     pub subject_symbol: Option<String>,
+    /// A line, if the first side cannot be named by symbol.
     pub subject_line: Option<u32>,
+    /// How the two relate: `must_execute_after`, `guarded_by`, `constrained_by`, `invalidates`, `tested_by`, `derived_from`, `contradicts`, `supersedes`, `owns`.
     pub verb: String,
+    /// Repository-relative path of the second side.
     pub object_file: String,
+    /// Symbol path of the second side.
     pub object_symbol: Option<String>,
+    /// A line, if the second side cannot be named by symbol.
     pub object_line: Option<u32>,
+    /// What is true about the link. One is generated from the verb if you omit it.
     pub claim: Option<String>,
+    /// Why the link holds, and what breaks if it is violated.
     pub detail: Option<String>,
+    /// Which ledger to write to. Defaults to the workspace default.
     pub scope: Option<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct RecordArgs {
+    /// A record identifier, abbreviable to any unambiguous prefix.
     pub record: String,
+    /// Which ledger to write to. Defaults to the ledger holding the record.
     pub scope: Option<String>,
+    /// The replacement wording, when superseding.
     pub claim: Option<String>,
+    /// The replacement detail, when superseding.
     pub detail: Option<String>,
+    /// Why the record is being retired, when retracting.
     pub reason: Option<String>,
+    /// When resolving a detached record, the symbol path its code moved to.
     pub to_symbol: Option<String>,
+    /// When resolving a detached record, the line its code moved to.
     pub to_line: Option<u32>,
+    /// When resolving a detached record, the file its code moved to, if it changed file.
     pub in_file: Option<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct FilterArgs {
+    /// Restrict to records anchored in this file.
     pub file: Option<String>,
+    /// Restrict to records anchored to this symbol path.
     pub symbol: Option<String>,
     /// A date such as 2026-03-01, to see what was recorded as of then.
     pub as_of: Option<String>,
@@ -157,32 +190,43 @@ pub struct NoArgs {}
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ReviewArgs {
+    /// A git revision to compare against, such as `origin/main`.
     pub base: Option<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct CoverageArgs {
+    /// Repository-relative paths to scan. Defaults to the whole repository.
     pub paths: Option<Vec<String>>,
+    /// How many of the thinnest files to list.
     pub limit: Option<usize>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct RenderArgs {
+    /// `markdown` for an onboarding document grouped by file, or `mermaid` for the relation graph.
     pub format: Option<String>,
+    /// Heading for the rendered document.
     pub title: Option<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ImportArgs {
+    /// Repository-relative paths to harvest comments from.
     pub paths: Option<Vec<String>>,
+    /// Set true to record what was found. Defaults to a dry run that writes nothing.
     pub write: Option<bool>,
+    /// Stop after this many comments, for trying it out on a large repository.
     pub limit: Option<usize>,
+    /// Which ledger to write to. Defaults to the workspace default.
     pub scope: Option<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct VerifyArgs {
+    /// Only check records anchored in these files. Much faster than a whole-repository run.
     pub files: Option<Vec<String>>,
+    /// Only check records in files changed since this git revision.
     pub since: Option<String>,
 }
 
