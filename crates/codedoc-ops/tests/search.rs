@@ -146,3 +146,46 @@ fn a_query_with_no_searchable_terms_returns_nothing_rather_than_failing() {
         );
     }
 }
+
+#[test]
+fn a_record_is_found_by_the_name_of_the_code_it_is_about() {
+    let root = workspace();
+    record(
+        root.path(),
+        "src/auth.rs",
+        "rust://validate",
+        "invariant",
+        "Nothing in this sentence mentions the function it describes.",
+    );
+
+    let by_symbol = codedoc_ops::search(root.path(), None, "validate", None, None, 10).unwrap();
+    assert_eq!(
+        by_symbol["count"], 1,
+        "an agent usually knows the name of the thing before it knows which file \
+         holds it, so a record has to be findable by what it is about and not only \
+         by what it says: {by_symbol}"
+    );
+
+    let by_file = codedoc_ops::search(root.path(), None, "auth.rs", None, None, 10).unwrap();
+    assert_eq!(by_file["count"], 1, "{by_file}");
+}
+
+#[test]
+fn what_a_claim_says_still_outranks_where_it_lives() {
+    let root = workspace();
+    record(root.path(), "src/auth.rs", "rust://validate", "invariant", "Tokens expire hourly.");
+    record(
+        root.path(),
+        "src/cache.rs",
+        "rust://evict",
+        "performance",
+        "Eviction is unrelated to validate and merely mentions expiry.",
+    );
+
+    let found = codedoc_ops::search(root.path(), None, "expire", None, None, 10).unwrap();
+    let first = found["records"][0]["claim"].as_str().unwrap_or_default();
+    assert!(
+        first.contains("Tokens expire hourly"),
+        "the words of a claim carry more than the name it is attached to: {found}"
+    );
+}

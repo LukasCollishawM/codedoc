@@ -114,6 +114,10 @@ codedoc search tenant isolation --limit 5
 codedoc search retry --kind known_failure_mode --file src/http/
 ```
 
+It searches what a claim says and also what it is about, so the name of a function or
+a file finds the records attached to it even when the claim never mentions them. What a
+claim says is weighted above where it lives.
+
 Terms are matched independently and results ranked, so a broad query returns something
 useful rather than nothing. Ranking combines textual relevance with how much the record
 is trusted, using the same assurance, authorship and age weighting as `codedoc context`.

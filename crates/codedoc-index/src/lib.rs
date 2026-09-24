@@ -8,7 +8,7 @@ use rusqlite::{Connection, params};
 use thiserror::Error;
 
 pub const INDEX_FILE: &str = "index.sqlite";
-pub const INDEX_SCHEMA_VERSION: i64 = 4;
+pub const INDEX_SCHEMA_VERSION: i64 = 5;
 
 const SCHEMA: &str = "
 CREATE TABLE records (
@@ -45,6 +45,7 @@ CREATE VIRTUAL TABLE claims USING fts5(
     record_id UNINDEXED,
     claim,
     detail,
+    subject,
     tokenize = 'unicode61 remove_diacritics 2'
 );
 ";
@@ -314,7 +315,7 @@ impl Index {
             return Ok(Vec::new());
         }
         let mut statement = self.connection.prepare(
-            "SELECT r.canonical, bm25(claims, 4.0, 1.0) AS relevance
+            "SELECT r.canonical, bm25(claims, 0.0, 4.0, 1.0, 3.0) AS relevance
              FROM claims JOIN records r ON r.id = claims.record_id
              WHERE claims MATCH ?1
                AND r.kind != 'tombstone'
@@ -429,9 +430,18 @@ fn project(connection: &Connection, record: &Record) -> Result<(), IndexError> {
         ],
     )?;
 
+    let subject: String = content
+        .anchors
+        .iter()
+        .map(|entry| {
+            let named = entry.anchor.symbol.as_ref().map(ToString::to_string).unwrap_or_default();
+            format!("{} {named}", entry.anchor.file.as_str())
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
     connection.execute(
-        "INSERT INTO claims (record_id, claim, detail) VALUES (?1, ?2, ?3)",
-        params![record.id().to_string(), content.body.claim, content.body.detail],
+        "INSERT INTO claims (record_id, claim, detail, subject) VALUES (?1, ?2, ?3, ?4)",
+        params![record.id().to_string(), content.body.claim, content.body.detail, subject],
     )?;
 
     for entry in &content.anchors {

@@ -413,7 +413,7 @@ impl Codedoc {
     }
 
     #[tool(
-        description = "Search recorded claims by words rather than by location. Use this when you do not yet know which file holds what you need - asking `what is known about tenant isolation` finds the claims wherever they were recorded. Results are ranked by relevance weighted by how much the record is trusted. Prefer codedoc_context once you know the file or symbol you are working on."
+        description = "Search recorded claims by words rather than by location. It matches what a claim says and also the file and symbol it is attached to, so the name of a function finds what is recorded about it even when the claim never mentions the name. Use this when you do not yet know which file holds what you need - asking `what is known about tenant isolation` finds the claims wherever they were recorded. Results are ranked by relevance weighted by how much the record is trusted. Prefer codedoc_context once you know the file or symbol you are working on."
     )]
     async fn codedoc_search(
         &self,
