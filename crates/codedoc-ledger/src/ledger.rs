@@ -33,6 +33,15 @@ pub enum LedgerError {
     #[error("record on line {line} of {shard} is malformed: {source}")]
     Malformed { shard: String, line: usize, source: CanonicalError },
 
+    #[error(
+        "line {line} of {shard} is a git conflict marker. The ledger is append-only, so \
+         merging one is a union and never a conflict, but the merge driver that performs \
+         that union is registered in .git/config, which a clone does not copy. Run \
+         `codedoc git install-merge-driver`, then redo the merge — every clone needs this \
+         once, even where .gitattributes is already committed"
+    )]
+    Unmerged { shard: String, line: usize },
+
     #[error("record {record} could not be encoded: {source}")]
     Encoding { record: String, source: CanonicalError },
 
@@ -41,6 +50,12 @@ pub enum LedgerError {
          it needs {root} to be a git repository"
     )]
     ScopeUnavailable { scope: &'static str, root: String },
+}
+
+const CONFLICT_MARKERS: [&[u8]; 4] = [b"<<<<<<<", b"|||||||", b"=======", b">>>>>>>"];
+
+fn is_conflict_marker(line: &[u8]) -> bool {
+    CONFLICT_MARKERS.iter().any(|marker| line.starts_with(marker))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -189,12 +204,15 @@ impl Ledger {
                     if line.is_empty() {
                         continue;
                     }
-                    let record =
-                        Record::decode_line(line).map_err(|source| LedgerError::Malformed {
-                            shard: shard.display().to_string(),
-                            line: offset + 1,
-                            source,
-                        })?;
+                    let record = Record::decode_line(line).map_err(|source| {
+                        let shard = shard.display().to_string();
+                        let line_number = offset + 1;
+                        if is_conflict_marker(line) {
+                            LedgerError::Unmerged { shard, line: line_number }
+                        } else {
+                            LedgerError::Malformed { shard, line: line_number, source }
+                        }
+                    })?;
                     records.push(record);
                 }
                 Ok(records)

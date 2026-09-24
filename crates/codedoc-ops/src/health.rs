@@ -1,8 +1,31 @@
 use std::path::Path;
+use std::process::Command;
 
 use serde_json::{Value, json};
 
 use crate::{Outcome, evidence, query};
+
+const ATTRIBUTE_REQUEST: &str = "merge=codedoc-ledger";
+const DRIVER_SETTING: &str = "merge.codedoc-ledger.driver";
+
+fn merge_driver_unregistered(root: &Path) -> bool {
+    let Ok(attributes) = std::fs::read_to_string(root.join(".gitattributes")) else {
+        return false;
+    };
+    let requested = attributes.lines().any(|line| {
+        let line = line.trim();
+        !line.starts_with('#') && line.contains(ATTRIBUTE_REQUEST)
+    });
+    if !requested {
+        return false;
+    }
+    let Ok(output) =
+        Command::new("git").arg("-C").arg(root).args(["config", "--get", DRIVER_SETTING]).output()
+    else {
+        return false;
+    };
+    !output.status.success() || output.stdout.iter().all(|byte| byte.is_ascii_whitespace())
+}
 
 pub fn doctor(root: &Path) -> Result<(Value, i32), crate::OpsError> {
     let (verified, _) = query::verify(root)?;
@@ -35,8 +58,9 @@ pub fn doctor(root: &Path) -> Result<(Value, i32), crate::OpsError> {
     let broken_citations = count(&citations, &["broken"]);
     let disagreements = count(&contradictions, &["count"]);
 
+    let unregistered_driver = merge_driver_unregistered(root);
     let blocking = !intact || detached > 0 || broken_citations > 0;
-    let advisory = stale > 0 || disagreements > 0 || unnameable > 0;
+    let advisory = stale > 0 || disagreements > 0 || unnameable > 0 || unregistered_driver;
 
     let mut needs: Vec<&str> = Vec::new();
     if !intact {
@@ -58,6 +82,12 @@ pub fn doctor(root: &Path) -> Result<(Value, i32), crate::OpsError> {
         needs.push(
             "some records sit on a construct the adapter cannot name; they hold only \
              while their file is unedited",
+        );
+    }
+    if unregistered_driver {
+        needs.push(
+            ".gitattributes asks git to merge the ledger with a driver this clone has \
+             not registered; run codedoc git install-merge-driver before the next merge",
         );
     }
 
@@ -83,6 +113,7 @@ pub fn doctor(root: &Path) -> Result<(Value, i32), crate::OpsError> {
                 "stale": stale,
                 "disagreements": disagreements,
                 "unnameable": unnameable,
+                "merge_driver_unregistered": unregistered_driver,
             },
             "next": needs,
         }),

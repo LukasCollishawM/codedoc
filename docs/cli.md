@@ -78,6 +78,14 @@ side's records in the file with no conflict markers, and the next `git add` drop
 other branch without saying anything. Re-run this after moving or reinstalling the
 binary.
 
+Because that registration is git config rather than a tracked file, **every clone
+needs this command once**, including clones of a repository where `.gitattributes`
+is already committed. A clone that skips it has a repository asking git for a driver
+git does not have, and the merge it falls back to writes conflict markers into an
+append-only log. `codedoc doctor` reports that mismatch before a merge happens.
+Afterwards, any command that reads the ledger names it and exits 3; run this command
+and redo the merge, which unions the two sides and keeps every record.
+
 ## Recording
 
 ### `codedoc attach <file> --kind <kind> --claim "..."`
