@@ -317,4 +317,52 @@ proptest! {
             );
         }
     }
+
+    #[test]
+    fn deleting_the_target_never_lands_on_a_replacement(
+        functions in prop::collection::vec(function_strategy(), 2..6),
+        target_index in 0usize..6,
+        replacements in prop::collection::vec(function_strategy(), 0..3),
+        expand in any::<bool>(),
+    ) {
+        let functions = distinct(functions);
+        prop_assume!(functions.len() >= 2);
+        let target = functions[target_index % functions.len()].clone();
+
+        let original = render_all(&functions, false);
+        let anchor = capture(&original, &target.name);
+
+        let mut survivors: Vec<Function> = functions
+            .iter()
+            .filter(|function| function.name != target.name)
+            .cloned()
+            .collect();
+        for replacement in distinct(replacements) {
+            let clashes = survivors.iter().any(|existing| {
+                existing.name == replacement.name
+                    || existing.binding == replacement.binding
+            }) || replacement.name == target.name;
+            if !clashes {
+                survivors.push(replacement);
+            }
+        }
+        prop_assume!(!survivors.is_empty());
+
+        let mutated = render_all(&survivors, expand);
+        let outcome = resolve(&anchor, &mutated);
+
+        if let Some(located) = outcome.located() {
+            let text = content_at(&mutated, located.range()).unwrap_or_default();
+            prop_assert!(
+                false,
+                "the documented function {} was deleted, yet the resolver located \
+                 something else at rung {:?}: {:?}. Attaching a claim to whatever \
+                 replaced a deleted construct is the failure this invariant exists \
+                 to prevent.",
+                target.name,
+                located.rung(),
+                text
+            );
+        }
+    }
 }

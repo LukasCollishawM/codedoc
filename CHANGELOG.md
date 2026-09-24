@@ -58,6 +58,7 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Fixed
 
+- **A second false reattachment through position matching.** Rung 4 could attach a claim about a deleted function to a structurally similar function that took its place, because context establishes position and not identity. It now requires the symbol path to match, narrowing it to the case it can evidence — the same named construct whose contents moved — and sending genuine renames to rung 6 for adjudication. Costs 0.1% survival on ripgrep and closes the class.
 - **A false reattachment through an empty neighbourhood.** Rung 4 matched on context fingerprints, and a construct that is the only one of its kind in a file has no context beyond its parent — which every other lone construct shares. A function moved to another module, an unrelated function took its place, and the claim attached to the replacement at medium confidence. Rung 4 now requires a non-empty neighbourhood of the same size and shape similarity above the floor. Costs nothing in survival on either corpus.
 
 - **A false reattachment at high confidence.** Deleting one of two overloads reattached its record to the surviving overload, because the resolver assumed a symbol path uniquely identifies a declaration. Anchors now record how many declarations shared their symbol path, and both the symbol and similarity rungs refuse when that count has changed. Found while adding C++, where overloading is idiomatic, but the defect was language-agnostic and reproduced in Java.

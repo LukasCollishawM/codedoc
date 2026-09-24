@@ -255,6 +255,8 @@ impl<'tree, 'adapter> FileIndex<'tree, 'adapter> {
                             .filter(|position| {
                                 let candidate = &self.candidates[*position];
                                 candidate.kind == anchor.node_kind
+                                    && candidate.symbol
+                                        == anchor.symbol.as_ref().map(ToString::to_string)
                                     && fingerprint::context_siblings(candidate.node, self.adapter)
                                         == anchor.context_siblings
                                     && shape_similarity(&anchor.shape, candidate.node, self.adapter)
