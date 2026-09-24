@@ -608,3 +608,56 @@ fn command_detached(root: &Path) -> Result<(Value, i32)> {
 fn command_stats(root: &Path, scope: Option<Scope>) -> Result<(Value, i32)> {
     Ok((ops::stats(root, scope)?, 0))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::parse_target;
+
+    #[test]
+    fn a_trailing_number_is_a_line() {
+        let target = parse_target("src/lib.rs:12");
+        assert_eq!(target.file, "src/lib.rs");
+        assert_eq!(target.line, Some(12));
+        assert_eq!(target.symbol, None);
+    }
+
+    #[test]
+    fn a_symbol_path_is_not_read_as_a_line_number() {
+        let target = parse_target("src/lib.rs@rust://compute");
+        assert_eq!(
+            target.file, "src/lib.rs",
+            "the colon branch is tried first, and only the number parsing stops it from \
+             splitting a symbol path at its own scheme separator"
+        );
+        assert_eq!(target.symbol.as_deref(), Some("rust://compute"));
+        assert_eq!(target.line, None);
+    }
+
+    #[test]
+    fn a_bare_path_is_about_the_file() {
+        let target = parse_target("src/lib.rs");
+        assert_eq!(target.file, "src/lib.rs");
+        assert_eq!(target.symbol, None);
+        assert_eq!(target.line, None);
+    }
+
+    #[test]
+    fn a_colon_in_the_path_itself_survives() {
+        let target = parse_target("src/a:b.rs@rust://compute");
+        assert_eq!(target.file, "src/a:b.rs");
+        assert_eq!(target.symbol.as_deref(), Some("rust://compute"));
+    }
+
+    #[test]
+    fn a_line_wins_over_a_symbol_when_both_are_written() {
+        let target = parse_target("src/lib.rs@rust://compute:12");
+        assert_eq!(
+            target.line,
+            Some(12),
+            "the two forms are not composable and the colon form is tried first, so \
+             writing both silently drops the symbol into the file name"
+        );
+        assert_eq!(target.file, "src/lib.rs@rust://compute");
+        assert_eq!(target.symbol, None);
+    }
+}
