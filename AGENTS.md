@@ -46,6 +46,10 @@ Every MCP client receives these instructions when it connects:
 > from. For deciding WHAT to record it is the sharper tool; `codedoc_coverage` only
 > says where records are absent.
 >
+> Every answer costs you context, so ask once. A location you have already been
+> given in this session does not need asking about again, and `codedoc_brief` over the
+> files a change touches is one answer where `codedoc_context` per file is several.
+>
 > Your records are attributed to you and default to assurance 'inferred'. Claim
 > 'asserted' only for something you verified, such as by a test you ran.
 

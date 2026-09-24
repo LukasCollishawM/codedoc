@@ -29,6 +29,11 @@ describes the code it is about to change. It runs the server through
 Without it, an agent working on codedoc has to be told to use codedoc, which is the
 position every other repository is in and the one this project exists to change.
 
+While that session is connected it holds `target/release/codedoc-mcp` open, so
+rebuilding that one crate fails with an access error until the session ends. The
+gates are unaffected. A change to the server's tools or instructions reaches an agent
+on its next session either way, because the instructions are sent at `initialize`.
+
 Records an agent writes are attributed to `CODEDOC_AGENT_MODEL` and
 `CODEDOC_AGENT_SESSION` from the server's environment, falling back to
 `unidentified` and `unrecorded`. The committed configuration sets neither, because
