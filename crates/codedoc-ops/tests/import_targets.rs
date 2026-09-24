@@ -98,6 +98,11 @@ fn a_module_doc_comment_anchors_to_the_file_rather_than_the_import_below_it() {
         "a //! comment documents the module, not whatever token happens to follow it"
     );
     assert!(anchor.symbol.is_none());
+    assert!(
+        anchor.node_path.is_empty(),
+        "a claim about the file has no path within it to descend, and a path that          pointed somewhere would make the anchor resolvable to a construct"
+    );
+    assert_eq!(anchor.range.start_line, 1, "its range spans the file");
 }
 
 #[test]

@@ -3,7 +3,7 @@ use std::fs;
 
 use codedoc_anchor::Anchor;
 use codedoc_core::RepoPath;
-use codedoc_index::Index;
+use codedoc_index::{INDEX_SCHEMA_VERSION, Index};
 use codedoc_lang::Registry;
 use codedoc_ledger::{
     AnchorRole, Assurance, Author, Body, Kind, Ledger, Lifecycle, RecordContent, Role,
@@ -129,4 +129,38 @@ fn an_empty_ledger_yields_an_empty_index() {
     let index = Index::rebuild(&ledger).unwrap();
     assert_eq!(index.record_count().unwrap(), 0);
     assert!(index.files().unwrap().is_empty());
+}
+
+#[test]
+fn an_index_written_by_an_older_schema_is_rebuilt_rather_than_refused() {
+    let (_workspace, ledger) = populated();
+    Index::rebuild(&ledger).unwrap();
+
+    let path = Index::path_for(ledger.base());
+    let connection = rusqlite::Connection::open(&path).unwrap();
+    connection.pragma_update(None, "user_version", INDEX_SCHEMA_VERSION - 1).unwrap();
+    drop(connection);
+    assert!(!Index::is_current(ledger.base()));
+
+    let index = Index::current(&ledger).expect(
+        "every schema change strands the index of everyone who upgrades, so an old \
+         version has to rebuild silently rather than fail",
+    );
+    assert_eq!(index.record_count().unwrap(), 3);
+    assert!(Index::is_current(ledger.base()));
+}
+
+#[test]
+fn an_index_that_is_not_a_database_is_replaced_rather_than_fatal() {
+    let (_workspace, ledger) = populated();
+    Index::rebuild(&ledger).unwrap();
+
+    let path = Index::path_for(ledger.base());
+    std::fs::write(&path, b"this is not a database").unwrap();
+
+    let index = Index::current(&ledger).expect(
+        "the index is derived state that a crash or a full disk can truncate. Losing \
+         it costs a rebuild; refusing to start because of it costs the ledger",
+    );
+    assert_eq!(index.record_count().unwrap(), 3);
 }

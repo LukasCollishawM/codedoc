@@ -30,6 +30,16 @@ fn a_record_keeps_the_identity_it_was_written_with() {
              record ever written, breaking the hash chain and every supersession link that \
              points at them. An optional member MUST be omitted when it holds its default."
         );
+        if !encoded.contains("symbol_cardinality") {
+            for entry in &record.content().anchors {
+                assert_eq!(
+                    entry.anchor.symbol_cardinality, 1,
+                    "a record written before cardinality existed must read as one                      declaration, or every anchor in it silently stops matching"
+                );
+                assert_eq!(entry.anchor.symbol_ordinal, 0);
+            }
+        }
+
         let reencoded = record.encode_line().expect("a decoded record re-encodes");
         assert_eq!(
             String::from_utf8(reencoded).unwrap(),
