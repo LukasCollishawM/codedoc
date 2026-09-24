@@ -29,6 +29,12 @@ describes the code it is about to change. It runs the server through
 Without it, an agent working on codedoc has to be told to use codedoc, which is the
 position every other repository is in and the one this project exists to change.
 
+Records an agent writes are attributed to `CODEDOC_AGENT_MODEL` and
+`CODEDOC_AGENT_SESSION` from the server's environment, falling back to
+`unidentified` and `unrecorded`. The committed configuration sets neither, because
+the right value differs per person; set them in your own client if you want
+`codedoc list --author` to be able to answer for a particular model or run.
+
 ## Standards are enforced by CI, not by reviewers
 
 Every rule in `CLAUDE.md` is a mechanical check. This is deliberate: strict standards policed by human taste turn into gatekeeping, and a reviewer should never be the first to tell you something is disallowed. Run the checks before you push and review becomes a conversation about the design instead of the lint.

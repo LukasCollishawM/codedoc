@@ -2,10 +2,7 @@
   "mcpServers": {
     "codedoc": {
       "command": "cargo",
-      "args": ["run", "--quiet", "--release", "-p", "codedoc-mcp", "--", "."],
-      "env": {
-        "CODEDOC_AGENT_MODEL": "unrecorded"
-      }
+      "args": ["run", "--quiet", "--release", "-p", "codedoc-mcp", "--", "."]
     }
   }
 }
