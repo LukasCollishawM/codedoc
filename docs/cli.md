@@ -109,6 +109,13 @@ Options: `--detail`, `--assurance asserted|inferred|speculative`, `--author
 human|agent|analyzer|runtime`, `--identity`, `--session`, `--evidence` (repeatable,
 as `git:<rev>`, `test:<name>`, `doc:<path>`, `record:<id>` or a URL), `--supersedes`.
 
+An `--assurance` outside those three is refused with exit 4 rather than ignored, and
+so is an unknown `--kind`. Ignoring a misspelt assurance would record the author's
+default, which for a human is `asserted` — the strongest of the three — so a typo
+would quietly claim more confidence than anyone chose. `--author runtime` records a
+runtime observation, distinct from `analyzer`, and defaults to `asserted` because it
+reports what it saw rather than what it inferred.
+
 ### `codedoc search <words...>`
 
 Finds recorded claims by what they say rather than by where they are. Use it when you
