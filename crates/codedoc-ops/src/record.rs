@@ -57,8 +57,9 @@ pub(crate) fn capture(root: &Path, target: &Target) -> Result<Anchor, OpsError> 
                 }
             })?
         }
-        (None, Some(line)) => locate::by_line(&tree, adapter, line)
-            .ok_or_else(|| OpsError::LineMissing { line, path: target.file.clone() })?,
+        (None, Some(line)) => locate::by_line(&tree, adapter, line).ok_or_else(|| {
+            OpsError::LineMissing { line, path: target.file.clone(), lines: source.lines().count() }
+        })?,
         (None, None) => {
             return Ok(Anchor::capture_file(path, adapter, &source, tree.root_node()));
         }

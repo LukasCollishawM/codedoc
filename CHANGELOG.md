@@ -91,6 +91,7 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Fixed
 
+- **A line that covers no code says how many lines the file has, and why a symbol is better.** `line 999 covers no node in src/auth.rs` did not distinguish a line past the end of the file from a blank line in the middle of it, and both are common mistakes.
 - **A mistyped symbol path says what the file does declare.** `no symbol rust://validate_tokn found in src/auth.rs` left the caller to go and find the right name; it now lists the file's declarations, closest match first. Getting a symbol path slightly wrong is the most likely mistake when attaching a record, and it is the one an agent has least ability to recover from on its own.
 - **Every MCP tool argument is described to the agent.** Forty-four of the ninety fields across the twenty-two tools had no description, so an agent reading the schema saw `symbol`, `kind` and `assurance` with nothing to say that a symbol is a path like `rust://validate_token`, that a kind comes from a closed vocabulary, or that `asserted` means you verified it. For a project whose primary user reads schemas rather than documentation, those schemas are the documentation. A test fails if any field loses its description.
 - **`codedoc affirm` also printed raw JSON**, and a test now runs every read and lifecycle command without `--json` and fails if any of them answers a person with a machine payload. The fallback that prints the payload is silent by design, so a command added without a renderer looks fine until someone runs it.

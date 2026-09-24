@@ -60,8 +60,12 @@ pub enum OpsError {
     #[error("no symbol {symbol} in {path}. It declares: {nearest}")]
     SymbolMissing { symbol: String, path: String, nearest: String },
 
-    #[error("line {line} covers no node in {path}")]
-    LineMissing { line: u32, path: String },
+    #[error(
+        "line {line} of {path} covers no code; the file has {lines} lines. A blank \
+         line, or one holding only a comment, has nothing to anchor to — name the \
+         symbol instead, which also survives the code moving"
+    )]
+    LineMissing { line: u32, path: String, lines: usize },
 
     #[error("unknown record kind {found}; the vocabulary is {vocabulary}")]
     UnknownKind { found: String, vocabulary: String },
