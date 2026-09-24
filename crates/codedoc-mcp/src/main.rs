@@ -473,7 +473,9 @@ impl Codedoc {
         ))
     }
 
-    #[tool(description = "List active records, optionally filtered by file or symbol.")]
+    #[tool(
+        description = "List active records, optionally narrowed to a file, a symbol, one ledger scope, or what was recorded as of a past date. This returns everything that matches and a mature ledger holds thousands, so prefer codedoc_search when you are looking for something, codedoc_brief for the files you are about to change, and codedoc_context for one location. Use list to survey a narrowed set deliberately."
+    )]
     async fn codedoc_list(
         &self,
         Parameters(args): Parameters<FilterArgs>,
@@ -578,7 +580,7 @@ impl Codedoc {
     }
 
     #[tool(
-        description = "Summarise the ledger: record counts by kind, how many relations exist, ledger integrity, and which scopes are present."
+        description = "Summarise the ledger: record counts by kind, how many relations exist, ledger integrity, and which scopes are present. A cheap way to see whether a repository has recorded knowledge at all and roughly what kind, before deciding what to ask for."
     )]
     async fn codedoc_stats(
         &self,
