@@ -90,9 +90,36 @@ impl Claim {
     }
 
     fn weight(&self) -> usize {
-        const ENVELOPE: usize = 220;
         ENVELOPE + self.claim.len() + self.detail.as_ref().map(String::len).unwrap_or(0)
     }
+
+    fn shorten_to(&mut self, room: usize) -> bool {
+        if self.weight() <= room {
+            return false;
+        }
+        self.detail = None;
+        let allowance = room.saturating_sub(ENVELOPE + TRUNCATED.len()).max(SHORTEST_KEPT);
+        if self.claim.len() > allowance {
+            self.claim.truncate(char_boundary_at_or_below(&self.claim, allowance));
+            self.claim.push_str(TRUNCATED);
+        }
+        true
+    }
+}
+
+const ENVELOPE: usize = 220;
+const SHORTEST_KEPT: usize = 240;
+const TRUNCATED: &str = " [truncated to fit the budget; codedoc history has the whole claim]";
+
+fn char_boundary_at_or_below(text: &str, at: usize) -> usize {
+    if at >= text.len() {
+        return text.len();
+    }
+    let mut at = at;
+    while at > 0 && !text.is_char_boundary(at) {
+        at -= 1;
+    }
+    at
 }
 
 fn describe_author(record: &Record) -> String {
@@ -222,15 +249,17 @@ impl ContextPack {
             &mut self.other,
         ] {
             let mut kept = Vec::new();
-            for claim in section.drain(..) {
-                let weight = claim.weight();
-                if weight <= remaining || !anything_kept {
-                    remaining = remaining.saturating_sub(weight);
-                    anything_kept = true;
-                    kept.push(claim);
-                } else {
-                    dropped = true;
+            for mut claim in section.drain(..) {
+                if claim.weight() > remaining {
+                    if anything_kept {
+                        dropped = true;
+                        continue;
+                    }
+                    dropped |= claim.shorten_to(remaining);
                 }
+                remaining = remaining.saturating_sub(claim.weight());
+                anything_kept = true;
+                kept.push(claim);
             }
             *section = kept;
         }
@@ -366,6 +395,66 @@ mod tests {
 
     fn agent() -> Author {
         Author::Agent { model: "some-model".to_owned(), session: "s".to_owned() }
+    }
+
+    fn claim_of(text: &str) -> Claim {
+        Claim {
+            record: record(human(), Assurance::Asserted, 1).id(),
+            kind: "explanation".to_owned(),
+            claim: text.to_owned(),
+            detail: None,
+            assurance: "asserted".to_owned(),
+            author: "human".to_owned(),
+            file: Some("src/lib.rs".to_owned()),
+            symbol: None,
+            evidence: Vec::new(),
+            trust: 1,
+        }
+    }
+
+    fn pack_holding(claims: Vec<Claim>) -> ContextPack {
+        ContextPack {
+            target: Target { file: "src/lib.rs".to_owned(), line: None, symbol: None },
+            depth: 1,
+            invariants: Vec::new(),
+            security: Vec::new(),
+            rationale: Vec::new(),
+            failure_modes: Vec::new(),
+            other: claims,
+            relations: Vec::new(),
+            truncated: false,
+        }
+    }
+
+    #[test]
+    fn one_enormous_claim_does_not_defeat_the_budget() {
+        let mut pack = pack_holding(vec![claim_of(&"x".repeat(200_000))]);
+        pack.fit_within(4_000);
+
+        let kept = &pack.other[0].claim;
+        assert!(
+            kept.len() < 4_000,
+            "a claim is kept even when it does not fit, so that a budget too small for anything never answers with nothing. That escape hatch had no ceiling, so a single 200,000 character comment returned 200KB from context, which is the call an agent makes before it edits and the one place a runaway answer costs the most. Kept {} characters",
+            kept.len()
+        );
+        assert!(kept.ends_with(TRUNCATED), "the reader has to be told it was cut: {kept:?}");
+        assert!(pack.truncated, "and the pack says so too");
+    }
+
+    #[test]
+    fn a_claim_that_fits_is_left_exactly_as_it_is() {
+        let text = "Tokens are validated before tenant resolution.";
+        let mut pack = pack_holding(vec![claim_of(text)]);
+        pack.fit_within(4_000);
+        assert_eq!(pack.other[0].claim, text);
+        assert!(!pack.truncated);
+    }
+
+    #[test]
+    fn truncation_does_not_split_a_character() {
+        let mut pack = pack_holding(vec![claim_of(&"é".repeat(100_000))]);
+        pack.fit_within(4_000);
+        assert!(pack.other[0].claim.ends_with(TRUNCATED), "cut on a boundary and marked");
     }
 
     #[test]

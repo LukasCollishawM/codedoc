@@ -208,7 +208,9 @@ characters, counting each claim's own text plus the record identity, file, symbo
 assurance that travel with it; a pack that is cut reports `truncated`. Budget is spent
 on invariants first, then security, failure modes, rationale and the rest, so what
 survives a tight budget is what a reader could not have guessed. A budget too small for
-any claim returns the single most important one rather than nothing. `--as-of` answers
+any claim returns the single most important one rather than nothing, cut to the budget
+and marked, so one enormous comment cannot answer with more than was asked for.
+`--as-of` answers
 as of a past moment; see `codedoc list` below.
 
 ### `codedoc list [--limit N] [--file <path>] [--symbol <path>] [--as-of <date>] [--author <text>]`
