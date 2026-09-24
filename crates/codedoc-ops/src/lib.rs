@@ -14,7 +14,8 @@ pub use coverage::coverage;
 pub use import::import;
 pub use lifecycle::{Relocation, resolve, retract, supersede};
 pub use query::{
-    conflicts, context, detached, history, list, render, review, stats, verify, verify_scoped,
+    conflicts, context, detached, history, list, render, review, search, stats, verify,
+    verify_scoped,
 };
 pub use record::{AttachRequest, Provenance, RelateRequest, Target, attach, relate};
 pub use repair::repair;

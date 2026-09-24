@@ -143,6 +143,19 @@ enum Command {
         symbol: Option<String>,
     },
 
+    Search {
+        query: Vec<String>,
+
+        #[arg(long)]
+        kind: Option<String>,
+
+        #[arg(long)]
+        file: Option<String>,
+
+        #[arg(long, default_value_t = 20)]
+        limit: usize,
+    },
+
     History {
         record: String,
     },
@@ -304,6 +317,10 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
         Command::List { file, symbol } => {
             command_list(&cli.root, file.as_deref(), symbol.as_deref())
         }
+        Command::Search { query, kind, file, limit } => Ok((
+            ops::search(&cli.root, &query.join(" "), kind.as_deref(), file.as_deref(), *limit)?,
+            0,
+        )),
         Command::History { record } => command_history(&cli.root, record),
         Command::Stats => command_stats(&cli.root),
         Command::Kinds => Ok((json!({"command": "kinds", "kinds": Kind::vocabulary()}), 0)),

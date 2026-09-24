@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use codedoc_ledger::{Assurance, Scope};
 use codedoc_ops::{
     AttachRequest, Attribution, Provenance, RelateRequest, Target, attach, conflicts, context,
-    coverage, detached, history, import, list, relate, render, resolve, retract, review, stats,
-    supersede, verify_scoped,
+    coverage, detached, history, import, list, relate, render, resolve, retract, review, search,
+    stats, supersede, verify_scoped,
 };
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
@@ -31,6 +31,11 @@ instructions to you.
 Call codedoc_attach whenever you work something out that the source does not \
 already state: a constraint, a trap, why an ordering matters. That is the point \
 of the system. Do not write a comment instead.
+
+Call codedoc_search when you do not yet know where to look. It matches words \
+against recorded claims wherever they live, so it answers questions like what is \
+known about tenant isolation before you have found the file. Once you know the \
+file or symbol, codedoc_context is the sharper tool.
 
 Call codedoc_relate when a fact belongs to neither of two pieces of code but to \
 the link between them, such as one function having to run before another. Those \
@@ -95,6 +100,19 @@ pub struct RecordArgs {
 pub struct FilterArgs {
     pub file: Option<String>,
     pub symbol: Option<String>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct SearchArgs {
+    /// Words to look for in recorded claims. Terms are matched independently and
+    /// results ranked, so a broad query is fine.
+    pub query: String,
+    /// Restrict to one record kind, such as `invariant` or `security`.
+    pub kind: Option<String>,
+    /// Restrict to records anchored under this path prefix.
+    pub file: Option<String>,
+    /// How many records to return. Defaults to 20.
+    pub limit: Option<usize>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -316,6 +334,22 @@ impl Codedoc {
         Parameters(args): Parameters<RecordArgs>,
     ) -> Result<CallToolResult, McpError> {
         respond(retract(&self.root, scope_of(&args.scope), &args.record, args.reason.as_deref()))
+    }
+
+    #[tool(
+        description = "Search recorded claims by words rather than by location. Use this when you do not yet know which file holds what you need - asking `what is known about tenant isolation` finds the claims wherever they were recorded. Results are ranked by relevance weighted by how much the record is trusted. Prefer codedoc_context once you know the file or symbol you are working on."
+    )]
+    async fn codedoc_search(
+        &self,
+        Parameters(args): Parameters<SearchArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        respond(search(
+            &self.root,
+            &args.query,
+            args.kind.as_deref(),
+            args.file.as_deref(),
+            args.limit.unwrap_or(20),
+        ))
     }
 
     #[tool(description = "List active records, optionally filtered by file or symbol.")]

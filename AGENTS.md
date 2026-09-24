@@ -46,7 +46,8 @@ codedoc_context  →  agent reads, then changes code  →  codedoc_attach / code
 
 | tool | when |
 | --- | --- |
-| `codedoc_context` | before touching unfamiliar code |
+| `codedoc_search` | when you don't yet know which file holds what you need |
+| `codedoc_context` | before touching unfamiliar code, once you know the file or symbol |
 | `codedoc_attach` | after working something out that the source doesn't say |
 | `codedoc_attach` without `symbol` or `line` | when what you worked out is true of the whole file, not one declaration |
 | `codedoc_relate` | when the fact is about a link between two places |

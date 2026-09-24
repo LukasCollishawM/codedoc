@@ -73,6 +73,24 @@ Options: `--detail`, `--assurance asserted|inferred|speculative`, `--author
 human|agent|analyzer|runtime`, `--identity`, `--session`, `--evidence` (repeatable,
 as `git:<rev>`, `test:<name>`, `doc:<path>`, `record:<id>` or a URL), `--supersedes`.
 
+### `codedoc search <words...>`
+
+Finds recorded claims by what they say rather than by where they are. Use it when you
+do not yet know which file to ask about.
+
+```bash
+codedoc search tenant isolation --limit 5
+codedoc search retry --kind known_failure_mode --file src/http/
+```
+
+Terms are matched independently and results ranked, so a broad query returns something
+useful rather than nothing. Ranking combines textual relevance with how much the record
+is trusted, using the same assurance, authorship and age weighting as `codedoc context`.
+Options: `--kind`, `--file` (path prefix), `--limit` (default 20).
+
+Once you know the file or symbol, `codedoc context` is the sharper tool: it returns
+everything that applies to a location, grouped by kind, rather than what matched a word.
+
 ### `codedoc relate <subject> <verb> <object>`
 
 Records a fact about the link between two places. Targets are `path@symbol` or

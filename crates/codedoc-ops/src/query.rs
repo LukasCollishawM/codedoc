@@ -231,6 +231,70 @@ pub fn list(root: &Path, file: Option<&str>, symbol: Option<&str>) -> Outcome {
     Ok(json!({"command": "list", "count": rows.len(), "records": rows}))
 }
 
+pub fn search(
+    root: &Path,
+    query: &str,
+    kind: Option<&str>,
+    file: Option<&str>,
+    limit: usize,
+) -> Outcome {
+    let found = workspace(root)?;
+    let now = codedoc_ledger::Timestamp::now().unix_seconds();
+    let mut scored: Vec<(f64, codedoc_ledger::Record)> = Vec::new();
+
+    for ledger in found.ledgers() {
+        let index = Index::current(ledger)
+            .map_err(|source| OpsError::Index { detail: source.to_string() })?;
+        let batch = index
+            .search(query, limit.saturating_mul(4).max(limit))
+            .map_err(|source| OpsError::Index { detail: source.to_string() })?;
+        for (record, relevance) in batch {
+            scored.push((relevance * codedoc_context::trust_of(&record, now), record));
+        }
+    }
+
+    scored.retain(|(_, record)| {
+        kind.is_none_or(|wanted| record.kind().as_str() == wanted)
+            && file.is_none_or(|wanted| {
+                record
+                    .content()
+                    .anchors
+                    .iter()
+                    .any(|entry| entry.anchor.file.as_str().starts_with(wanted))
+            })
+    });
+    scored.sort_by(|left, right| {
+        right
+            .0
+            .partial_cmp(&left.0)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| left.1.id().to_string().cmp(&right.1.id().to_string()))
+    });
+    scored.dedup_by(|left, right| left.1.id() == right.1.id());
+    scored.truncate(limit);
+
+    let rows: Vec<Value> = scored
+        .iter()
+        .map(|(score, record)| {
+            json!({
+                "record": record.id().to_string(),
+                "kind": record.kind().as_str(),
+                "claim": record.content().body.claim,
+                "detail": record.content().body.detail,
+                "file": record.subject().map(|anchor| anchor.file.as_str().to_owned()),
+                "symbol": record
+                    .subject()
+                    .and_then(|anchor| anchor.symbol.as_ref().map(ToString::to_string)),
+                "line": record.subject().map(|anchor| anchor.range.start_line),
+                "assurance": record.content().assurance.as_str(),
+                "score": (score * 1000.0).round() / 1000.0,
+            })
+        })
+        .collect();
+
+    Ok(json!({"command": "search", "query": query, "count": rows.len(), "records": rows}))
+}
+
 pub fn history(root: &Path, reference: &str) -> Outcome {
     let original = find(root, reference)?;
     let found = workspace(root)?;

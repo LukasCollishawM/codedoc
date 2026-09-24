@@ -8,7 +8,7 @@ use rusqlite::{Connection, params};
 use thiserror::Error;
 
 pub const INDEX_FILE: &str = "index.sqlite";
-pub const INDEX_SCHEMA_VERSION: i64 = 3;
+pub const INDEX_SCHEMA_VERSION: i64 = 4;
 
 const SCHEMA: &str = "
 CREATE TABLE records (
@@ -41,6 +41,12 @@ CREATE INDEX anchors_by_symbol ON anchors(symbol);
 CREATE INDEX records_by_kind ON records(kind);
 CREATE INDEX records_by_parent ON records(parent) WHERE parent IS NOT NULL;
 CREATE INDEX anchors_by_symbol_record ON anchors(symbol, record_id);
+CREATE VIRTUAL TABLE claims USING fts5(
+    record_id UNINDEXED,
+    claim,
+    detail,
+    tokenize = 'unicode61 remove_diacritics 2'
+);
 ";
 
 #[derive(Debug, Error)]
@@ -302,6 +308,33 @@ impl Index {
         )
     }
 
+    pub fn search(&self, query: &str, limit: usize) -> Result<Vec<(Record, f64)>, IndexError> {
+        let expression = fts_expression(query);
+        if expression.is_empty() {
+            return Ok(Vec::new());
+        }
+        let mut statement = self.connection.prepare(
+            "SELECT r.canonical, bm25(claims, 4.0, 1.0) AS relevance
+             FROM claims JOIN records r ON r.id = claims.record_id
+             WHERE claims MATCH ?1
+               AND r.kind != 'tombstone'
+               AND r.id NOT IN (SELECT parent FROM records WHERE parent IS NOT NULL)
+             ORDER BY relevance
+             LIMIT ?2",
+        )?;
+        let mut rows = statement.query(params![expression, limit as i64])?;
+        let mut found = Vec::new();
+        while let Some(row) = rows.next()? {
+            let canonical: String = row.get(0)?;
+            let relevance: f64 = row.get(1)?;
+            let record = Record::decode_line(canonical.as_bytes()).map_err(|source| {
+                IndexError::Projection { record: canonical.clone(), detail: source.to_string() }
+            })?;
+            found.push((record, -relevance));
+        }
+        Ok(found)
+    }
+
     pub fn active_for_symbol(&self, symbol: &str) -> Result<Vec<Record>, IndexError> {
         self.decode_rows(
             "SELECT DISTINCT r.canonical FROM records r
@@ -344,6 +377,23 @@ impl Index {
     }
 }
 
+fn fts_expression(query: &str) -> String {
+    query
+        .split(|glyph: char| !glyph.is_alphanumeric() && glyph != '_')
+        .filter(|term| !term.is_empty())
+        .map(
+            |term| {
+                if term.chars().count() >= 3 {
+                    format!("\"{term}\"*")
+                } else {
+                    format!("\"{term}\"")
+                }
+            },
+        )
+        .collect::<Vec<_>>()
+        .join(" OR ")
+}
+
 fn project(connection: &Connection, record: &Record) -> Result<(), IndexError> {
     let content = record.content();
     let kind = content.kind.as_str();
@@ -379,6 +429,11 @@ fn project(connection: &Connection, record: &Record) -> Result<(), IndexError> {
         ],
     )?;
 
+    connection.execute(
+        "INSERT INTO claims (record_id, claim, detail) VALUES (?1, ?2, ?3)",
+        params![record.id().to_string(), content.body.claim, content.body.detail],
+    )?;
+
     for entry in &content.anchors {
         let role = entry.role.as_str();
         connection.execute(
@@ -401,4 +456,30 @@ fn project(connection: &Connection, record: &Record) -> Result<(), IndexError> {
         )?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_bundled_sqlite_provides_full_text_search() {
+        let connection = Connection::open_in_memory().unwrap();
+        connection.execute_batch("CREATE VIRTUAL TABLE probe USING fts5(body);").expect(
+            "search depends on fts5, which is a compile-time option in sqlite rather than              something to discover at run time on a user's machine",
+        );
+    }
+
+    #[test]
+    fn a_query_never_reaches_the_full_text_parser_as_typed() {
+        assert_eq!(fts_expression("tenant isolation"), "\"tenant\"* OR \"isolation\"*");
+        assert_eq!(fts_expression("NEAR(a b)"), "\"NEAR\"* OR \"a\" OR \"b\"");
+        assert_eq!(
+            fts_expression("retry-after"),
+            "\"retry\"* OR \"after\"*",
+            "punctuation inside a word separates it; stripping it instead would fuse two              terms into one that matches nothing"
+        );
+        assert_eq!(fts_expression("  "), "");
+        assert_eq!(fts_expression("\"*-"), "");
+    }
 }
