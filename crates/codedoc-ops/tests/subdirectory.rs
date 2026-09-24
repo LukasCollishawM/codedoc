@@ -92,3 +92,20 @@ fn a_path_argument_typed_from_a_subdirectory_is_scanned() {
          reads as a finding rather than a miss: {scanned}"
     );
 }
+
+#[test]
+fn a_path_that_is_not_there_is_named_rather_than_answered_with_zero() {
+    let root = project();
+
+    let refused = codedoc_ops::coverage(root.path(), &["src/does-not-exist".to_owned()], 5)
+        .expect_err("a path that is not in the repository is not a finding of zero");
+    assert!(refused.to_string().contains("src/does-not-exist"), "{refused}");
+
+    let imported = codedoc_ops::import(root.path(), None, &["nope".to_owned()], false, None)
+        .expect_err("import too");
+    assert!(imported.to_string().contains("nope"), "{imported}");
+
+    let searched =
+        codedoc_ops::gaps(root.path(), &["nope".to_owned()], 5, 50).expect_err("and gaps");
+    assert!(searched.to_string().contains("nope"), "{searched}");
+}

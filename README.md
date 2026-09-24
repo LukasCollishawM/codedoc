@@ -23,7 +23,7 @@ cargo install --path crates/codedoc-lsp   # optional: editor hovers and diagnost
 ```bash
 cd your-project
 codedoc init                 # --scope local to keep it out of the working tree
-codedoc import src/          # optional: seed from comments already present
+codedoc import src/          # optional: seed from comments already present, if that is where they are
 ```
 
 Register the server with an MCP client:

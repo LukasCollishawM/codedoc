@@ -93,7 +93,11 @@ pub fn import(
     let ledger = writable(root, scope)?;
     let root = ledger.root().to_path_buf();
     let root = root.as_path();
-    let targets: Vec<String> = if paths.is_empty() { vec![".".to_owned()] } else { paths.to_vec() };
+    let targets: Vec<String> = if paths.is_empty() {
+        vec![".".to_owned()]
+    } else {
+        crate::require_paths(root, paths, root)?
+    };
 
     let revision = crate::revision::head_revision(root);
     let mut harvested = Vec::new();

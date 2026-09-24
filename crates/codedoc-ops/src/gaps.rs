@@ -148,6 +148,7 @@ fn history_of_range(root: &Path, file: &str, first: usize, last: usize, commits:
 
 pub fn gaps(root: &Path, paths: &[String], limit: usize, commits: usize) -> Outcome {
     let found = workspace(root)?;
+    let paths = &crate::require_paths(found.root(), paths, root)?;
     let graph = codedoc_graph::Graph::across(&found)?;
     let documented = documented_symbols(&graph);
 

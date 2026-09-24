@@ -155,6 +155,7 @@ pub(crate) fn touched_declarations(root: &Path, files: &[String]) -> Option<(usi
 
 pub fn coverage(root: &Path, paths: &[String], limit: usize) -> Outcome {
     let found = workspace(root)?;
+    let paths = &crate::require_paths(found.root(), paths, root)?;
     let graph = Graph::across(&found)?;
 
     let documented = documented_symbols(&graph);

@@ -8,6 +8,8 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Fixed
 
+- **A path that is not in the repository was answered with zero rather than named.** Following the README literally on chalk, whose sources live in `source/`, `codedoc import src/` reported "scanned 0 files, found 0 documentable comments" and exited 0. That reads as an answer about the code. `import`, `coverage` and `gaps` now name the path and exit non-zero.
+
 - **`coverage` and `gaps` answered "nothing found" about directories full of code.** Their path arguments were resolved against the repository root only, so running `codedoc gaps utils` from `source/core` scanned a directory that does not exist and reported no declarations — which reads as a finding rather than a miss. They now resolve the same way every other path does.
 
 - **The language server never exited.** Not on `shutdown` followed by `exit`, and not when the editor closed the connection — it sat forever. `serve` borrowed the connection, so its sender was still alive when `io_threads.join()` ran and the writer thread waited on a channel nobody would ever close. An editor restarts its server on a configuration change, a workspace reload or a crash, and each restart left a 21MB process behind. Both existing tests killed the process on drop, so neither could see it. A third now asserts the server terminates after its editor goes away.

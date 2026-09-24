@@ -76,6 +76,12 @@ pub enum OpsError {
     )]
     Opaque { path: String, detail: String },
 
+    #[error(
+        "{path} is not in this repository. Scanning it would report nothing found, which \
+         reads as an answer about your code rather than about the path"
+    )]
+    PathMissing { path: String },
+
     #[error("unknown record kind {found}; the vocabulary is {vocabulary}")]
     UnknownKind { found: String, vocabulary: String },
 
@@ -123,6 +129,24 @@ impl OpsError {
             _ => 4,
         }
     }
+}
+
+pub(crate) fn require_paths(
+    base: &Path,
+    paths: &[String],
+    invoked_from: &Path,
+) -> Result<Vec<String>, OpsError> {
+    paths
+        .iter()
+        .map(|given| {
+            let relative = repo_relative_from(base, given, invoked_from);
+            if base.join(&relative).exists() {
+                Ok(relative)
+            } else {
+                Err(OpsError::PathMissing { path: given.clone() })
+            }
+        })
+        .collect()
 }
 
 pub(crate) fn repo_relative_from(base: &Path, given: &str, invoked_from: &Path) -> String {
