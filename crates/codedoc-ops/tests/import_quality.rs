@@ -19,7 +19,7 @@ fn project(files: &[(&str, &str)]) -> tempfile::TempDir {
 
 fn imported(root: &Path) -> Vec<(String, Option<String>)> {
     codedoc_ops::import(root, None, &["src".to_owned()], true, None).unwrap();
-    let listing = codedoc_ops::list(root, None, None, None, None, None).unwrap();
+    let listing = codedoc_ops::list(root, None, None, None, None, None, None).unwrap();
     listing["records"]
         .as_array()
         .expect("a record listing")

@@ -101,11 +101,11 @@ fn scope_narrows_the_commands_that_enumerate_records() {
     attach(root.path(), Scope::Shared, "The shared claim about this function.");
     attach(root.path(), Scope::Local, "The local claim about this function.");
 
-    let everything = codedoc_ops::list(root.path(), None, None, None, None, None).unwrap();
+    let everything = codedoc_ops::list(root.path(), None, None, None, None, None, None).unwrap();
     assert_eq!(everything["count"], 2, "{everything}");
 
     let only_local =
-        codedoc_ops::list(root.path(), Some(Scope::Local), None, None, None, None).unwrap();
+        codedoc_ops::list(root.path(), Some(Scope::Local), None, None, None, None, None).unwrap();
     assert_eq!(
         only_local["count"], 1,
         "working in someone else's repository, 'what have I recorded locally' is the \
@@ -141,7 +141,7 @@ fn superseding_a_local_record_stays_local() {
     let root = project();
     attach(root.path(), Scope::Local, "The local claim about this function.");
     let listed =
-        codedoc_ops::list(root.path(), Some(Scope::Local), None, None, None, None).unwrap();
+        codedoc_ops::list(root.path(), Some(Scope::Local), None, None, None, None, None).unwrap();
     let id = listed["records"][0]["record"].as_str().unwrap().to_owned();
 
     codedoc_ops::affirm(
@@ -172,7 +172,7 @@ fn retracting_a_local_record_stays_local() {
     let root = project();
     attach(root.path(), Scope::Local, "The local claim about this function.");
     let listed =
-        codedoc_ops::list(root.path(), Some(Scope::Local), None, None, None, None).unwrap();
+        codedoc_ops::list(root.path(), Some(Scope::Local), None, None, None, None, None).unwrap();
     let id = listed["records"][0]["record"].as_str().unwrap().to_owned();
 
     codedoc_ops::retract(root.path(), None, &id, Some("no longer true")).unwrap();

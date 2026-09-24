@@ -177,9 +177,14 @@ Claims are ranked by trust — assurance, then authorship, then age — and `--b
 caps the assembled size by dropping the least trustworthy first. `--as-of` answers as
 of a past moment; see `codedoc list` below.
 
-### `codedoc list [--file <path>] [--symbol <path>] [--as-of <date>] [--author <text>]`
+### `codedoc list [--limit N] [--file <path>] [--symbol <path>] [--as-of <date>] [--author <text>]`
 
 Active records, optionally narrowed.
+
+`--limit` caps how many are returned. The result always reports `total` alongside
+`count`, so a truncated listing says how much it left out. Without it a mature ledger
+returns everything: importing gorilla/mux produced 322 records and 1,304 lines of
+output from one command.
 
 `--author` matches against a human's identity, or an agent's model and session, so
 `--author session-4f2a` answers what one agent run recorded and `--author "a reviewer"`

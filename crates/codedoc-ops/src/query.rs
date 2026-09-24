@@ -312,6 +312,7 @@ pub fn list(
     symbol: Option<&str>,
     as_of: Option<&str>,
     author: Option<&str>,
+    limit: Option<usize>,
 ) -> Outcome {
     let found = workspace_in(root, scope)?;
     let graph = at_moment(Graph::across(&found)?, as_of)?;
@@ -325,8 +326,10 @@ pub fn list(
         None => records,
     };
 
+    let total = records.len();
     let rows: Vec<Value> = records
         .iter()
+        .take(limit.unwrap_or(usize::MAX))
         .map(|record| {
             json!({
                 "record": record.id().to_string(),
@@ -345,6 +348,7 @@ pub fn list(
     Ok(json!({
         "command": "list",
         "count": rows.len(),
+        "total": total,
         "as_of": as_of,
         "author": author,
         "scopes": found.scopes().iter().map(|entry| entry.as_str()).collect::<Vec<_>>(),

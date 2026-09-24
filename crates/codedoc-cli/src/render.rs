@@ -62,6 +62,15 @@ fn render_init(payload: &Value, out: &mut String) {
     let _ = writeln!(out);
     if payload["leaves_repository_evidence"].as_bool().unwrap_or(true) {
         let _ = writeln!(out, "This ledger is committed. Everyone cloning the repository gets it.");
+        let _ = writeln!(out);
+        let _ = writeln!(
+            out,
+            "On a repository you do not own, `codedoc init --scope local` writes inside"
+        );
+        let _ = writeln!(
+            out,
+            ".git/ instead, where nothing appears in the working tree or in git status."
+        );
     } else {
         let _ = writeln!(out, "Nothing was written to the working tree; git will not see this.");
     }

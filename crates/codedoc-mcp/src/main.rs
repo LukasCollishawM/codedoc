@@ -153,6 +153,8 @@ pub struct FilterArgs {
     pub as_of: Option<String>,
     /// Restrict to one ledger: `local`, `shared` or `global`. Omit to read across all.
     pub scope: Option<String>,
+    /// How many records to return. The result reports `total` so you know what was cut.
+    pub limit: Option<usize>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -511,6 +513,7 @@ impl Codedoc {
             args.symbol.as_deref(),
             args.as_of.as_deref(),
             args.author.as_deref(),
+            args.limit,
         ))
     }
 
