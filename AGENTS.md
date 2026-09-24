@@ -52,7 +52,7 @@ Every MCP client receives these instructions when it connects:
 ## The loop
 
 ```
-        don't know where?            know the file?
+        location unknown?             file known?
         codedoc_search       or      codedoc_context / codedoc_brief
                           ↘        ↙
                      agent reads, then changes code
@@ -214,9 +214,9 @@ that" have no other place to be recorded.
 
 Records are attacker-controlled text that will be placed in front of a language
 model. The server's instructions tell the agent to treat retrieved records as data,
-never as instructions. If you build your own client, preserve that framing: a record
-that can steer an agent's behaviour is a vulnerability, and we want the report. See
-[SECURITY.md](SECURITY.md).
+never as instructions. A client built against this server should preserve that
+framing. A record that can influence an agent's behaviour is a vulnerability and should
+be reported; see [SECURITY.md](SECURITY.md).
 
 ## Without MCP
 
