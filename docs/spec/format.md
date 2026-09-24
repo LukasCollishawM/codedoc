@@ -1,6 +1,8 @@
 # codedoc format specification
 
-Version 1 (draft). Licensed `CC0-1.0`.
+Version 1.0. Licensed `CC0-1.0`.
+
+This version is stable. The byte sequences it defines will not change incompatibly: a ledger written by a conforming implementation of 1.0 remains readable, and every identifier in it remains the identifier it was written with, under every later 1.x version. Section 10 states what that permits and forbids.
 
 This document is normative. The Rust workspace in this repository is the reference implementation, not the definition; where the two disagree, the implementation has a bug. Conformance vectors live in `conformance/` and any implementation claiming compatibility must reproduce them exactly.
 
@@ -78,6 +80,12 @@ Fingerprints are computed bottom-up, so that a subtree's digest depends only on 
 
 Generic parameters and qualifying prefixes MUST NOT appear in a segment, so that renaming a lifetime or moving a type between modules does not move an anchor. A language MAY declare that its declaration names are *qualified*, in which case an out-of-line definition such as `Foo::bar` contributes both segments; otherwise only the terminal name is used.
 
+**Which constructs name a segment is per-language, and is normative.** An implementation claiming support for a language MUST reproduce that language's naming vectors in `conformance/resolver/`, which state the segment a given declaration form contributes. Without that, two implementations reading the same source produce different symbol paths for the same construct, and a ledger written by one is degraded when read by the other.
+
+Degraded, not corrupted. Rungs 2, 3, 4 and 6 all require the symbol path to match, so an implementation that names fewer declaration forms than the one which wrote a record fails to match rather than matching something else: the anchor falls to rung 1, and to detachment if its content has changed. A symbol path an implementation cannot construct is therefore lossy and safe, which is the same trade the rest of this format makes. An implementation MUST NOT invent a segment for a declaration form it does not recognise, and MUST NOT emit a segment whose text is a keyword of the language, which indicates a mis-parse rather than a name.
+
+An anchor MAY carry no symbol path at all, when its construct sits in no naming declaration. Such an anchor can only reach rung 1, so it survives edits elsewhere in its file and is lost when its own construct changes.
+
 **Symbol cardinality and ordinal.** A symbol path does not necessarily identify a unique declaration — an overload set is the common case. An anchor MUST therefore record how many declarations shared its symbol path when it was captured, and which of them it was, in document order.
 
 Cardinality is counted **per declaration kind**, and the anchor records the kind it was counted under. Counting per symbol alone is too coarse: in Rust a type and its `impl` blocks all produce the same symbol path, so replacing a hand-written `impl` with a derive would change the count and detach every record on the type, even though the type itself never moved. Measured on ripgrep, counting per kind raised anchor survival from 97.5% to 98.2% with no loss of safety, because an overload set shares both a symbol and a kind and is still caught.
@@ -144,6 +152,8 @@ Resolution answers where a claim's code went. It does not answer whether the cla
 
 Conforming implementations SHOULD compute **drift**: the distance between the shape histogram recorded with the anchor and the shape of the node it resolved to, as a percentage. A construct that resolved perfectly but whose drift exceeds an implementation-defined threshold SHOULD be reported as stale rather than current, because a claim about a body that has since been rewritten may simply be false.
 
+Because drift compares shape, it is blind to an edit that changes only identifiers or literal values. That is the edit a claim quoting a value is most likely to be falsified by. Conforming implementations SHOULD therefore also report, separately from drift, whether the content fingerprint recorded with an anchor is still present anywhere in the file it resolved in: when it is not, the construct beneath the claim was edited rather than merely matched by a weaker rung. This costs one lookup against the index a resolver already builds for rung 1. It MUST NOT be reported for an anchor whose subject is the file, which has no construct to compare, and it MUST NOT be reported for reformatting, which the content fingerprint excludes by construction.
+
 Drift MUST be insensitive to identifier and literal text, so that renaming does not register as change. `conformance/resolver/` states an expected drift for every vector that resolves: reformatting and renaming measure zero in all seven covered languages, while a rewritten control flow measures well past any sensible threshold. An implementation whose drift is non-zero for a rename is reporting noise, and noise in a staleness report is worse than no report, because people learn to ignore it.
 
 ## 6. Records
@@ -197,3 +207,23 @@ This clause is filesystem behaviour rather than a property of any byte sequence,
 A cloned repository's ledger is untrusted input, as is every source file presented to a parser. Conforming implementations MUST NOT panic or abort on malformed input, MUST NOT size an allocation from an untrusted length, MUST confine path-valued members to the repository root, and MUST NOT allow record content to reach an executed context.
 
 Record content is attacker-controlled text that will frequently be placed in front of a language model. Implementations that assemble context for an agent MUST treat records as data and MUST NOT allow a record to be interpreted as instructions to that agent.
+
+## 10. Versioning and compatibility
+
+This specification carries a major and a minor version. The major version is the compatibility boundary; the minor version admits only additions that every earlier implementation of the same major version can already read.
+
+**The `schema` member.** Every record carries `schema`, an integer naming the major version of this specification that the record was written against. Records described here carry `1`.
+
+An implementation MUST read a record whose `schema` equals a major version it implements. It MUST NOT reject a record whose `schema` is greater: the members it does not recognise are preserved unaltered by section 1, so such a record round-trips and keeps its identifier even where its meaning is not understood. An implementation SHOULD report that it is reading records written against a later version rather than presenting a partial understanding as a complete one.
+
+An implementation MUST NOT write a record whose `schema` names a version it does not implement.
+
+**What a minor version may add.** An optional member, omitted at its default, as section 1 requires. An entry in a closed vocabulary. A resolver rung above those defined, provided it is attempted after them. A new digest domain.
+
+**What a minor version MUST NOT change.** Any rule in section 1, because every identifier in every ledger depends on all of them. Any domain string in section 2. The pre-image of any fingerprint in section 3. The wire string of any vocabulary entry already frozen in `conformance/vocabulary/wire.json`. The meaning of a rung already defined, or its position in the ladder. Whether a member is required.
+
+**Domain strings do not track this version.** The domains in section 2 end in `v1` because that is their own revision, not the specification's. A domain string is frozen once defined; changing a digest's pre-image requires a new domain, which is an addition rather than a change, and leaves digests taken under the old one valid.
+
+**A major version is a new format.** It does not amend this one. An implementation supporting both reads each according to its own rules, and a mechanical migration path MUST exist before any record can be rewritten from one to the other. Rewriting is the only way a record's identifier may change, because a record is its bytes.
+
+**Conformance.** An implementation claims a version by reproducing the vectors in `conformance/` for it exactly. The vectors are part of the specification rather than a test suite belonging to any implementation: where a vector and this prose disagree, the prose governs and the vector has a bug.
