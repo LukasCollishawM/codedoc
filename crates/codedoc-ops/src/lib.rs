@@ -58,6 +58,13 @@ pub enum OpsError {
     #[error("name at least one file, or --since a revision")]
     TargetUnnamed,
 
+    #[error(
+        "could not read what changed since {revision}. Name a revision this clone has: a \
+         shallow checkout carries only the commits it was given, and actions/checkout takes \
+         depth 1 by default, so comparing against a merge base needs fetch-depth: 0"
+    )]
+    RevisionUnreadable { revision: String },
+
     #[error("{detail}")]
     Ledger { detail: String },
 

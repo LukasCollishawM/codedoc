@@ -370,7 +370,10 @@ suggestion does not change that. It just saves you finding the candidate yoursel
 ### `codedoc review [<base>] [--out <path>]`
 
 Renders the claims a change has put in doubt, as markdown suitable for posting on a
-pull request. `base` defaults to `HEAD`; in CI use the merge base.
+pull request. `base` defaults to `HEAD`; in CI use the merge base, and give the
+checkout `fetch-depth: 0` so that commit is present — `actions/checkout` takes depth 1
+by default, and a revision the clone does not carry exits `4` rather than comparing
+against something it cannot read.
 
 ```bash
 codedoc review origin/main --out review.md

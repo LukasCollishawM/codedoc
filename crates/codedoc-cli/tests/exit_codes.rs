@@ -404,3 +404,27 @@ fn the_installed_merge_driver_names_an_executable_that_exists() {
          next `git add` drops the other branch silently. Got {command:?}"
     );
 }
+
+#[test]
+fn a_base_revision_this_clone_does_not_have_is_the_command_failing_not_the_ledger() {
+    let root = project();
+    assert!(run(root.path(), &["init"]).status.success(), "init");
+
+    for command in [
+        vec!["review", "origin/nothing-like-this"],
+        vec!["verify", "--since", "origin/nothing-like-this"],
+    ] {
+        let attempt = run(root.path(), &command);
+        assert_eq!(
+            attempt.status.code(),
+            Some(4),
+            "3 is reserved for a ledger that does not verify, and this ledger is fine: the revision is missing. A CI job branching on 3 would report corruption when the checkout was shallow. {command:?} gave {}",
+            String::from_utf8_lossy(&attempt.stderr)
+        );
+        let said = String::from_utf8_lossy(&attempt.stdout);
+        assert!(
+            said.contains("fetch-depth"),
+            "the usual cause in CI is a shallow checkout, and naming the remedy is the difference between a minute and an afternoon: {said}"
+        );
+    }
+}

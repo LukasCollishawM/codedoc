@@ -102,10 +102,8 @@ pub fn brief(
         })
         .collect();
     if let Some(revision) = since {
-        let changed =
-            codedoc_verify::history::changed_since(found.root(), revision).ok_or_else(|| {
-                OpsError::Ledger { detail: format!("could not read what changed since {revision}") }
-            })?;
+        let changed = codedoc_verify::history::changed_since(found.root(), revision)
+            .ok_or_else(|| OpsError::RevisionUnreadable { revision: revision.to_string() })?;
         targets.extend(changed);
     }
     targets.sort();
@@ -187,10 +185,8 @@ pub fn verify_scoped(
     let found = workspace(root)?;
     let mut targets: Vec<String> = files.to_vec();
     if let Some(revision) = since {
-        let changed =
-            codedoc_verify::history::changed_since(found.root(), revision).ok_or_else(|| {
-                OpsError::Ledger { detail: format!("could not read what changed since {revision}") }
-            })?;
+        let changed = codedoc_verify::history::changed_since(found.root(), revision)
+            .ok_or_else(|| OpsError::RevisionUnreadable { revision: revision.to_string() })?;
         targets.extend(changed);
     }
     targets.sort();
@@ -545,9 +541,8 @@ pub fn render(root: &Path, format: &str, title: &str) -> Outcome {
 
 pub fn review(root: &Path, base: &str) -> Result<(Value, i32), OpsError> {
     let found = workspace(root)?;
-    let changed = codedoc_verify::history::changed_since(found.root(), base).ok_or_else(|| {
-        OpsError::Ledger { detail: format!("could not read what changed since {base}") }
-    })?;
+    let changed = codedoc_verify::history::changed_since(found.root(), base)
+        .ok_or_else(|| OpsError::RevisionUnreadable { revision: base.to_string() })?;
 
     let (payload, code) = verify_scoped(root, &changed, None)?;
     let findings: Vec<codedoc_verify::Finding> =
