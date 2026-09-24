@@ -65,4 +65,6 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/). Sig
 
 Code is dual-licensed `MIT OR Apache-2.0`; the specification and conformance vectors are `CC0-1.0`. Contributions are accepted under those terms.
 
+Participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 Discussion happens in public issues. Design decisions are recorded as ADRs, including rejected ones and the reasoning for rejecting them.

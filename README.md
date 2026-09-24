@@ -189,6 +189,7 @@ Outstanding: the VS Code extension installs from a local `.vsix` and is not publ
 | [CLAUDE.md](CLAUDE.md) | architecture and the invariants governing changes |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | required before a PR, including the no-comments rule |
 | [SECURITY.md](SECURITY.md) | threat model |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Contributor Covenant, and who to contact |
 
 ## Licence
 
