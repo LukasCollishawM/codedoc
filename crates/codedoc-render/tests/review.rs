@@ -128,3 +128,15 @@ fn a_clean_change_is_not_lectured_about_what_to_do_next() {
         "there is nothing to answer for, so advice on answering is noise: {rendered}"
     );
 }
+
+#[test]
+fn a_change_no_claim_covers_says_that_rather_than_counting_to_zero() {
+    let given = input("origin/main");
+    let rendered = review_markdown(&given);
+    assert!(
+        rendered.contains("Nothing recorded covers"),
+        "\"0 recorded claims still hold\" reads as though claims were checked and \
+         none survived, which is the opposite of what happened: {rendered}"
+    );
+    assert!(!rendered.contains("0 recorded"), "{rendered}");
+}

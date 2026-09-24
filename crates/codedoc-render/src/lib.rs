@@ -228,12 +228,19 @@ pub fn review_markdown(input: &ReviewInput<'_>) -> String {
     );
 
     if input.stale.is_empty() && input.detached.is_empty() {
-        out.push_str(&format!(
-            "{} recorded claim{} against these changes.
+        if input.unchanged == 0 {
+            out.push_str(
+                "Nothing recorded covers the code this change touches.
 ",
-            input.unchanged,
-            if input.unchanged == 1 { " still holds" } else { "s still hold" }
-        ));
+            );
+        } else {
+            out.push_str(&format!(
+                "{} recorded claim{} against these changes.
+",
+                input.unchanged,
+                if input.unchanged == 1 { " still holds" } else { "s still hold" }
+            ));
+        }
         out.push_str(&undocumented_note(input));
         return out;
     }
