@@ -377,7 +377,7 @@ impl Index {
     }
 }
 
-fn fts_expression(query: &str) -> String {
+pub fn fts_expression(query: &str) -> String {
     query
         .split(|glyph: char| !glyph.is_alphanumeric() && glyph != '_')
         .filter(|term| !term.is_empty())

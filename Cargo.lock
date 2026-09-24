@@ -297,6 +297,7 @@ dependencies = [
  "codedoc-core",
  "codedoc-lang",
  "codedoc-ledger",
+ "proptest",
  "rusqlite",
  "serde_json",
  "tempfile",
