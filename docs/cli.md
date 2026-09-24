@@ -314,6 +314,12 @@ Record counts by kind, relation count, ledger integrity, and which scopes are pr
 With no arguments, re-resolves every anchor against the working tree. Reports fresh, migrated, stale and
 detached counts, and sets the exit code accordingly.
 
+A record is **migrated** when it resolved on structure or on its symbol rather than on
+its exact content. That is not the same as the code having moved: a freshly imported
+corpus reports migrated records wherever a file holds several constructs with identical
+bodies, because content alone cannot tell them apart and the name can. Importing
+nlohmann/json gives 297 of 2,039 that way, with nothing edited.
+
 A record is **stale** either because its anchor only resolved through a weak signal,
 or because the code it points at has *drifted*: the shape of the construct changed
 enough that a claim about the old one may simply be false of the new one. A function

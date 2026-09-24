@@ -105,7 +105,7 @@ $ codedoc verify
 | state | meaning |
 | --- | --- |
 | unchanged | resolved, target unmoved |
-| migrated | resolved elsewhere; the code moved and the claim followed |
+| migrated | found, but not by its exact content: matched on structure or on name |
 | stale | resolved, but the target changed enough to warrant re-reading |
 | detached | unresolvable without guessing; awaiting a decision |
 
