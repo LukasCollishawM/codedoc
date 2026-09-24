@@ -34,7 +34,10 @@ Every MCP client receives these instructions when it connects:
 > When you discover an existing record is wrong, `codedoc_supersede` it rather than
 > attaching a contradicting one. When it is no longer true at all, `codedoc_retract`
 > it. When `codedoc_verify` reports a record stale, read the code and answer:
-> `codedoc_affirm` if the claim still holds, supersede it if it needs rewording. When
+> `codedoc_affirm` if the claim still holds, supersede it if it needs rewording. A
+> finding marked `content_changed` asks the same of you for a different reason: its
+> shape is intact and its drift is zero, but an identifier or a value beneath it was
+> edited, and a claim that quotes a value is the one most likely to be wrong now. When
 > `codedoc_verify` reports detached anchors, `codedoc_detached` lists them and
 > `codedoc_resolve` places one explicitly.
 >
@@ -87,7 +90,7 @@ Every MCP client receives these instructions when it connects:
 | `codedoc_verify` | after making changes — pass `files` or `since` to check only what you touched |
 | `codedoc_detached` | when verify reports detachments; it suggests where the code may have gone |
 | `codedoc_resolve` | to place a detached record explicitly |
-| `codedoc_affirm` | when verify says a record is stale, you re-read the code, and it still holds |
+| `codedoc_affirm` | when verify says a record is stale or `content_changed`, you re-read the code, and it still holds |
 | `codedoc_supersede` | when an existing record turns out to be wrong |
 | `codedoc_retract` | when a record is no longer true at all |
 | `codedoc_list` | to survey what is recorded |
@@ -190,6 +193,13 @@ re-reading; it does not imply the claim is wrong. Read the code and then respond
 `codedoc_affirm` if it still holds, `codedoc_supersede` if it needs rewording,
 `codedoc_retract` if it no longer applies. Leaving it unanswered is the outcome to
 avoid, since a corpus in which everything reads as stale will not be consulted.
+
+A finding marked `content_changed` wants the same answer and arrives by a different
+route. Drift compares the kinds of nodes in a construct, so renaming an identifier or
+changing a literal measures as no change at all, while being exactly the edit that
+makes a claim quoting that value false. Treat it as a request to re-read, not as a
+verdict: reformatting never produces it, and a claim about a file rather than a
+construct never carries it.
 
 **Some knowledge is about a file, not a declaration.** "Every handler in this module
 assumes the request has already been authenticated" is not a fact about any one

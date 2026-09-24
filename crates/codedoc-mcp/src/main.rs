@@ -46,6 +46,9 @@ When you discover an existing record is wrong, codedoc_supersede it rather than 
 attaching a contradicting one. When it is no longer true at all, codedoc_retract \
 it. When codedoc_verify reports a record stale, read the code and answer: \
 codedoc_affirm if the claim still holds, supersede it if it needs rewording. \
+A finding marked content_changed asks the same of you for a different reason: its \
+shape is intact and its drift is zero, but an identifier or a value beneath it was \
+edited, and a claim that quotes a value is the one most likely to be wrong now. \
 When codedoc_verify reports detached anchors, codedoc_detached lists them \
 and codedoc_resolve places one explicitly.
 
