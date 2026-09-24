@@ -7,6 +7,7 @@ fn input<'a>(base: &'a str) -> ReviewInput<'a> {
         stale: Vec::new(),
         detached: Vec::new(),
         unchanged: 0,
+        moved: 0,
         recorded_here: 0,
         touched_declarations: 0,
         undocumented_declarations: 0,
@@ -154,4 +155,34 @@ fn a_change_that_recorded_something_gets_credit_for_it() {
          this tool is a complaint. Recording something is the behaviour it is \
          trying to produce, so it should be visible in the same place: {rendered}"
     );
+}
+
+#[test]
+fn a_claim_that_shifted_below_the_threshold_is_mentioned_rather_than_called_unaffected() {
+    let mut given = input("origin/main");
+    given.unchanged = 66;
+    given.moved = 2;
+    given.detached = vec![(
+        "route.go".to_owned(),
+        "go://Host".to_owned(),
+        "Host adds a matcher.".to_owned(),
+        None,
+    )];
+
+    let rendered = review_markdown(&given);
+    assert!(rendered.contains("66 other claims still resolve"), "{rendered}");
+    assert!(
+        !rendered.contains("unaffected"),
+        "a claim that drifted is not unaffected, and saying so is a false statement \
+         about the reviewer's own change: {rendered}"
+    );
+    assert!(rendered.contains("2 of those sit on code this change touched"), "{rendered}");
+}
+
+#[test]
+fn nothing_is_said_about_drift_when_nothing_drifted() {
+    let mut given = input("origin/main");
+    given.unchanged = 5;
+    given.moved = 0;
+    assert!(!review_markdown(&given).contains("sit on code this change touched"));
 }

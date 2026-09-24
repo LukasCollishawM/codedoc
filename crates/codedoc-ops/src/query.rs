@@ -564,7 +564,15 @@ pub fn review(root: &Path, base: &str) -> Result<(Value, i32), OpsError> {
     let mut stale = Vec::new();
     let mut detached = Vec::new();
     let mut unchanged = 0usize;
+    let mut moved = 0usize;
     for finding in &findings {
+        if matches!(
+            finding.status,
+            codedoc_verify::Status::Fresh | codedoc_verify::Status::Migrated
+        ) && finding.drift.is_some_and(|amount| amount > 0)
+        {
+            moved += 1;
+        }
         let symbol = finding.symbol.clone().unwrap_or_else(|| finding.file.clone());
         match finding.status {
             codedoc_verify::Status::Stale => {
@@ -590,6 +598,7 @@ pub fn review(root: &Path, base: &str) -> Result<(Value, i32), OpsError> {
         stale,
         detached,
         unchanged,
+        moved,
         recorded_here,
         touched_declarations: touched,
         undocumented_declarations: undocumented,

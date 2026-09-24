@@ -216,6 +216,7 @@ pub struct ReviewInput<'a> {
     pub stale: Vec<(String, String, String, Option<u32>)>,
     pub detached: Vec<(String, String, String, Option<String>)>,
     pub unchanged: usize,
+    pub moved: usize,
     pub recorded_here: usize,
     pub touched_declarations: usize,
     pub undocumented_declarations: usize,
@@ -289,12 +290,13 @@ pub fn review_markdown(input: &ReviewInput<'_>) -> String {
     }
 
     out.push_str(&format!(
-        "_Compared against `{}`. {} other claim{} unaffected._
+        "_Compared against `{}`. {} other claim{} still resolve._
 ",
         input.base,
         input.unchanged,
         if input.unchanged == 1 { "" } else { "s" }
     ));
+    out.push_str(&moved_note(input));
     out.push_str(
         "\nA claim listed here is not necessarily wrong. It means the code it describes \
          moved or changed enough to be worth re-reading before merge. Having read it, \
@@ -306,6 +308,18 @@ pub fn review_markdown(input: &ReviewInput<'_>) -> String {
     out.push_str(&recorded_note(input));
     out.push_str(&undocumented_note(input));
     out
+}
+
+fn moved_note(input: &ReviewInput<'_>) -> String {
+    if input.moved == 0 {
+        return String::new();
+    }
+    format!(
+        "\n<sub>{} of those sit on code this change touched and shifted slightly, below \
+         the threshold for asking about them. `codedoc verify --json` carries the \
+         measured drift for each.</sub>\n",
+        input.moved
+    )
 }
 
 fn recorded_note(input: &ReviewInput<'_>) -> String {
