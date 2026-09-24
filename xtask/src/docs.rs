@@ -196,6 +196,53 @@ const NUMERALS: [&str; 30] = [
     "twenty-nine",
 ];
 
+const EDITOR_LANGUAGES: [(&str, &str); 8] = [
+    ("rust", "rust"),
+    ("python", "python"),
+    ("csharp", "csharp"),
+    ("go", "go"),
+    ("java", "java"),
+    ("typescript", "typescript"),
+    ("tsx", "typescriptreact"),
+    ("cpp", "cpp"),
+];
+
+fn the_editor_activates_for_every_language() -> ExitCode {
+    let Ok(registry) = fs::read_to_string("crates/codedoc-lang/src/registry.rs") else {
+        println!("lint-docs: no language registry to compare the editor against");
+        return ExitCode::SUCCESS;
+    };
+    let Ok(manifest) = fs::read_to_string("editors/vscode/package.json") else {
+        println!("lint-docs: no editor extension to check");
+        return ExitCode::SUCCESS;
+    };
+
+    let mut silent = Vec::new();
+    for (adapter, editor) in EDITOR_LANGUAGES {
+        if !registry.contains(&format!("name: \"{adapter}\"")) {
+            continue;
+        }
+        if !manifest.contains(&format!("onLanguage:{editor}")) {
+            silent.push(format!("{adapter} (onLanguage:{editor})"));
+        }
+    }
+
+    if silent.is_empty() {
+        println!("lint-docs: the editor extension activates for every supported language");
+        return ExitCode::SUCCESS;
+    }
+
+    eprintln!("lint-docs: the extension never activates for {} language(s)", silent.len());
+    eprintln!();
+    for entry in &silent {
+        eprintln!("  {entry}");
+    }
+    eprintln!();
+    eprintln!("Someone opening one of these files gets no hovers, no lenses and no");
+    eprintln!("diagnostics, and nothing tells them why. Add it to activationEvents.");
+    ExitCode::from(1)
+}
+
 fn tool_count_is_stated_correctly(server: &str) -> ExitCode {
     let declared = server.matches("#[tool(").count();
     let Ok(readme) = fs::read_to_string("README.md") else {
@@ -209,7 +256,7 @@ fn tool_count_is_stated_correctly(server: &str) -> ExitCode {
     let spelled = NUMERALS.get(declared).copied().unwrap_or("");
     if !spelled.is_empty() && sentence.contains(spelled) {
         println!("lint-docs: README states {declared} agent tools, which is how many there are");
-        return ExitCode::SUCCESS;
+        return the_editor_activates_for_every_language();
     }
 
     eprintln!("lint-docs: the MCP server exposes {declared} tools and README.md says otherwise");

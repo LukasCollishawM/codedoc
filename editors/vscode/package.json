@@ -18,11 +18,16 @@
   ],
   "activationEvents": [
     "onLanguage:rust",
-    "onLanguage:csharp",
-    "onLanguage:typescript",
     "onLanguage:python",
+    "onLanguage:typescript",
+    "onLanguage:typescriptreact",
+    "onLanguage:javascript",
+    "onLanguage:javascriptreact",
     "onLanguage:go",
-    "onLanguage:java"
+    "onLanguage:java",
+    "onLanguage:csharp",
+    "onLanguage:cpp",
+    "onLanguage:c"
   ],
   "main": "./extension.js",
   "contributes": {
