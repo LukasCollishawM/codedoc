@@ -197,12 +197,26 @@ pub fn resolve(
     let kind = original.kind();
     let record = emit(root, scope, &original, placed.clone(), kind, body)?;
 
+    let previous = anchor.symbol.as_ref().map(ToString::to_string);
+    let now = placed.symbol.as_ref().map(ToString::to_string);
+    let renamed = match (&previous, &now) {
+        (Some(before), Some(after)) => before != after,
+        _ => false,
+    };
+    let claim_names_the_old_symbol = renamed
+        && previous
+            .as_deref()
+            .map(crate::record::terminal_name)
+            .is_some_and(|name| crate::record::mentions_name(&record.content().body.claim, name));
+
     Ok(json!({
         "command": "resolve",
         "record": record.id().to_string(),
         "readopts": original.id().to_string(),
         "file": placed.file.as_str(),
-        "symbol": placed.symbol.as_ref().map(ToString::to_string),
+        "symbol": now,
+        "was_symbol": previous,
+        "claim_names_the_old_symbol": claim_names_the_old_symbol,
         "range": placed.range.to_string(),
     }))
 }

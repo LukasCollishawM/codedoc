@@ -29,6 +29,8 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Added
 
+- **`codedoc resolve` says when the claim it just moved still names the symbol it came from.** Renaming `Host` to `HostPattern` in gorilla/mux detaches the claim, `codedoc detached` offers three candidates of identical shape and refuses to choose between them, and resolving places it correctly — leaving a claim that opens "Host adds a matcher" on a function called `HostPattern`. The result now reports `was_symbol` and whether the claim mentions it, and the CLI points at `codedoc supersede` at the moment that is the obvious next step. A claim that never named the symbol prompts nothing.
+
 - **`cargo xtask lint-invocations` checks that every command the documentation names exists.** It reads every backticked `codedoc ...` and `cargo xtask ...` in the seven prose documents, confirms the subcommand is real and that each flag appears in that subcommand's `--help`. It found two on its first run, both in CLAUDE.md: `codedoc reindex --from-scratch`, a flag that never existed, and `codedoc lint allows`, which is `cargo xtask lint-allows`. Both had been sitting in the standards document telling readers to run things that do not run.
 
 - **`codedoc list --limit`**, and a `total` alongside `count` so a truncated listing says what it left out. Every other listing command had a limit; `list` returned everything, and its own MCP tool description conceded the problem — "this returns everything that matches and a mature ledger holds thousands" — while offering no way to narrow it. Importing gorilla/mux produced 1,304 lines from one command.

@@ -226,6 +226,20 @@ fn content_words(text: &str) -> Vec<String> {
         .collect()
 }
 
+pub(crate) fn terminal_name(symbol: &str) -> &str {
+    symbol.rsplit(['/', ':']).find(|part| !part.is_empty()).unwrap_or(symbol)
+}
+
+pub(crate) fn mentions_name(claim: &str, name: &str) -> bool {
+    if name.chars().count() < 3 {
+        return false;
+    }
+    let lowered = name.to_ascii_lowercase();
+    claim
+        .split(|character: char| !character.is_alphanumeric() && character != '_')
+        .any(|word| word.to_ascii_lowercase() == lowered)
+}
+
 fn identifier_words(symbol: &str) -> Vec<String> {
     let terminal = symbol.rsplit(['/', ':']).find(|part| !part.is_empty()).unwrap_or(symbol);
     let mut words = Vec::new();

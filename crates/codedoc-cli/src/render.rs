@@ -339,6 +339,12 @@ fn render_resolve(payload: &Value, out: &mut String) {
     if let Some(symbol) = payload.get("symbol").and_then(Value::as_str) {
         let _ = writeln!(out, "  {symbol}");
     }
+    if payload["claim_names_the_old_symbol"].as_bool().unwrap_or(false) {
+        let was = text(payload, "was_symbol");
+        let _ = writeln!(out);
+        let _ = writeln!(out, "  the claim still names {was}, which this no longer points at");
+        let _ = writeln!(out, "  `codedoc supersede` to reword it");
+    }
 }
 
 fn render_retract(payload: &Value, out: &mut String) {
