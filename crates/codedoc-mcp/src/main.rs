@@ -255,7 +255,7 @@ impl Codedoc {
     }
 
     #[tool(
-        description = "Record something you worked out that the source does not state: a constraint, a trap, why an ordering matters. Use this instead of writing a comment. Kinds include invariant, security, rationale, known_failure_mode, performance, assumption, workaround, decision, warning. Give a file with no symbol or line to record something true of the whole file. The result lists any existing claim on the same code that yours restates; if one is there, consider codedoc_supersede on it rather than leaving two records that say nearly the same thing."
+        description = "Record something you worked out that the source does not state: a constraint, a trap, why an ordering matters. Use this instead of writing a comment. Kinds include invariant, security, rationale, known_failure_mode, performance, assumption, workaround, decision, warning. Give a file with no symbol or line to record something true of the whole file. The result lists any existing claim on the same code that yours restates; if one is there, consider codedoc_supersede on it rather than leaving two records that say nearly the same thing. It also reports restates_the_symbol when your claim says only what the name already says, which is worth rewriting into what you actually worked out."
     )]
     async fn codedoc_attach(
         &self,

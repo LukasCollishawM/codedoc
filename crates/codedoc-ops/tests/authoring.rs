@@ -224,3 +224,69 @@ fn asking_about_a_symbol_nobody_recorded_anything_about_says_so() {
          'you asked about something that is not there'"
     );
 }
+
+fn attach_to(root: &std::path::Path, symbol: &str, claim: &str) -> serde_json::Value {
+    let request = codedoc_ops::AttachRequest {
+        target: codedoc_ops::Target::symbol("src/lib.rs", symbol),
+        kind: "explanation".to_owned(),
+        claim: claim.to_owned(),
+        detail: None,
+    };
+    codedoc_ops::attach(
+        root,
+        None,
+        &request,
+        &codedoc_ops::Attribution::agent("a-model", "a-session"),
+        codedoc_ops::Provenance::default(),
+    )
+    .unwrap()
+}
+
+#[test]
+fn a_claim_that_only_restates_the_name_is_flagged_as_saying_nothing_new() {
+    let root = project("pub fn validate_token(token: &str) -> bool {\n    !token.is_empty()\n}\n");
+    let written = attach_to(root.path(), "rust://validate_token", "Validates the token.");
+    assert_eq!(
+        written["restates_the_symbol"], true,
+        "this project exists because comments restate the code. A record that says \
+         only what the name says has the same problem and costs a reader the same \
+         time: {written}"
+    );
+}
+
+#[test]
+fn a_claim_that_adds_something_the_name_does_not_say_is_not_flagged() {
+    let root = project("pub fn validate_token(token: &str) -> bool {\n    !token.is_empty()\n}\n");
+    for claim in [
+        "Validation must precede tenant resolution, or a forged token selects a tenant.",
+        "The token is checked against the cached key set, not the issuer, so rotation lags.",
+        "Returns false for an empty token rather than erroring, which callers rely on.",
+    ] {
+        let written = attach_to(root.path(), "rust://validate_token", claim);
+        assert_eq!(
+            written["restates_the_symbol"], false,
+            "flagging a claim that carries real information would train agents to \
+             ignore the signal: {claim:?}"
+        );
+    }
+}
+
+#[test]
+fn a_claim_on_a_file_is_never_called_a_restatement_of_a_name_it_has_no_symbol_for() {
+    let root = project("pub fn compute() -> u32 {\n    1\n}\n");
+    let request = codedoc_ops::AttachRequest {
+        target: codedoc_ops::Target::file("src/lib.rs"),
+        kind: "explanation".to_owned(),
+        claim: "Compute is the only entry point here.".to_owned(),
+        detail: None,
+    };
+    let written = codedoc_ops::attach(
+        root.path(),
+        None,
+        &request,
+        &codedoc_ops::Attribution::human("tester"),
+        codedoc_ops::Provenance::default(),
+    )
+    .unwrap();
+    assert_eq!(written["restates_the_symbol"], false, "{written}");
+}

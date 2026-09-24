@@ -151,11 +151,14 @@ pub fn attach(
         revision,
     );
     let similar = already_recorded(&ledger, &anchor, claim)?;
+    let echoes_the_name =
+        restates_the_symbol(claim, anchor.symbol.as_ref().map(ToString::to_string).as_deref());
     let record = append(&ledger, content)?;
 
     Ok(json!({
         "command": "attach",
         "similar": similar,
+        "restates_the_symbol": echoes_the_name,
         "record": record.id().to_string(),
         "scope": ledger.scope().as_str(),
         "kind": record.kind().as_str(),
@@ -165,6 +168,61 @@ pub fn attach(
         "assurance": attribution.assurance.as_str(),
         "claim": claim,
     }))
+}
+
+const IDLE_WORDS: &[&str] = &[
+    "the", "a", "an", "this", "that", "these", "those", "it", "its", "is", "are", "was", "be",
+    "will", "would", "should", "can", "may", "must", "and", "or", "but", "for", "of", "to", "in",
+    "on", "at", "by", "with", "from", "as", "into", "then", "than", "when", "which", "we", "you",
+    "here", "there", "any", "all", "each", "every", "given", "used", "using", "does", "do",
+];
+
+fn content_words(text: &str) -> Vec<String> {
+    text.split(|glyph: char| !glyph.is_alphanumeric())
+        .map(str::to_lowercase)
+        .filter(|word| word.chars().count() > 2 && !IDLE_WORDS.contains(&word.as_str()))
+        .collect()
+}
+
+fn identifier_words(symbol: &str) -> Vec<String> {
+    let terminal = symbol.rsplit(['/', ':']).find(|part| !part.is_empty()).unwrap_or(symbol);
+    let mut words = Vec::new();
+    let mut current = String::new();
+    for glyph in terminal.chars() {
+        if !glyph.is_alphanumeric() {
+            if !current.is_empty() {
+                words.push(std::mem::take(&mut current));
+            }
+            continue;
+        }
+        if glyph.is_uppercase() && !current.is_empty() {
+            words.push(std::mem::take(&mut current));
+        }
+        current.push(glyph.to_ascii_lowercase());
+    }
+    if !current.is_empty() {
+        words.push(current);
+    }
+    words.retain(|word| word.chars().count() > 2);
+    words
+}
+
+fn shares_a_stem(left: &str, right: &str) -> bool {
+    let shared = left.chars().zip(right.chars()).take_while(|(a, b)| a == b).count();
+    shared >= 4 && shared >= left.chars().count().min(right.chars().count())
+}
+
+fn restates_the_symbol(claim: &str, symbol: Option<&str>) -> bool {
+    let Some(symbol) = symbol else { return false };
+    let named = identifier_words(symbol);
+    if named.is_empty() {
+        return false;
+    }
+    let said = content_words(claim);
+    if said.is_empty() {
+        return false;
+    }
+    said.iter().all(|word| named.iter().any(|part| shares_a_stem(word, part)))
 }
 
 fn already_recorded(ledger: &Ledger, anchor: &Anchor, claim: &str) -> Result<Vec<Value>, OpsError> {

@@ -151,6 +151,12 @@ returns what is already known about that change as one answer, with the budget s
 across the whole set rather than a few claims from each file. `codedoc_context` is the
 sharper tool once you are at one location and know where.
 
+**Do not write down what the name already says.** `codedoc_attach` reports
+`restates_the_symbol` when every word of your claim is already in the symbol it is
+attached to. "Validates the token" on `validate_token` costs a reader time and tells
+them nothing; what you worked out — that validation has to precede tenant resolution,
+or that an empty token returns false rather than erroring — is the record worth having.
+
 **`codedoc_attach` tells you when you are repeating yourself.** Its result carries a
 `similar` list: existing claims on the same code that yours largely restates. It still
 writes your record — a near-duplicate is a prompt, not a refusal — but if something is
