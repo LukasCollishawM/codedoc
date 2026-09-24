@@ -84,12 +84,13 @@ that it could not be placed, so the two are not traded off against each other:
 anchor survival is a quality metric to improve, and false attachment is a hard zero
 enforced by a property test.
 
-Replayed over 400 commits of [ripgrep](https://github.com/BurntSushi/ripgrep), a
-codebase we did not write: 1,100 anchors, **98.2% survived**, nothing landed on the
-wrong symbol, and all 20 detachments were checked by hand and correspond to code that
-was genuinely deleted, renamed, or whose name came to be shared by a construct that
-had not existed before. Twenty-seven of the survivors followed a file across a git
-rename. Every anchor either found its code or correctly said it was gone.
+Replayed over the real history of five codebases in four languages — ripgrep, zod,
+httpx, cobra and this repository — **3,909 anchors, nothing landed on the wrong
+symbol**, and every detachment checked against the final revision rather than sampled.
+Survival runs from 99.6% on zod to 89.4% on cobra, which deleted nineteen files and
+rewrote its test suites over that range: the figure measures how much a codebase
+removed as much as how well anchors track. Every anchor either found its code or
+correctly said it was gone.
 
 ```
 $ codedoc verify

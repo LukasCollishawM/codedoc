@@ -133,11 +133,17 @@ fn replay_file(repository: &str, oldest: &str, newest: &str, journey: &Journey, 
 
     let resolver = Resolver::new(adapter);
     let mut cursor = old_tree.root_node().walk();
-    let declarations: Vec<_> = old_tree
-        .root_node()
-        .named_children(&mut cursor)
-        .filter(|node| adapter.declares_symbol(node.kind()))
-        .collect();
+    let mut declarations = Vec::new();
+    for child in old_tree.root_node().named_children(&mut cursor) {
+        if adapter.declares_symbol(child.kind()) {
+            declarations.push(child);
+            continue;
+        }
+        let mut inner = child.walk();
+        declarations.extend(
+            child.named_children(&mut inner).filter(|node| adapter.declares_symbol(node.kind())),
+        );
+    }
 
     for declaration in declarations {
         let anchor = Anchor::capture(path.clone(), adapter, &before, declaration);
