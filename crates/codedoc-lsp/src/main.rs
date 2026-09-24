@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
 
     let initialization = connection.initialize(capabilities)?;
     let root = workspace_root(&initialization);
-    serve(&connection, root)?;
+    serve(connection, root)?;
     io_threads.join()?;
     Ok(())
 }
@@ -83,7 +83,7 @@ fn workspace_root(initialization: &Value) -> PathBuf {
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
 }
 
-fn serve(connection: &Connection, root: PathBuf) -> Result<(), Box<dyn Error + Sync + Send>> {
+fn serve(connection: Connection, root: PathBuf) -> Result<(), Box<dyn Error + Sync + Send>> {
     for message in &connection.receiver {
         match message {
             Message::Request(request) => {

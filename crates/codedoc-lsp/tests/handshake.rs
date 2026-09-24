@@ -91,3 +91,54 @@ fn an_editor_can_connect_and_be_told_what_this_server_offers() {
     let closed = editor.receive();
     assert!(closed["error"].is_null(), "shutdown should be clean: {closed}");
 }
+
+#[test]
+fn the_server_exits_when_the_editor_closes_the_connection() {
+    let root = tempfile::tempdir().expect("a temporary directory");
+    std::fs::write(root.path().join("lib.rs"), "pub fn compute() -> u32 {\n    0\n}\n").unwrap();
+
+    let mut process = Command::new(env!("CARGO_BIN_EXE_codedoc-lsp"))
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .expect("the server starts");
+
+    {
+        let mut input = process.stdin.take().expect("stdin");
+        let opening = json!({"jsonrpc": "2.0", "method": "initialized", "params": {}}).to_string();
+        let body = json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {"processId": null, "capabilities": {}},
+        })
+        .to_string();
+        write!(input, "Content-Length: {}\r\n\r\n{body}", body.len()).expect("the handshake");
+        write!(
+            input,
+            "Content-Length: {}
+
+{opening}",
+            opening.len()
+        )
+        .expect("the opening notification");
+        input.flush().expect("flushed");
+    }
+
+    let started = std::time::Instant::now();
+    loop {
+        match process.try_wait().expect("the process can be polled") {
+            Some(_) => return,
+            None if started.elapsed() > std::time::Duration::from_secs(20) => {
+                let _ = process.kill();
+                panic!(
+                    "the server outlived its editor. An editor restarts its server on a \
+                     configuration change or a crash, and every restart would leave one \
+                     of these behind"
+                );
+            }
+            None => std::thread::sleep(std::time::Duration::from_millis(50)),
+        }
+    }
+}
