@@ -22,6 +22,8 @@ pub fn human(payload: &Value) -> String {
         Some("detached") => render_detached(payload, &mut out),
         Some("conflicts") => render_conflicts(payload, &mut out),
         Some("coverage") => render_coverage(payload, &mut out),
+        Some("doctor") => render_doctor(payload, &mut out),
+        Some("evidence") => render_evidence(payload, &mut out),
         Some("repair") => render_repair(payload, &mut out),
         Some("review") => {
             let _ = writeln!(out, "{}", text(payload, "output"));
@@ -349,6 +351,64 @@ fn render_detached(payload: &Value, out: &mut String) {
     let _ = writeln!(out, "  codedoc resolve <record> --to-line <line> --in-file <path>");
     let _ = writeln!(out, "or drop it:");
     let _ = writeln!(out, "  codedoc retract <record> --reason \"...\"");
+}
+
+fn render_doctor(payload: &Value, out: &mut String) {
+    let verdict = text(payload, "verdict");
+    let _ = writeln!(out, "{verdict} — {} records", count(payload, "records"));
+
+    let blocking = &payload["blocking"];
+    let advisory = &payload["advisory"];
+    let _ = writeln!(out);
+    let _ = writeln!(
+        out,
+        "  {:<22} {}",
+        "chain intact",
+        if blocking["integrity_intact"].as_bool().unwrap_or(false) { "yes" } else { "NO" }
+    );
+    for (label, value) in [
+        ("detached anchors", &blocking["detached"]),
+        ("broken citations", &blocking["broken_citations"]),
+        ("drifted claims", &advisory["stale"]),
+        ("apparent disagreements", &advisory["disagreements"]),
+        ("records with no symbol", &advisory["unnameable"]),
+    ] {
+        let _ = writeln!(out, "  {label:<22} {}", value.as_u64().unwrap_or(0));
+    }
+
+    let empty = Vec::new();
+    let next = payload["next"].as_array().unwrap_or(&empty);
+    if !next.is_empty() {
+        let _ = writeln!(out);
+        for step in next {
+            let _ = writeln!(out, "  → {}", step.as_str().unwrap_or(""));
+        }
+    }
+}
+
+fn render_evidence(payload: &Value, out: &mut String) {
+    let cited = count(payload, "citations");
+    let broken = count(payload, "broken");
+    if cited == 0 {
+        let _ = writeln!(out, "no records cite any evidence");
+        return;
+    }
+    if broken == 0 {
+        let _ = writeln!(out, "{cited} citations, all still resolving");
+        return;
+    }
+    let _ = writeln!(out, "{broken} of {cited} citations no longer resolve");
+    let _ = writeln!(out);
+    let empty = Vec::new();
+    for entry in payload["records"].as_array().unwrap_or(&empty) {
+        let _ = writeln!(
+            out,
+            "  {:<10} {}",
+            entry["standing"].as_str().unwrap_or(""),
+            entry["citation"].as_str().unwrap_or("")
+        );
+        let _ = writeln!(out, "             {}", entry["claim"].as_str().unwrap_or(""));
+    }
 }
 
 fn render_coverage(payload: &Value, out: &mut String) {
