@@ -5,6 +5,7 @@ fn input<'a>(base: &'a str) -> ReviewInput<'a> {
         base,
         files: &[],
         stale: Vec::new(),
+        edited: Vec::new(),
         detached: Vec::new(),
         unchanged: 0,
         moved: 0,
@@ -245,5 +246,28 @@ fn a_clean_change_says_the_claims_resolved_not_that_they_are_true() {
     assert!(
         !rendered.contains("still hold against"),
         "resolving an anchor says the construct was found, not that what was recorded about it is true. Changing a string literal a claim quotes leaves the node kinds identical, so drift is zero and the claim resolves, while the claim is now false. Asserting it holds is more than codedoc knows: {rendered}"
+    );
+}
+
+#[test]
+fn a_rename_or_a_changed_value_is_reported_even_though_drift_is_zero() {
+    let mut given = input("origin/main");
+    given.edited = vec![StaleClaim {
+        file: "auth.go".to_owned(),
+        symbol: "go://BasicAuthForRealm".to_owned(),
+        claim: "If the realm is empty, Authorization Required is used by default.".to_owned(),
+        drift: Some(0),
+        relocated_to: None,
+    }];
+    let rendered = review_markdown(&given);
+
+    assert!(
+        rendered.contains("go://BasicAuthForRealm"),
+        "drift counts node kinds, so renaming an identifier or editing a string literal measures as zero change. That is the edit most likely to falsify a claim that quotes a value, and it was reaching a reviewer as a claim that still resolved: {rendered}"
+    );
+    assert!(rendered.contains("the code in them was edited"), "{rendered}");
+    assert!(
+        rendered.contains("1 recorded claim may no longer hold"),
+        "it counts toward what the change put in doubt: {rendered}"
     );
 }

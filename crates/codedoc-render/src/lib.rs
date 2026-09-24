@@ -229,6 +229,7 @@ pub struct ReviewInput<'a> {
     pub base: &'a str,
     pub files: &'a [String],
     pub stale: Vec<StaleClaim>,
+    pub edited: Vec<StaleClaim>,
     pub detached: Vec<(String, String, String, Option<String>)>,
     pub unchanged: usize,
     pub moved: usize,
@@ -244,7 +245,7 @@ pub fn review_markdown(input: &ReviewInput<'_>) -> String {
 ",
     );
 
-    if input.stale.is_empty() && input.detached.is_empty() {
+    if input.stale.is_empty() && input.detached.is_empty() && input.edited.is_empty() {
         if input.unchanged == 0 {
             out.push_str(
                 "Nothing recorded covers the code this change touches.
@@ -263,7 +264,7 @@ pub fn review_markdown(input: &ReviewInput<'_>) -> String {
         return out;
     }
 
-    let total = input.stale.len() + input.detached.len();
+    let total = input.stale.len() + input.detached.len() + input.edited.len();
     out.push_str(&format!(
         "{total} recorded claim{} may no longer hold after this change.
 
@@ -327,6 +328,29 @@ pub fn review_markdown(input: &ReviewInput<'_>) -> String {
             ));
         }
         out.push('\n');
+    }
+
+    if !input.edited.is_empty() {
+        out.push_str(
+            "**These kept their shape, so the drift is zero, but the code in them was edited.**
+
+",
+        );
+        for entry in &input.edited {
+            let (file, symbol, claim) = (&entry.file, &entry.symbol, &entry.claim);
+            out.push_str(&format!(
+                "- `{file}` — `{symbol}`
+  > {claim}
+"
+            ));
+        }
+        out.push_str(
+            "<sub>A renamed identifier or a changed value leaves every node kind where it \
+             was, which is what drift measures. A claim that quotes a value is worth \
+             re-reading here.</sub>
+
+",
+        );
     }
 
     out.push_str(&format!(

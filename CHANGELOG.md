@@ -6,6 +6,10 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ## [Unreleased]
 
+### Added
+
+- **`verify` reports whether the code under a claim was edited, not only whether its shape drifted.** Drift compares node kinds, so renaming an identifier or changing a string literal measures as zero change — and a claim that quotes a value is most likely to be wrong exactly there. Changing `"Authorization Required"` in gin's `BasicAuthForRealm` left drift at 0, the anchor resolving, and `review` counting the claim among those that still hold. Each finding now carries `content_changed`, true when the token stream recorded with the anchor is no longer in the file. It costs one hash lookup against an index the resolver already builds, so `verify` on traefik's 7,536 records is unchanged. Whitespace and comments are stripped from that fingerprint, so reformatting is not an edit, and a claim about a file rather than a construct never carries it: nothing is reported across gin's 1,117 and traefik's 7,536 records untouched, one claim for a changed literal, two for a rename that crossed two functions. `review` lists them apart from drifted and moved claims.
+
 ### Fixed
 
 - **A single oversized claim defeated the context budget entirely.** `fit_within` keeps one claim even when it does not fit, so that a budget too small for anything never answers with nothing, but that escape hatch had no ceiling. A file whose comment ran to 200,000 characters returned 200KB from `context` and `brief` against a default budget of 12,000 — and `context` is the call an agent makes before it edits, where a runaway answer costs the most. A claim that cannot fit is now cut to the budget on a character boundary, its detail dropped first, and marked so the reader knows to read the record for the rest. Unaffected corpora render byte-identically.

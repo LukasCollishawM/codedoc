@@ -559,6 +559,7 @@ pub fn review(root: &Path, base: &str) -> Result<(Value, i32), OpsError> {
         })
         .count();
     let mut stale = Vec::new();
+    let mut edited = Vec::new();
     let mut detached = Vec::new();
     let mut unchanged = 0usize;
     let mut moved = 0usize;
@@ -586,7 +587,13 @@ pub fn review(root: &Path, base: &str) -> Result<(Value, i32), OpsError> {
                 );
                 detached.push((finding.file.clone(), symbol, finding.claim.clone(), hint))
             }
-            codedoc_verify::Status::Fresh | codedoc_verify::Status::Migrated => unchanged += 1,
+            codedoc_verify::Status::Fresh | codedoc_verify::Status::Migrated => {
+                if finding.content_changed {
+                    edited.push(unresolved());
+                } else {
+                    unchanged += 1;
+                }
+            }
             _ => stale.push(unresolved()),
         }
     }
@@ -598,6 +605,7 @@ pub fn review(root: &Path, base: &str) -> Result<(Value, i32), OpsError> {
         base,
         files: &changed,
         stale,
+        edited,
         detached,
         unchanged,
         moved,

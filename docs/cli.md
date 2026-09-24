@@ -353,6 +353,16 @@ corpus reports migrated records wherever a file holds several constructs with id
 bodies, because content alone cannot tell them apart and the name can. Importing
 nlohmann/json gives 297 of 2,039 that way, with nothing edited.
 
+Each finding also carries `content_changed`, which separates those two cases. It is
+true when the normalised token stream recorded with the anchor is no longer anywhere
+in the file, so the construct under the claim was genuinely edited rather than merely
+matched by a weaker signal. It is the only report of a rename or a changed literal:
+both leave every node kind where it was, so drift measures zero. Whitespace and
+comments are stripped from that fingerprint, so reformatting is not an edit, and a
+claim whose subject is the file rather than a construct never carries it. Over gin's
+1,117 records and traefik's 7,536, nothing unedited is reported; changing one string
+literal reports one claim.
+
 A record is **stale** either because its anchor only resolved through a weak signal,
 or because the code it points at has *drifted*: the shape of the construct changed
 enough that a claim about the old one may simply be false of the new one. A function

@@ -197,6 +197,10 @@ impl<'tree, 'adapter> FileIndex<'tree, 'adapter> {
         FileIndex { adapter, root, candidates, by_content, by_structural, by_context, by_symbol }
     }
 
+    pub fn holds_content(&self, content: &ContentFingerprint) -> bool {
+        self.by_content.contains_key(content)
+    }
+
     pub fn resolve(&self, anchor: &Anchor) -> Resolution {
         match anchor.subject {
             Subject::File => return self.locate_file(),

@@ -53,6 +53,8 @@ pub struct Finding {
     pub relocated_to: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub drift: Option<u32>,
+    #[serde(skip_serializing_if = "std::ops::Not::not", default)]
+    pub content_changed: bool,
     pub kind: String,
     pub claim: String,
     pub file: String,
@@ -100,12 +102,18 @@ impl Report {
 struct Outcome {
     resolution: Resolution,
     drift: Option<u32>,
+    content_changed: bool,
     relocated_to: Option<String>,
 }
 
 impl Outcome {
     fn detached(reason: DetachReason) -> Self {
-        Outcome { resolution: Resolution::Detached(reason), drift: None, relocated_to: None }
+        Outcome {
+            resolution: Resolution::Detached(reason),
+            drift: None,
+            content_changed: false,
+            relocated_to: None,
+        }
     }
 }
 
@@ -193,11 +201,12 @@ impl Verifier {
                     .into_iter()
                     .zip(resolutions)
                     .map(|(item, outcome)| {
-                        let Outcome { resolution, drift, relocated_to } = outcome;
+                        let Outcome { resolution, drift, content_changed, relocated_to } = outcome;
                         Finding {
                             record: item.record,
                             relocated_to,
                             drift,
+                            content_changed,
                             kind: item.kind,
                             claim: item.claim,
                             file: file.clone(),
@@ -296,9 +305,12 @@ impl Verifier {
                 let outcome = index.resolve_after_migration(&item.anchor);
                 if outcome.located().is_some() {
                     let drift = self.drift_of(&item.anchor, &outcome, adapter, &tree);
+                    let content_changed = describes_a_construct(&item.anchor)
+                        && !index.holds_content(&item.anchor.content);
                     hits.push(Outcome {
                         resolution: outcome,
                         drift,
+                        content_changed,
                         relocated_to: Some(path.as_str().to_owned()),
                     });
                 }
@@ -352,6 +364,7 @@ impl Verifier {
                         return Outcome {
                             resolution: codedoc_anchor::resolve_opaque_file(source),
                             drift: None,
+                            content_changed: false,
                             relocated_to: None,
                         };
                     }
@@ -374,7 +387,10 @@ impl Verifier {
                 }
                 .require(required);
                 let drift = self.drift_of(&item.anchor, &resolution, adapter, &tree);
-                Outcome { resolution, drift, relocated_to: None }
+                let content_changed = resolution.located().is_some()
+                    && describes_a_construct(&item.anchor)
+                    && !index.holds_content(&item.anchor.content);
+                Outcome { resolution, drift, content_changed, relocated_to: None }
             })
             .collect()
     }
@@ -391,6 +407,10 @@ impl Verifier {
         let current = codedoc_anchor::fingerprint::shape_histogram(node, adapter);
         Some(drift_between(&anchor.shape, &current))
     }
+}
+
+fn describes_a_construct(anchor: &Anchor) -> bool {
+    !anchor.is_opaque() && !matches!(anchor.subject, codedoc_anchor::Subject::File)
 }
 
 pub const DRIFT_STALE_THRESHOLD: u32 = 25;
