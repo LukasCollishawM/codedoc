@@ -484,6 +484,23 @@ fn render_import(payload: &Value, out: &mut String) {
             let _ = writeln!(out, "  {:<22} {}", kind, number.as_u64().unwrap_or(0));
         }
     }
+    let candidates = count(payload, "candidates");
+    let unnamed = count(payload, "unnamed");
+    if unnamed > 0 && candidates > 0 {
+        let share = unnamed * 100 / candidates;
+        let _ = writeln!(out);
+        let _ = writeln!(
+            out,
+            "{unnamed} of them ({share}%) attach to a construct this language adapter \
+             cannot name."
+        );
+        let _ = writeln!(
+            out,
+            "Those resolve only while their file is byte-identical, and detach on the \
+             first edit."
+        );
+    }
+
     let empty = Vec::new();
     let sample = payload["sample"].as_array().unwrap_or(&empty);
     if !sample.is_empty() {

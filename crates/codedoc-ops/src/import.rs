@@ -75,6 +75,19 @@ pub fn import(
         *by_kind.entry(item.kind.as_str()).or_insert(0) += 1;
     }
 
+    let about_the_file = harvested
+        .iter()
+        .filter(|item| {
+            item.content
+                .anchors
+                .iter()
+                .any(|entry| matches!(entry.anchor.subject, codedoc_anchor::Subject::File))
+        })
+        .count();
+    let unnamed = harvested.len()
+        - about_the_file
+        - harvested.iter().filter(|item| item.symbol.is_some()).count();
+
     let sample: Vec<Value> = harvested
         .iter()
         .take(10)
@@ -106,6 +119,8 @@ pub fn import(
             "candidates": by_kind.values().sum::<usize>(),
             "by_kind": by_kind,
             "written": written,
+            "about_the_file": about_the_file,
+            "unnamed": unnamed,
             "dry_run": !write,
             "sample": sample,
             "scope": ledger.scope().as_str(),
