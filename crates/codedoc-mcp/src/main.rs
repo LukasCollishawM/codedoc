@@ -438,7 +438,7 @@ impl Codedoc {
     }
 
     #[tool(
-        description = "Show the supersession chain for a record: what was believed earlier, and when it changed."
+        description = "What was believed earlier, and when it changed. Pass a record identifier for that record's supersession chain, or a symbol path such as rust://validate_token for everything ever recorded about that symbol in order, including claims since superseded or retracted. Use it when the code does something surprising and you want to know whether somebody already understood why."
     )]
     async fn codedoc_history(
         &self,

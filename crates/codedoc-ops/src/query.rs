@@ -384,9 +384,14 @@ pub fn search(
 }
 
 pub fn history(root: &Path, reference: &str) -> Outcome {
-    let original = find(root, reference)?;
     let found = workspace(root)?;
     let graph = Graph::across(&found)?;
+
+    if reference.contains("://") {
+        return symbol_history(&graph, reference);
+    }
+
+    let original = find(root, reference)?;
     let chain = graph.revision_history(original.id());
     let rows: Vec<Value> = chain
         .iter()
@@ -410,6 +415,58 @@ pub fn history(root: &Path, reference: &str) -> Outcome {
         })
         .collect();
     Ok(json!({"command": "history", "revisions": rows.len(), "chain": rows}))
+}
+
+fn symbol_history(graph: &Graph, symbol: &str) -> Outcome {
+    let standing: std::collections::BTreeSet<String> =
+        graph.active().iter().map(|record| record.id().to_string()).collect();
+
+    let mut everything: Vec<&codedoc_ledger::Record> = graph
+        .all()
+        .iter()
+        .filter(|record| {
+            record.content().anchors.iter().any(|entry| {
+                entry.anchor.symbol.as_ref().is_some_and(|named| named.to_string() == symbol)
+            })
+        })
+        .collect();
+    if everything.is_empty() {
+        return Err(OpsError::RecordMissing { reference: symbol.to_owned() });
+    }
+    everything.sort_by_key(|record| (record.content().created, record.id().to_string()));
+
+    let rows: Vec<Value> = everything
+        .iter()
+        .map(|record| {
+            let superseded_by = graph
+                .all()
+                .iter()
+                .find(|later| later.content().parent == Some(record.id()))
+                .map(|later| later.id().to_string());
+            json!({
+                "record": record.id().to_string(),
+                "kind": record.kind().as_str(),
+                "claim": record.content().body.claim,
+                "created": record.content().created.to_rfc3339(),
+                "code_revision": record.content().code_revision.as_ref().map(ToString::to_string),
+                "standing": if standing.contains(&record.id().to_string()) {
+                    "believed"
+                } else if record.kind() == codedoc_ledger::Kind::Tombstone {
+                    "retraction"
+                } else {
+                    "withdrawn"
+                },
+                "superseded_by": superseded_by,
+            })
+        })
+        .collect();
+
+    Ok(json!({
+        "command": "history",
+        "symbol": symbol,
+        "revisions": rows.len(),
+        "chain": rows,
+    }))
 }
 
 pub fn render(root: &Path, format: &str, title: &str) -> Outcome {

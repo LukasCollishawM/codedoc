@@ -79,7 +79,7 @@ Every MCP client receives these instructions when it connects:
 | `codedoc_supersede` | when an existing record turns out to be wrong |
 | `codedoc_retract` | when a record is no longer true at all |
 | `codedoc_list` | to survey what is recorded |
-| `codedoc_history` | to see what was believed before |
+| `codedoc_history` | to see what was believed before — pass a record, or a symbol for everything ever recorded about it |
 | `codedoc_conflicts` | to find records that disagree, or duplicates that should have been supersedes |
 | `codedoc_evidence` | to find claims whose cited support has since been deleted or retracted |
 | `codedoc_doctor` | to ask, in one call, whether the recorded knowledge here is in good order |

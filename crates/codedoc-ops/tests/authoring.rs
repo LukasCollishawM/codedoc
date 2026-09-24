@@ -172,3 +172,55 @@ fn an_unrelated_claim_on_the_same_code_is_not_called_a_duplicate() {
     .unwrap();
     assert!(written["similar"].as_array().unwrap().is_empty(), "{written}");
 }
+
+#[test]
+fn history_of_a_symbol_shows_what_was_believed_and_what_was_withdrawn() {
+    let root = project("pub fn compute(d: &[u8]) -> u32 {\n    d.len() as u32\n}\n");
+    let first = attach(root.path(), "Callers pass at most one frame.");
+    let second = attach(root.path(), "The result is never zero for a non-empty slice.");
+
+    codedoc_ops::supersede(
+        root.path(),
+        None,
+        &first,
+        Some("Callers pass exactly one frame, never a partial one."),
+        None,
+        None,
+    )
+    .unwrap();
+    codedoc_ops::retract(root.path(), None, &second, Some("not true for an empty slice")).unwrap();
+
+    let story = codedoc_ops::history(root.path(), "rust://compute").unwrap();
+    assert_eq!(story["symbol"], "rust://compute", "{story}");
+    let chain = story["chain"].as_array().expect("a chain");
+
+    let standings: Vec<&str> =
+        chain.iter().map(|entry| entry["standing"].as_str().unwrap_or("")).collect();
+    assert!(
+        standings.contains(&"withdrawn"),
+        "a claim that was revised away is part of how the code came to be understood, \
+         so it belongs in the story rather than vanishing from it: {story}"
+    );
+    assert!(standings.contains(&"believed"), "{story}");
+    assert!(standings.contains(&"retraction"), "{story}");
+
+    let created: Vec<&str> =
+        chain.iter().map(|entry| entry["created"].as_str().unwrap_or("")).collect();
+    let mut ordered = created.clone();
+    ordered.sort_unstable();
+    assert_eq!(created, ordered, "the story is told in the order it happened: {story}");
+}
+
+#[test]
+fn asking_about_a_symbol_nobody_recorded_anything_about_says_so() {
+    let root = project("pub fn compute(d: &[u8]) -> u32 {\n    d.len() as u32\n}\n");
+    attach(root.path(), "Callers pass at most one frame.");
+
+    let missing = codedoc_ops::history(root.path(), "rust://never_mentioned");
+    assert!(
+        missing.is_err(),
+        "an empty chain and an unknown symbol are different answers, and returning \
+         the first for the second reads as 'nothing was ever known' rather than \
+         'you asked about something that is not there'"
+    );
+}

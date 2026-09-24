@@ -148,10 +148,21 @@ caps the assembled size by dropping the least trustworthy first.
 
 Active records.
 
-### `codedoc history <record>`
+### `codedoc history <record|symbol>`
 
-The supersession chain for a record: what was believed before, and when it changed.
-Record identifiers may be abbreviated to any unambiguous prefix.
+What was believed before, and when it changed.
+
+Given a record identifier — abbreviable to any unambiguous prefix — it returns that
+record's supersession chain, from whichever revision you name: the whole chain, not
+only what came before the one you happened to have. Entries restating their parent
+word for word are marked `affirmation: true`, which is how a chain distinguishes
+someone checking again from someone changing their mind.
+
+Given a symbol path such as `rust://validate_token`, it returns everything ever
+recorded about that symbol in chronological order, including records since superseded
+or retracted, each marked `believed`, `withdrawn` or `retraction`. This is the "how did
+this come to be the way it is" question: the claims that were made, which were revised
+away, and which still stand.
 
 ### `codedoc render [markdown|mermaid] [--title "..."] [--out <path>]`
 

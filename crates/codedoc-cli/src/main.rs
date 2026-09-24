@@ -173,7 +173,7 @@ enum Command {
     },
 
     History {
-        record: String,
+        reference: String,
     },
 
     Stats,
@@ -380,7 +380,7 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
                 0,
             ))
         }
-        Command::History { record } => command_history(&cli.root, record),
+        Command::History { reference } => command_history(&cli.root, reference),
         Command::Stats => command_stats(&cli.root, scope),
         Command::Kinds => Ok((json!({"command": "kinds", "kinds": Kind::vocabulary()}), 0)),
         Command::Supersede { record, claim, detail, kind } => Ok((
