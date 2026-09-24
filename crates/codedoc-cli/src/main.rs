@@ -291,7 +291,7 @@ enum Command {
     },
 
     Render {
-        #[arg(default_value = "markdown")]
+        #[arg(default_value = "markdown", help = "markdown or mermaid")]
         format: String,
 
         #[arg(long, default_value = "Repository knowledge")]

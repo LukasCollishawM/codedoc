@@ -8,6 +8,8 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Fixed
 
+- **`codedoc render` reported a bad argument as an unknown record kind.** Every other command takes a file first, so `codedoc render tree.go` is the obvious mistake, and it answered "unknown record kind tree.go; the vocabulary is markdown, mermaid" — a different vocabulary, belonging to `attach`. It now says it wanted a format rather than a file and names the two. The `FORMAT` argument says so in `--help` as well, and a record with no symbol no longer renders a trailing space where the symbol would go.
+
 - **A mistyped command exited `2`, which is the code reserved for an anchor needing adjudication.** clap exits `2` on a usage error by default, so `codedoc attach` with a missing argument, or an unknown subcommand, told a CI job or an agent that the corpus held detached anchors or a broken citation. Usage errors exit `4`; `--help` and `--version` exit `0`.
 
 - **`codedoc relate` documented its argument format nowhere the caller would look.** `relate <SUBJECT> <VERB> <OBJECT>` printed no description for any of the three, so neither the `path@symbol` form nor the nine verbs appeared in `--help`, though both are in `docs/cli.md`. The arguments whose shape or vocabulary cannot be guessed now carry it: `relate`'s three, and `attach`'s file, `--symbol`, `--line` and `--kind`.

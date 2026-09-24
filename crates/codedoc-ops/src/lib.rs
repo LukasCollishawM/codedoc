@@ -108,6 +108,12 @@ pub enum OpsError {
     UnknownKind { found: String, vocabulary: String },
 
     #[error(
+        "unknown render format {found}. render takes a format rather than a file, and the \
+         choices are {vocabulary}"
+    )]
+    UnknownFormat { found: String, vocabulary: String },
+
+    #[error(
         "unknown assurance {found}; expected one of {vocabulary}. Ignoring it would \
          record whatever the author's default is, which is a confidence nobody chose"
     )]

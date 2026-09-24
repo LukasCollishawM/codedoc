@@ -420,10 +420,10 @@ pub fn overview_markdown(records: &[&Record], title: &str) -> String {
                 .subject()
                 .and_then(|anchor| anchor.symbol.as_ref().map(ToString::to_string))
                 .unwrap_or_default();
+            let names = if symbol.is_empty() { String::new() } else { format!(" `{symbol}`") };
             out.push_str(&format!(
-                "- **{}** {}\n  {}\n",
+                "- **{}**{names}\n  {}\n",
                 heading_for(record.kind()),
-                if symbol.is_empty() { String::new() } else { format!("`{symbol}`") },
                 record.content().body.claim
             ));
             if let Some(detail) = &record.content().body.detail {

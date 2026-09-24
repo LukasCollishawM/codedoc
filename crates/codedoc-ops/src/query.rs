@@ -524,9 +524,9 @@ pub fn render(root: &Path, format: &str, title: &str) -> Outcome {
             codedoc_render::mermaid_relations(&relations)
         }
         other => {
-            return Err(OpsError::UnknownKind {
+            return Err(OpsError::UnknownFormat {
                 found: other.to_owned(),
-                vocabulary: "markdown, mermaid".to_owned(),
+                vocabulary: "markdown and mermaid".to_owned(),
             });
         }
     };

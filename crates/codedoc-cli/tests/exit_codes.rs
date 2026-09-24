@@ -447,3 +447,17 @@ fn a_misuse_of_the_command_line_is_not_an_anchor_needing_adjudication() {
         );
     }
 }
+
+#[test]
+fn render_given_a_file_says_it_wanted_a_format() {
+    let root = project();
+    assert!(run(root.path(), &["init"]).status.success(), "init");
+
+    let attempt = run(root.path(), &["render", "tree.go"]);
+    let said = String::from_utf8_lossy(&attempt.stdout);
+    assert_eq!(attempt.status.code(), Some(4), "{said}");
+    assert!(
+        said.contains("render format") && said.contains("rather than a file"),
+        "every other command takes a file first, so passing one here is the obvious mistake. This reported it as an unknown record kind, which is a different vocabulary belonging to attach, and left the reader looking for a record kind called tree.go: {said}"
+    );
+}
