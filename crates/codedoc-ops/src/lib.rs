@@ -116,6 +116,15 @@ pub(crate) fn workspace(root: &Path) -> Result<Workspace, OpsError> {
     Workspace::discover(root).map_err(|_| OpsError::NoLedger { root: root.display().to_string() })
 }
 
+impl OpsError {
+    pub fn exit_code(&self) -> u8 {
+        match self {
+            OpsError::Ledger { .. } | OpsError::Index { .. } => 3,
+            _ => 4,
+        }
+    }
+}
+
 pub(crate) fn repo_relative_to(base: &Path, given: &str) -> String {
     let canonical = |path: &Path| std::fs::canonicalize(path).ok();
     let Some(base) = canonical(base) else {

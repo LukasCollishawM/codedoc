@@ -324,3 +324,55 @@ fn a_mistyped_symbol_comes_back_with_the_symbols_that_file_does_declare() {
          typo was not found leaves the caller to go and find what is: {rendered}"
     );
 }
+
+#[test]
+fn a_ledger_that_cannot_be_read_exits_three_rather_than_four() {
+    let root = project();
+    run(root.path(), &["init"]);
+
+    let shard = root.path().join(".codedoc/ledger/aa.jsonl");
+    std::fs::write(&shard, "{\"not\":\"a record\"}\n").unwrap();
+
+    let broken = run(root.path(), &["verify"]);
+    assert_eq!(
+        broken.status.code(),
+        Some(3),
+        "docs/cli.md gives 3 to a ledger integrity failure, and a job that branches \
+         on it to catch a tampered ledger cannot tell 4 apart from a mistyped flag: {}",
+        String::from_utf8_lossy(&broken.stderr)
+    );
+}
+
+#[test]
+fn an_anchor_that_escapes_the_repository_root_is_refused() {
+    let root = project();
+    run(root.path(), &["init"]);
+
+    let zero = "0".repeat(64);
+    let hostile = format!(
+        concat!(
+            r#"{{"anchors":[{{"anchor":{{"content":"{d}","file":"../../etc/passwd","#,
+            r#""following":"{d}","language":"rust","node_kind":"function_item","#,
+            r#""node_path":[],"preceding":"{d}","range":{{"end_column":1,"end_line":1,"#,
+            r#""start_column":1,"start_line":1}},"shape":{{}},"structural":"{d}","#,
+            r#""symbol":"rust://x"}},"role":"subject"}}],"assurance":"asserted","#,
+            r#""author":{{"authority":"human","identity":"attacker"}},"#,
+            r#""body":{{"claim":"An anchor pointing outside the repository."}},"#,
+            r#""created":1700000000,"kind":"invariant","lifecycle":"active","schema":1}}"#,
+            "
+"
+        ),
+        d = zero
+    );
+    std::fs::write(root.path().join(".codedoc/ledger/ab.jsonl"), hostile).unwrap();
+
+    let refused = run(root.path(), &["verify"]);
+    let complaint = String::from_utf8_lossy(&refused.stderr).to_lowercase()
+        + &String::from_utf8_lossy(&refused.stdout).to_lowercase();
+    assert!(
+        complaint.contains("escapes the repository root"),
+        "a cloned ledger is untrusted input and a path leaving the root must be \
+         refused by name: {complaint}"
+    );
+    assert_eq!(refused.status.code(), Some(3), "{complaint}");
+}

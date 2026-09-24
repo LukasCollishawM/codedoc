@@ -329,7 +329,9 @@ fn main() -> ExitCode {
             } else {
                 eprintln!("codedoc: {failure:#}");
             }
-            ExitCode::from(4u8)
+            let code =
+                failure.downcast_ref::<ops::OpsError>().map(ops::OpsError::exit_code).unwrap_or(4);
+            ExitCode::from(code)
         }
     }
 }

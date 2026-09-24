@@ -8,6 +8,8 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Fixed
 
+- **A ledger integrity failure exited 4, not the documented 3.** Every error path returned the generic code, so the exit code `docs/cli.md` reserves for a corrupt or tampered ledger was never emitted and a CI job branching on it could not tell that case from a mistyped flag. Ledger and index failures now exit 3. Two tests hold it through the binary, including one that plants an anchor whose path leaves the repository root and asserts it is refused by name — a cloned ledger is untrusted input and that confinement is what `SECURITY.md` promises.
+
 - **Every command failed from a subdirectory of a repository that has a ledger.** `codedoc verify` inside `django/db/` reported "no ledger found at ." and advised creating one, which would have made a second ledger below the first. Discovery did walk up, but the default `--root .` is relative and popping `.` fails immediately, so it never climbed. Git, cargo and npm all find the root from anywhere; codedoc does now.
 - **A path typed from a subdirectory found nothing.** Standing in `django/db/`, `codedoc context models/query.py` returned an empty pack while the repository-relative spelling returned everything, so the caller had to know a path different from the one their shell completes. Paths are now resolved against the working directory when they do not resolve against the repository root, and a claim recorded that way is still filed under its repository-relative path — filing one under the caller's working directory would have made it unresolvable for everyone else.
 
