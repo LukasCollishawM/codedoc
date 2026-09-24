@@ -129,6 +129,9 @@ fn render_verify(payload: &Value, out: &mut String) {
         if let Some(symbol) = finding.get("symbol").and_then(Value::as_str) {
             let _ = writeln!(out, "  {symbol}");
         }
+        if let Some(moved) = finding.get("relocated_to").and_then(Value::as_str) {
+            let _ = writeln!(out, "  moved to {moved}");
+        }
         let _ = writeln!(
             out,
             "  {} :: {}",

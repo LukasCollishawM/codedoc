@@ -85,6 +85,31 @@ fn memoise(
     (content, structural)
 }
 
+pub fn context_siblings(node: Node<'_>, adapter: &Adapter) -> u32 {
+    let mut count = 0u32;
+    let mut cursor = node;
+    for _ in 0..CONTEXT_SIBLING_SPAN {
+        match previous_named_sibling(cursor, adapter) {
+            Some(sibling) => {
+                count += 1;
+                cursor = sibling;
+            }
+            None => break,
+        }
+    }
+    let mut cursor = node;
+    for _ in 0..CONTEXT_SIBLING_SPAN {
+        match next_named_sibling(cursor, adapter) {
+            Some(sibling) => {
+                count += 1;
+                cursor = sibling;
+            }
+            None => break,
+        }
+    }
+    count
+}
+
 pub fn preceding_context_with(
     node: Node<'_>,
     adapter: &Adapter,

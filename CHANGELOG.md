@@ -39,6 +39,7 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Changed
 
+- **Rung 5 follows code that moved between files**, not only files that were renamed. A function relocated from one module to another used to detach; it now resolves and the report names where it went. The search is bounded to files changed since the record's revision, and several candidates detach as ambiguous rather than picking one.
 - **Anchor survival measured on three external corpora**: ripgrep (Rust, 400 commits, 98.2%), httpx (Python, 300 commits, 92.8%) and this repository (97.9%). Zero suspicious reattachments in all three, and every detachment inspected corresponds to code genuinely deleted or renamed.
 - **Symbol cardinality is counted per declaration kind.** Counting per symbol alone detached every record on a Rust type whenever an `impl` block was added or replaced by a derive, because a type and its impls share one symbol path. Found by replaying ripgrep, where `#[derive(Default)]` replacing hand-written impls detached records on enums that had not moved. Survival on ripgrep rose from 97.5% to 98.2%, and the overload invariant is untouched: an overload set shares a kind as well as a symbol.
 - **The replay harness reports why anchors detached**, not just how many. Over this repository's own history that turned "5 detached" into five constructs that were genuinely deleted, which is a different fact entirely.
@@ -56,6 +57,8 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 - Symbol paths no longer include generic parameters or path qualifiers, so renaming a lifetime does not move an anchor.
 
 ### Fixed
+
+- **A false reattachment through an empty neighbourhood.** Rung 4 matched on context fingerprints, and a construct that is the only one of its kind in a file has no context beyond its parent — which every other lone construct shares. A function moved to another module, an unrelated function took its place, and the claim attached to the replacement at medium confidence. Rung 4 now requires a non-empty neighbourhood of the same size and shape similarity above the floor. Costs nothing in survival on either corpus.
 
 - **A false reattachment at high confidence.** Deleting one of two overloads reattached its record to the surviving overload, because the resolver assumed a symbol path uniquely identifies a declaration. Anchors now record how many declarations shared their symbol path, and both the symbol and similarity rungs refuse when that count has changed. Found while adding C++, where overloading is idiomatic, but the defect was language-agnostic and reproduced in Java.
 - The index rebuilds itself when its schema version does not match, rather than failing on a stale column.

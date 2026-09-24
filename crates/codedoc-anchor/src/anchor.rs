@@ -207,6 +207,8 @@ pub struct Anchor {
     pub following: ContextFingerprint,
     pub shape: BTreeMap<String, u32>,
     #[serde(default)]
+    pub context_siblings: u32,
+    #[serde(default)]
     pub symbol_kind: String,
     #[serde(default = "one_declaration")]
     pub symbol_cardinality: u32,
@@ -249,6 +251,7 @@ impl Anchor {
             preceding: fingerprint::preceding_context_with(node, adapter, digests),
             following: fingerprint::following_context_with(node, adapter, digests),
             shape: fingerprint::shape_histogram(node, adapter),
+            context_siblings: fingerprint::context_siblings(node, adapter),
             symbol_kind: owning.clone(),
             symbol_cardinality: symbols.cardinality(&rendered, &owning),
             symbol_ordinal: symbols.ordinal_of(&rendered, &owning, node),

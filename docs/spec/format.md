@@ -91,11 +91,15 @@ An implementation MUST attempt the rungs in order and MUST stop at the first run
 | 1 | content fingerprint and node kind match | exact |
 | 2 | structural fingerprint, node kind and symbol path match | exact |
 | 3 | the symbol path identifies the same number of declarations as when the anchor was captured, the recorded ordinal selects one, and the node path descends to a node of the recorded kind | high |
-| 4 | preceding and following context fingerprints and node kind match | medium |
-| 5 | migration through recorded version-control history | medium |
+| 4 | preceding and following context fingerprints and node kind match, the neighbourhood is non-empty and the same size, and shape similarity is above the floor | medium |
+| 5 | migration through recorded version-control history: the file was renamed, or the construct is found in another file changed since the record's revision | medium |
 | 6 | shape similarity within the same symbol, above the floor and ahead of the runner-up by the margin, and only when symbol cardinality still matches | low |
 
 A rung yielding more than one candidate MUST NOT select among them. It MUST continue to the next rung, because a later rung may carry information that distinguishes them. If no rung yields exactly one candidate, the anchor MUST be reported as detached, citing the earliest rung at which candidates were ambiguous.
+
+Rung 4 MUST NOT fire for an anchor whose neighbourhood was empty when it was captured. A construct that is the only one of its kind in a file has, as context, nothing but its parent — and every other lone construct in every other file shares that. Treating it as evidence attaches a claim about a deleted function to whatever single function replaced it, which was observed in exactly that form: a function moved to another module, an unrelated one took its place, and the two matched because each was the only function in its file.
+
+Rung 5 MUST bound its search to files changed since the revision recorded on the record. A repository-wide search would turn every detachment into a scan, and a construct that moved without appearing in the same range of history is not evidenced as the same construct. Where several files yield a candidate, the anchor MUST detach as ambiguous rather than choosing.
 
 Rung 6 MUST NOT be accepted automatically by any consumer. The floor is 0.75 and the margin 0.15.
 

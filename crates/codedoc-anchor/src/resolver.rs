@@ -242,11 +242,28 @@ impl<'tree, 'adapter> FileIndex<'tree, 'adapter> {
                 })
                 .unwrap_or_default(),
             Rung::SymbolAndNodePath => self.by_symbol_and_path(anchor),
-            Rung::ContextBracket => self
-                .by_context
-                .get(&(anchor.preceding, anchor.following))
-                .map(|positions| self.filter_kind(positions, anchor))
-                .unwrap_or_default(),
+            Rung::ContextBracket => {
+                if anchor.context_siblings == 0 {
+                    return Vec::new();
+                }
+                self.by_context
+                    .get(&(anchor.preceding, anchor.following))
+                    .map(|positions| {
+                        positions
+                            .iter()
+                            .copied()
+                            .filter(|position| {
+                                let candidate = &self.candidates[*position];
+                                candidate.kind == anchor.node_kind
+                                    && fingerprint::context_siblings(candidate.node, self.adapter)
+                                        == anchor.context_siblings
+                                    && shape_similarity(&anchor.shape, candidate.node, self.adapter)
+                                        >= SIMILARITY_FLOOR
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            }
             _ => Vec::new(),
         }
     }

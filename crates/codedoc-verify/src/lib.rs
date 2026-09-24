@@ -50,6 +50,8 @@ impl Status {
 pub struct Finding {
     pub record: RecordId,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub relocated_to: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub drift: Option<u32>,
     pub kind: String,
     pub claim: String,
@@ -92,6 +94,18 @@ impl Report {
             return 1;
         }
         0
+    }
+}
+
+struct Outcome {
+    resolution: Resolution,
+    drift: Option<u32>,
+    relocated_to: Option<String>,
+}
+
+impl Outcome {
+    fn detached(reason: DetachReason) -> Self {
+        Outcome { resolution: Resolution::Detached(reason), drift: None, relocated_to: None }
     }
 }
 
@@ -178,16 +192,20 @@ impl Verifier {
                 entries
                     .into_iter()
                     .zip(resolutions)
-                    .map(|(item, (resolution, drift))| Finding {
-                        record: item.record,
-                        drift,
-                        kind: item.kind,
-                        claim: item.claim,
-                        file: file.clone(),
-                        symbol: item.anchor.symbol.as_ref().map(ToString::to_string),
-                        status: classify(&resolution, drift),
-                        recorded_range: item.anchor.range,
-                        resolution,
+                    .map(|(item, outcome)| {
+                        let Outcome { resolution, drift, relocated_to } = outcome;
+                        Finding {
+                            record: item.record,
+                            relocated_to,
+                            drift,
+                            kind: item.kind,
+                            claim: item.claim,
+                            file: file.clone(),
+                            symbol: item.anchor.symbol.as_ref().map(ToString::to_string),
+                            status: classify(&resolution, drift),
+                            recorded_range: item.anchor.range,
+                            resolution,
+                        }
                     })
                     .collect::<Vec<_>>()
             })
@@ -212,30 +230,99 @@ impl Verifier {
 }
 
 impl Verifier {
-    fn resolve_file(&self, file: &str, entries: &[Pending]) -> Vec<(Resolution, Option<u32>)> {
+    fn resolve_file(&self, file: &str, entries: &[Pending]) -> Vec<Outcome> {
         let Some(first) = entries.first() else {
             return Vec::new();
         };
         match fs::read_to_string(self.root.join(file)) {
             Ok(source) => {
                 let path = first.anchor.file.clone();
-                self.resolve_in(&path, &source, entries, false)
+                let mut outcomes = self.resolve_in(&path, &source, entries, false);
+                if outcomes.iter().any(|outcome| outcome.resolution.is_detached()) {
+                    self.rescue_detached(file, entries, &mut outcomes);
+                }
+                outcomes
             }
             Err(_) => self.resolve_after_rename(file, entries),
         }
     }
 
-    fn resolve_after_rename(
-        &self,
-        file: &str,
-        entries: &[Pending],
-    ) -> Vec<(Resolution, Option<u32>)> {
-        let detached = vec![(Resolution::Detached(DetachReason::FileMissing), None); entries.len()];
+    fn rescue_detached(&self, origin: &str, entries: &[Pending], outcomes: &mut [Outcome]) {
+        let Some(elsewhere) = self.relocated_elsewhere(origin, entries) else {
+            return;
+        };
+        for (slot, rescued) in outcomes.iter_mut().zip(elsewhere) {
+            if slot.resolution.is_detached() && rescued.resolution.located().is_some() {
+                *slot = rescued;
+            }
+        }
+    }
+
+    fn relocated_elsewhere(&self, origin: &str, entries: &[Pending]) -> Option<Vec<Outcome>> {
+        let revision = entries.iter().find_map(|item| item.revision.clone())?;
+        let siblings = history::changed_since(&self.root, revision.as_str())?;
+
+        let mut elsewhere: Vec<(RepoPath, String)> = Vec::new();
+        for candidate in siblings {
+            if candidate == origin {
+                continue;
+            }
+            let Ok(path) = RepoPath::parse(&candidate) else {
+                continue;
+            };
+            if Registry::for_path(&path).is_err() {
+                continue;
+            }
+            let Ok(source) = fs::read_to_string(self.root.join(path.as_str())) else {
+                continue;
+            };
+            elsewhere.push((path, source));
+        }
+        if elsewhere.is_empty() {
+            return None;
+        }
+
+        let mut outcomes: Vec<Outcome> = Vec::new();
+        for item in entries {
+            let mut hits: Vec<Outcome> = Vec::new();
+            for (path, source) in &elsewhere {
+                let Ok(adapter) = Registry::for_path(path) else {
+                    continue;
+                };
+                let Ok(tree) = adapter.parse(source) else {
+                    continue;
+                };
+                let index = FileIndex::build(adapter, source, &tree);
+                let outcome = index.resolve_after_migration(&item.anchor);
+                if outcome.located().is_some() {
+                    let drift = self.drift_of(&item.anchor, &outcome, adapter, &tree);
+                    hits.push(Outcome {
+                        resolution: outcome,
+                        drift,
+                        relocated_to: Some(path.as_str().to_owned()),
+                    });
+                }
+            }
+            match hits.len() {
+                1 => outcomes.push(hits.remove(0)),
+                0 => outcomes.push(Outcome::detached(DetachReason::NoCandidate)),
+                count => outcomes.push(Outcome::detached(DetachReason::Ambiguous {
+                    rung: Rung::GitMigration,
+                    candidates: count as u32,
+                })),
+            }
+        }
+        Some(outcomes)
+    }
+
+    fn resolve_after_rename(&self, file: &str, entries: &[Pending]) -> Vec<Outcome> {
+        let detached: Vec<Outcome> =
+            (0..entries.len()).map(|_| Outcome::detached(DetachReason::FileMissing)).collect();
         let Some(revision) = entries.iter().find_map(|item| item.revision.clone()) else {
             return detached;
         };
         let Some(moved) = history::renamed_to(&self.root, &revision, file) else {
-            return detached;
+            return self.relocated_elsewhere(file, entries).unwrap_or(detached);
         };
         let Ok(path) = RepoPath::parse(&moved) else {
             return detached;
@@ -252,18 +339,16 @@ impl Verifier {
         source: &str,
         entries: &[Pending],
         migrated: bool,
-    ) -> Vec<(Resolution, Option<u32>)> {
+    ) -> Vec<Outcome> {
         let Ok(adapter) = Registry::for_path(path) else {
-            return vec![
-                (Resolution::Detached(DetachReason::LanguageUnsupported), None);
-                entries.len()
-            ];
+            return (0..entries.len())
+                .map(|_| Outcome::detached(DetachReason::LanguageUnsupported))
+                .collect();
         };
         let Ok(tree) = adapter.parse(source) else {
-            return vec![
-                (Resolution::Detached(DetachReason::LanguageUnsupported), None);
-                entries.len()
-            ];
+            return (0..entries.len())
+                .map(|_| Outcome::detached(DetachReason::LanguageUnsupported))
+                .collect();
         };
 
         let index = FileIndex::build(adapter, source, &tree);
@@ -280,7 +365,7 @@ impl Verifier {
                 }
                 .require(required);
                 let drift = self.drift_of(&item.anchor, &resolution, adapter, &tree);
-                (resolution, drift)
+                Outcome { resolution, drift, relocated_to: None }
             })
             .collect()
     }
