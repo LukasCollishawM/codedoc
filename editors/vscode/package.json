@@ -2,7 +2,7 @@
   "name": "codedoc",
   "displayName": "codedoc",
   "description": "Durable, AST-anchored documentation shown as hovers and code lenses.",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "publisher": "codedoc",
   "license": "MIT OR Apache-2.0",
   "repository": {

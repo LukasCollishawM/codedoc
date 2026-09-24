@@ -79,7 +79,7 @@ If you believe you have a resolution strategy that is sound rather than merely e
 
 Any change to the on-disk format requires, in order: an ADR in `docs/decisions/`, a corresponding change to `docs/spec/`, new vectors in `conformance/`, and a mechanical migration in `codedoc migrate`. The Rust code is the reference implementation, not the definition — if the spec and the code disagree, the spec is right and the code has a bug.
 
-Before 1.0 the format may change with migration. After 1.0 it does not change incompatibly.
+The format is 1.0 and does not change incompatibly. Section 10 of the specification states what a later 1.x may add; a major version is a new format and needs a mechanical migration before any record is rewritten.
 
 ## Practicalities
 

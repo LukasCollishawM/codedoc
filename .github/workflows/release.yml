@@ -1,0 +1,85 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: write
+
+jobs:
+  binaries:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+
+      - name: the tag and the crate version agree
+        shell: bash
+        run: |
+          set -euo pipefail
+          tagged="${GITHUB_REF_NAME#v}"
+          declared=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          test "$tagged" = "$declared" || {
+            echo "tag $GITHUB_REF_NAME does not match Cargo.toml version $declared"
+            exit 1
+          }
+
+      - name: build
+        run: cargo build --release --target ${{ matrix.target }} -p codedoc-cli -p codedoc-mcp -p codedoc-lsp
+
+      - name: the binaries run
+        shell: bash
+        run: |
+          set -euo pipefail
+          suffix=""
+          case "${{ matrix.target }}" in *windows*) suffix=".exe";; esac
+          "target/${{ matrix.target }}/release/codedoc$suffix" --version
+
+      - name: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          suffix=""
+          case "${{ matrix.target }}" in *windows*) suffix=".exe";; esac
+          staging="codedoc-${GITHUB_REF_NAME}-${{ matrix.target }}"
+          mkdir -p "$staging"
+          for binary in codedoc codedoc-mcp codedoc-lsp; do
+            cp "target/${{ matrix.target }}/release/${binary}${suffix}" "$staging/"
+          done
+          cp README.md LICENSE-MIT LICENSE-APACHE "$staging/" 2>/dev/null || cp README.md "$staging/"
+          if [ -n "$suffix" ]; then
+            7z a "${staging}.zip" "$staging" > /dev/null
+            echo "ASSET=${staging}.zip" >> "$GITHUB_ENV"
+          else
+            tar czf "${staging}.tar.gz" "$staging"
+            echo "ASSET=${staging}.tar.gz" >> "$GITHUB_ENV"
+          fi
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ASSET }}
+          draft: true
+          body: |
+            The on-disk format is specified in `docs/spec/format.md` and is stable from
+            1.0: a ledger written by a conforming implementation stays readable, and
+            every identifier in it stays the identifier it was written with.
+
+            See CHANGELOG.md for what this release contains.

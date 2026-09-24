@@ -35,7 +35,7 @@ Both are resolved live against the current buffer rather than read from the cach
 cd editors/vscode
 npm install
 npx @vscode/vsce package --allow-missing-repository --skip-license
-code --install-extension codedoc-0.1.0.vsix
+code --install-extension codedoc-1.0.0.vsix
 ```
 
 Or run it from source without packaging:
