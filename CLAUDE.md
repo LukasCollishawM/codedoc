@@ -266,7 +266,7 @@ Code is dual `MIT OR Apache-2.0`, the Rust ecosystem default, and Apache's expli
 
 ### Security posture
 
-A cloned repository's `.codedoc/` is attacker-controlled input, and so is every source file handed to the parser. The canonical decoder, the ledger reader, and the index writer all sit on that trust boundary: no panics, no allocation sized by an untrusted length field, no path in any record field escaping the repository root, and no record content reaching an executed context. `#![forbid(unsafe_code)]` in every crate. Fuzz targets for the canonical decoder and the ledger reader are part of the suite, not an aspiration. The threat model belongs in the spec, since it binds other implementations too.
+A cloned repository's `.codedoc/` is attacker-controlled input, and so is every source file handed to the parser. The canonical decoder, the ledger reader, and the index writer all sit on that trust boundary: no panics, no allocation sized by an untrusted length field, no path in any record field escaping the repository root, and no record content reaching an executed context. `#![forbid(unsafe_code)]` in every crate. The no-panic property that section 9 of the spec requires is carried by proptest, in `crates/codedoc-core/tests/malformed.rs` and `crates/codedoc-ledger/tests/malformed.rs`, which throw arbitrary bytes at the canonical decoder and the record reader on every push. `fuzz/` holds libFuzzer targets for the same three entry points, run by hand for longer campaigns; they are not in CI, because a sixty-second run from an empty corpus re-explores what proptest already covers and the corpus is not persisted. The threat model belongs in the spec, since it binds other implementations too.
 
 ### Governance
 
