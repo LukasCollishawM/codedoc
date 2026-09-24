@@ -391,7 +391,8 @@ fn dispatch(cli: &Cli) -> Result<(Value, i32)> {
                 AuthorKind::Agent => {
                     ops::Attribution::agent(identity, session.as_deref().unwrap_or("unrecorded"))
                 }
-                AuthorKind::Analyzer | AuthorKind::Runtime => ops::Attribution::analyzer(identity),
+                AuthorKind::Analyzer => ops::Attribution::analyzer(identity),
+                AuthorKind::Runtime => ops::Attribution::runtime(identity),
             };
             Ok((
                 ops::affirm(
@@ -487,7 +488,7 @@ fn command_attach(root: &Path, scope: Option<Scope>, args: &AttachArgs) -> Resul
             ops::Attribution::agent(&args.identity, args.session.as_deref().unwrap_or("unrecorded"))
         }
         AuthorKind::Analyzer => ops::Attribution::analyzer(&args.identity),
-        AuthorKind::Runtime => ops::Attribution::analyzer(&args.identity),
+        AuthorKind::Runtime => ops::Attribution::runtime(&args.identity),
     };
     let request = ops::AttachRequest {
         target: ops::Target {
@@ -524,7 +525,8 @@ fn parse_target(raw: &str) -> ops::Target {
 fn command_relate(root: &Path, scope: Option<Scope>, args: &RelateArgs) -> Result<(Value, i32)> {
     let attribution = match args.author {
         AuthorKind::Agent => ops::Attribution::agent(&args.identity, "unrecorded"),
-        AuthorKind::Analyzer | AuthorKind::Runtime => ops::Attribution::analyzer(&args.identity),
+        AuthorKind::Analyzer => ops::Attribution::analyzer(&args.identity),
+        AuthorKind::Runtime => ops::Attribution::runtime(&args.identity),
         AuthorKind::Human => ops::Attribution::human(&args.identity),
     };
     let request = ops::RelateRequest {

@@ -28,6 +28,13 @@ impl Attribution {
         }
     }
 
+    pub fn runtime(name: &str) -> Self {
+        Attribution {
+            author: Author::Runtime { name: name.to_owned() },
+            assurance: Assurance::Asserted,
+        }
+    }
+
     pub fn with_assurance(mut self, assurance: Option<Assurance>) -> Self {
         if let Some(stated) = assurance {
             self.assurance = stated;
@@ -48,6 +55,13 @@ mod tests {
     fn agents_default_to_inferred_and_humans_to_asserted() {
         assert_eq!(Attribution::agent("m", "s").assurance, Assurance::Inferred);
         assert_eq!(Attribution::human("someone").assurance, Assurance::Asserted);
+    }
+
+    #[test]
+    fn a_runtime_observation_is_asserted_and_an_analyzers_inference_is_not() {
+        assert_eq!(Attribution::runtime("profiler").assurance, Assurance::Asserted);
+        assert_eq!(Attribution::analyzer("clippy").assurance, Assurance::Inferred);
+        assert!(matches!(Attribution::runtime("profiler").author, Author::Runtime { .. }));
     }
 
     #[test]

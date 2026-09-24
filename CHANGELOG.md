@@ -6,6 +6,10 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ## [Unreleased]
 
+### Fixed
+
+- **`--author runtime` recorded an analyzer.** The `Author` vocabulary has had `Runtime` from the start, the renderer printed it and `list --author` could filter on it; the one path that writes records mapped it onto `analyzer` because `Attribution` had no constructor for it. A profiler and a linter are not the same witness, and nothing downstream could tell them apart after the fact. Found by `codedoc gaps`, which put `command_attach` near the top on the strength of two corrective commits.
+
 ### Added
 
 - **The server instructions tell an agent when to call `codedoc_gaps`.** A tool an agent has to discover the use of is a tool it will not reach for on the one task it was built for — arriving at an undocumented repository and being asked to fix that.
