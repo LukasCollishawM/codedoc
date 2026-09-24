@@ -25,7 +25,7 @@ Every rule in `CLAUDE.md` is a mechanical check. This is deliberate: strict stan
 ```bash
 just check        # exactly what CI runs: lint, test, replay, cargo-deny, doctor
 just lint         # clippy -D warnings, fmt, no-comments, docs, prose, cargo-deny
-just test         # cargo nextest run --workspace
+just test         # cargo test --workspace
 ```
 
 If a reviewer asks for something no check enforces, that is a gap — either the check gets built or the request is only a suggestion. Say so; it is a fair thing to say.

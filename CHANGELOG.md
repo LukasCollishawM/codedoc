@@ -8,6 +8,9 @@ Before 1.0 the on-disk format may change, but never without a mechanical `codedo
 
 ### Fixed
 
+- **Every crate now carries `publish = false`, which CLAUDE.md has claimed for some time.** None of the thirteen did, so `cargo publish` would have worked on any of them, against a stated policy of publishing narrowly and a format that is explicitly not settled. The claim that `cargo-semver-checks` runs in CI on everything published was true only vacuously, and now says so: nothing is published, and it joins CI with the first release.
+- **`CONTRIBUTING.md` said `just test` runs `cargo nextest run --workspace`.** It runs `cargo test --workspace`.
+
 - **`codedoc review` claimed that claims it had measured as drifting were unaffected.** Renaming one function and adding six lines to another in an unfamiliar repository produced "66 other claims unaffected", while `verify --json` carried 19% drift for a claim on the edited function. Drift below the staleness threshold was measured and then discarded before the reviewer saw it. The summary now says those claims still resolve, and counts separately the ones sitting on touched code that moved.
 
 - **`codedoc import` no longer files tool directives as knowledge.** `# type: ignore`, `# noqa`, `eslint-disable`, `@ts-expect-error`, `//go:build`, `# pragma: no cover` and thirty others are instructions to other tools and say nothing about the code. Found by importing three repositories nobody here had touched: click filed `type: ignore` twice and `conflicts` reported the pair as a near-duplicate; got filed `eslint-disable` lines and an `@ts-expect-error`. Where a directive carries a reason after ` -- `, ` — ` or a second comment marker, the reason is kept and the directive dropped.

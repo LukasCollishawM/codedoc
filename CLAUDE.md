@@ -252,7 +252,7 @@ Before 1.0 the format may change, but never without a mechanical `codedoc migrat
 
 ### Semver and published surface
 
-Publish narrowly. A crate on crates.io is a permanent obligation, so crates whose API has not settled carry `publish = false` rather than a `0.x` promise nobody intends to keep. `cargo-semver-checks` runs in CI on everything published. MSRV is declared in `rust-version`, tested in the matrix, and raised only in a minor release.
+Publish narrowly. A crate on crates.io is a permanent obligation, so crates whose API has not settled carry `publish = false` rather than a `0.x` promise nobody intends to keep. Every crate carries `publish = false` today, so nothing is on crates.io and `cargo-semver-checks` has nothing to check; it joins CI with the first publish. MSRV is declared in `rust-version`, tested in the matrix, and raised only in a minor release.
 
 ### Rules are enforced by machines, never by reviewers
 
