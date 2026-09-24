@@ -1698,7 +1698,9 @@ version = "0.1.0"
 dependencies = [
  "codedoc-anchor",
  "codedoc-core",
+ "codedoc-graph",
  "codedoc-lang",
+ "codedoc-ledger",
  "codedoc-verify",
  "serde_json",
  "tree-sitter",

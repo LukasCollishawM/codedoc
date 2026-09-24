@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+mod allows;
 mod comments;
 mod docs;
 mod prose;
@@ -13,6 +14,7 @@ fn main() -> ExitCode {
     let task = std::env::args().nth(1).unwrap_or_default();
     let rest: Vec<String> = std::env::args().skip(2).collect();
     match task.as_str() {
+        "lint-allows" => allows::run(),
         "lint-comments" => comments::run(),
         "lint-docs" => docs::run(),
         "lint-prose" => prose::run(),
