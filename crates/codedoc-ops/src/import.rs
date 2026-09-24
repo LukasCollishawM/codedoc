@@ -238,6 +238,10 @@ fn harvest_file(
         if claim.chars().count() < MINIMUM_CLAIM_LENGTH || is_decorative(&claim) {
             continue;
         }
+        let kind = infer_kind(&claim);
+        if kind == Kind::Explanation && is_data_sample(&claim) {
+            continue;
+        }
 
         let target = documented_node(*last, adapter);
         let anchor = if documents_the_file(&block, target, first_declaration, adapter, &source) {
@@ -253,8 +257,6 @@ fn harvest_file(
             let Some(target) = target else { continue };
             Anchor::capture_with(repo_path.clone(), adapter, &source, target, &digests, &symbols)
         };
-        let kind = infer_kind(&claim);
-
         harvested.push(Harvested {
             file: repo_path.as_str().to_owned(),
             line: first.start_position().row as u32 + 1,
@@ -500,6 +502,34 @@ pub(crate) fn split_claim(text: &str) -> (String, Option<String>) {
     (head.to_owned(), Some(rest.to_owned()))
 }
 
+pub(crate) fn is_data_sample(claim: &str) -> bool {
+    let trimmed = claim.trim();
+    if trimmed.chars().count() < 2 {
+        return false;
+    }
+    if outside_quotes(trimmed).chars().filter(|glyph| glyph.is_alphabetic()).count() < 3 {
+        return true;
+    }
+    let shouted =
+        trimmed.chars().any(char::is_alphabetic) && !trimmed.chars().any(char::is_lowercase);
+    let unpunctuated = !trimmed.contains(['.', '!', '?']);
+    shouted && unpunctuated
+}
+
+fn outside_quotes(text: &str) -> String {
+    let mut out = String::new();
+    let mut opener: Option<char> = None;
+    for glyph in text.chars() {
+        match opener {
+            Some(quote) if glyph == quote => opener = None,
+            Some(_) => {}
+            None if glyph == '\'' || glyph == '"' => opener = Some(glyph),
+            None => out.push(glyph),
+        }
+    }
+    out
+}
+
 fn is_decorative(claim: &str) -> bool {
     claim
         .chars()
@@ -536,7 +566,13 @@ fn infer_kind(claim: &str) -> Kind {
 
 #[cfg(test)]
 mod tests {
-    use super::{clean_comment, reflow, split_claim, without_directive};
+    use super::{clean_comment, is_data_sample, reflow, split_claim, without_directive};
+
+    #[test]
+    fn a_pair_of_quoted_samples_is_a_sample() {
+        assert!(is_data_sample("'25-10-2006' '20:45:29.000200'"));
+        assert!(!is_data_sample("The caller passes a formatted date here."));
+    }
 
     #[test]
     fn a_blank_comment_line_cleans_to_nothing() {

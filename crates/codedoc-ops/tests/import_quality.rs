@@ -154,3 +154,46 @@ fn a_file_that_is_not_utf8_is_reported_rather_than_counted_as_scanned() {
          about their code: {report}"
     );
 }
+
+#[test]
+fn a_comment_that_is_only_a_data_sample_is_not_knowledge() {
+    let root = project(&[(
+        "src/formats.py",
+        "def parse(value):\n    # '25-10-2006'\n    # '20:45:29.000200'\n    return value\n",
+    )]);
+    assert!(
+        imported(root.path()).is_empty(),
+        "a quoted example of the data a function handles says nothing a reader could \
+         not see in the signature",
+    );
+}
+
+#[test]
+fn a_shouted_constant_is_not_knowledge_either() {
+    let root = project(&[(
+        "src/geometry.py",
+        "def kinds():\n    # MULTILINESTRING Z\n    # COMPOUNDCURVE ZM\n    return []\n",
+    )]);
+    assert!(imported(root.path()).is_empty(), "{:?}", imported(root.path()));
+}
+
+#[test]
+fn a_marker_survives_the_data_sample_filter() {
+    let root =
+        project(&[("src/pending.py", "def compute():\n    # TODO FIX THIS\n    return 0\n")]);
+    let claims = imported(root.path());
+    assert!(
+        claims.iter().any(|(claim, _)| claim.contains("TODO")),
+        "a shouted claim that classified as a warning carries signal the filter must \
+         not eat: {claims:?}"
+    );
+}
+
+#[test]
+fn a_real_sentence_in_quotes_is_kept() {
+    let root = project(&[(
+        "src/naming.py",
+        "def render():\n    # The caller passes \"pretty\" here, which switches the formatter.\n    return 0\n",
+    )]);
+    assert!(!imported(root.path()).is_empty(), "quotes inside a sentence are not a quoted sample",);
+}
