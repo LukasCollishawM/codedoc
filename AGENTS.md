@@ -122,6 +122,12 @@ precede tenant resolution, because resolving a tenant from an unvalidated token
 allows tenant confusion across trust boundaries" is the thing that dies in a commit
 message otherwise.
 
+**`codedoc_attach` tells you when you are repeating yourself.** Its result carries a
+`similar` list: existing claims on the same code that yours largely restates. It still
+writes your record — a near-duplicate is a prompt, not a refusal — but if something is
+listed there, the better move is usually `codedoc_supersede` on that record, so the
+corpus gains a sharper claim instead of a second rough one.
+
 **Staleness is a question, not a verdict.** When `codedoc_verify` reports a record as
 stale, the code beneath a claim changed enough to be worth re-reading. It does not mean
 the claim is wrong. Read the code and then say which it was: `codedoc_affirm` if it

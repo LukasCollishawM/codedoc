@@ -4,7 +4,7 @@ pub mod conflict;
 #[cfg(test)]
 pub(crate) mod tests_support;
 
-pub use conflict::{Conflict, Finding};
+pub use conflict::{Conflict, Finding, NEAR_DUPLICATE_FLOOR, claim_similarity};
 
 use std::collections::{BTreeMap, BTreeSet};
 

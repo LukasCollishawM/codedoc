@@ -9,7 +9,7 @@ use codedoc_ledger::{
     AnchorRole, Assurance, Body, Evidence, Kind, Ledger, Lifecycle, RecordContent, RelationVerb,
     Role, SCHEMA_VERSION, Scope, Timestamp,
 };
-use serde_json::json;
+use serde_json::{Value, json};
 
 use crate::author::Attribution;
 use crate::{OpsError, Outcome, writable};
@@ -150,10 +150,12 @@ pub fn attach(
         evidence,
         revision,
     );
+    let similar = already_recorded(&ledger, &anchor, claim)?;
     let record = append(&ledger, content)?;
 
     Ok(json!({
         "command": "attach",
+        "similar": similar,
         "record": record.id().to_string(),
         "scope": ledger.scope().as_str(),
         "kind": record.kind().as_str(),
@@ -163,6 +165,39 @@ pub fn attach(
         "assurance": attribution.assurance.as_str(),
         "claim": claim,
     }))
+}
+
+fn already_recorded(ledger: &Ledger, anchor: &Anchor, claim: &str) -> Result<Vec<Value>, OpsError> {
+    let index =
+        Index::current(ledger).map_err(|source| OpsError::Index { detail: source.to_string() })?;
+    let nearby = match anchor.symbol.as_ref() {
+        Some(symbol) => index.active_for_symbol(&symbol.to_string()),
+        None => index.active_in_file(anchor.file.as_str()),
+    }
+    .map_err(|source| OpsError::Index { detail: source.to_string() })?;
+
+    let mut scored: Vec<(u32, &codedoc_ledger::Record)> = nearby
+        .iter()
+        .map(|found| {
+            let score = codedoc_graph::claim_similarity(&found.content().body.claim, claim);
+            ((score * 100.0) as u32, found)
+        })
+        .filter(|(score, _)| f64::from(*score) / 100.0 >= codedoc_graph::NEAR_DUPLICATE_FLOOR)
+        .collect();
+    scored.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
+    scored.truncate(3);
+
+    Ok(scored
+        .iter()
+        .map(|(score, found)| {
+            json!({
+                "record": found.id().to_string(),
+                "kind": found.kind().as_str(),
+                "similarity": score,
+                "claim": found.content().body.claim,
+            })
+        })
+        .collect())
 }
 
 pub fn relate(

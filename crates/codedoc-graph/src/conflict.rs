@@ -58,7 +58,7 @@ fn tokens(text: &str) -> Vec<String> {
         .collect()
 }
 
-fn similarity(left: &str, right: &str) -> f64 {
+pub fn claim_similarity(left: &str, right: &str) -> f64 {
     let first = tokens(left);
     let second = tokens(right);
     if first.is_empty() || second.is_empty() {
@@ -113,7 +113,8 @@ impl Graph {
                     continue;
                 }
 
-                let score = similarity(&left.content().body.claim, &right.content().body.claim);
+                let score =
+                    claim_similarity(&left.content().body.claim, &right.content().body.claim);
                 if (NEAR_DUPLICATE_FLOOR..NEAR_DUPLICATE_CEILING).contains(&score) {
                     findings.push(Finding {
                         kind: Conflict::NearDuplicate,

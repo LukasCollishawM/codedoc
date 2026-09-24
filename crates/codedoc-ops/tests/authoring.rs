@@ -115,3 +115,60 @@ fn a_detached_claim_cannot_be_affirmed() {
          cannot be found, there was nothing to re-read."
     );
 }
+
+#[test]
+fn attaching_a_claim_that_restates_an_existing_one_says_so() {
+    let root = project("pub fn compute(d: &[u8]) -> u32 {\n    d.len() as u32\n}\n");
+    attach(root.path(), "Callers must not pass a slice longer than one single frame.");
+
+    let request = codedoc_ops::AttachRequest {
+        target: codedoc_ops::Target::symbol("src/lib.rs", "rust://compute"),
+        kind: "invariant".to_owned(),
+        claim: "Callers must not pass a slice longer than one frame.".to_owned(),
+        detail: None,
+    };
+    let written = codedoc_ops::attach(
+        root.path(),
+        None,
+        &request,
+        &codedoc_ops::Attribution::agent("a-model", "a-session"),
+        codedoc_ops::Provenance::default(),
+    )
+    .unwrap();
+
+    let similar = written["similar"].as_array().expect("a similar list");
+    assert_eq!(
+        similar.len(),
+        1,
+        "agents write continuously, so the moment to notice a restatement is when one \
+         is written, not in a cleanup pass later: {written}"
+    );
+    assert!(similar[0]["similarity"].as_u64().unwrap() >= 60, "{written}");
+    assert!(
+        written["record"].as_str().is_some(),
+        "the record is still written; a near-duplicate is a prompt to consider \
+         superseding, not a refusal"
+    );
+}
+
+#[test]
+fn an_unrelated_claim_on_the_same_code_is_not_called_a_duplicate() {
+    let root = project("pub fn compute(d: &[u8]) -> u32 {\n    d.len() as u32\n}\n");
+    attach(root.path(), "Callers must not pass a slice longer than one frame.");
+
+    let request = codedoc_ops::AttachRequest {
+        target: codedoc_ops::Target::symbol("src/lib.rs", "rust://compute"),
+        kind: "performance".to_owned(),
+        claim: "This runs in constant time regardless of input size.".to_owned(),
+        detail: None,
+    };
+    let written = codedoc_ops::attach(
+        root.path(),
+        None,
+        &request,
+        &codedoc_ops::Attribution::agent("a-model", "a-session"),
+        codedoc_ops::Provenance::default(),
+    )
+    .unwrap();
+    assert!(written["similar"].as_array().unwrap().is_empty(), "{written}");
+}
